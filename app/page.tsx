@@ -1,303 +1,331 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { createClient, Session } from "@supabase/supabase-js";
+
 export default function Home() {
-  const cardStyle = {
-    background: "#111827",
-    border: "1px solid #1f2937",
-    borderRadius: "16px",
-    padding: "20px",
-    color: "white",
-  } as const;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  const smallCard = {
-    ...cardStyle,
-    padding: "16px",
-  } as const;
+  const supabase = useMemo(() => {
+    return createClient(supabaseUrl, supabaseAnonKey);
+  }, [supabaseUrl, supabaseAnonKey]);
 
-  const badge = {
-    display: "inline-block",
-    padding: "6px 10px",
-    borderRadius: "999px",
-    background: "#1f2937",
-    fontSize: "12px",
-    marginRight: "8px",
-    marginBottom: "8px",
-  } as const;
+  const [session, setSession] = useState<Session | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setSession(session);
+    };
+
+    getSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  const handleSignUp = async () => {
+    setLoading(true);
+    setMessage("");
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("Account created. Check your email for confirmation.");
+    }
+
+    setLoading(false);
+  };
+
+  const handleSignIn = async () => {
+    setLoading(true);
+    setMessage("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("Signed in successfully.");
+    }
+
+    setLoading(false);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setMessage("Signed out.");
+  };
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.card}>
+          <h1>Missing Supabase environment variables</h1>
+          <p>
+            Add NEXT_PUBLIC_SUPABASE_URL and
+            NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel and locally.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#030712",
-        color: "white",
-        fontFamily: "Arial, sans-serif",
-        padding: "24px",
-      }}
-    >
-      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "24px",
-            gap: "16px",
-            flexWrap: "wrap",
-          }}
-        >
+    <main style={styles.page}>
+      <div style={styles.wrapper}>
+        <div style={styles.header}>
           <div>
-            <div style={{ fontSize: "14px", color: "#9ca3af" }}>
-              Credit Repair CRM
-            </div>
-            <h1 style={{ margin: "6px 0 0 0", fontSize: "36px" }}>
-              DisputePilot
-            </h1>
-          </div>
-
-          <div>
-            <button
-              style={{
-                background: "#2563eb",
-                color: "white",
-                border: "none",
-                borderRadius: "12px",
-                padding: "12px 18px",
-                cursor: "pointer",
-                fontWeight: "bold",
-              }}
-            >
-              Add Client
-            </button>
+            <div style={styles.eyebrow}>Credit Repair CRM</div>
+            <h1 style={styles.title}>DisputePilot</h1>
           </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "16px",
-            marginBottom: "24px",
-          }}
-        >
-          <div style={smallCard}>
-            <div style={{ color: "#9ca3af", fontSize: "14px" }}>Active Clients</div>
-            <div style={{ fontSize: "32px", marginTop: "8px", fontWeight: "bold" }}>
-              128
+        {!session ? (
+          <div style={styles.card}>
+            <h2 style={styles.heading}>Admin Login</h2>
+            <p style={styles.subtext}>
+              Create your account first, then sign in.
+            </p>
+
+            <label style={styles.label}>Email</label>
+            <input
+              style={styles.input}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
+
+            <label style={styles.label}>Password</label>
+            <input
+              style={styles.input}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+            />
+
+            <div style={styles.buttonRow}>
+              <button
+                style={styles.primaryButton}
+                onClick={handleSignIn}
+                disabled={loading}
+              >
+                {loading ? "Please wait..." : "Sign In"}
+              </button>
+
+              <button
+                style={styles.secondaryButton}
+                onClick={handleSignUp}
+                disabled={loading}
+              >
+                Create Account
+              </button>
             </div>
+
+            {message ? <p style={styles.message}>{message}</p> : null}
           </div>
-
-          <div style={smallCard}>
-            <div style={{ color: "#9ca3af", fontSize: "14px" }}>Open Disputes</div>
-            <div style={{ fontSize: "32px", marginTop: "8px", fontWeight: "bold" }}>
-              342
-            </div>
-          </div>
-
-          <div style={smallCard}>
-            <div style={{ color: "#9ca3af", fontSize: "14px" }}>Monthly Revenue</div>
-            <div style={{ fontSize: "32px", marginTop: "8px", fontWeight: "bold" }}>
-              $9,480
-            </div>
-          </div>
-
-          <div style={smallCard}>
-            <div style={{ color: "#9ca3af", fontSize: "14px" }}>Pending Tasks</div>
-            <div style={{ fontSize: "32px", marginTop: "8px", fontWeight: "bold" }}>
-              27
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.2fr 0.8fr",
-            gap: "16px",
-            marginBottom: "24px",
-          }}
-        >
-          <div style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>Client Management</h2>
-
-            <div
-              style={{
-                background: "#0f172a",
-                border: "1px solid #1f2937",
-                borderRadius: "14px",
-                padding: "16px",
-                marginBottom: "12px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontWeight: "bold" }}>Sarah Johnson</div>
-                  <div style={{ color: "#9ca3af", fontSize: "14px" }}>
-                    sarah@example.com
-                  </div>
-                </div>
-                <div style={{ color: "#86efac" }}>Active</div>
+        ) : (
+          <>
+            <div style={styles.topCard}>
+              <div>
+                <div style={styles.loggedIn}>Logged in as</div>
+                <div style={styles.email}>{session.user.email}</div>
               </div>
-              <div style={{ marginTop: "12px" }}>
-                <span style={badge}>Premium Repair</span>
-                <span style={badge}>Round 2</span>
-                <span style={badge}>Paid</span>
+
+              <button style={styles.primaryButton} onClick={handleSignOut}>
+                Sign Out
+              </button>
+            </div>
+
+            <div style={styles.grid}>
+              <div style={styles.statCard}>
+                <div style={styles.statLabel}>Active Clients</div>
+                <div style={styles.statValue}>128</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statLabel}>Open Disputes</div>
+                <div style={styles.statValue}>342</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statLabel}>Monthly Revenue</div>
+                <div style={styles.statValue}>$9,480</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statLabel}>Pending Tasks</div>
+                <div style={styles.statValue}>27</div>
               </div>
             </div>
 
-            <div
-              style={{
-                background: "#0f172a",
-                border: "1px solid #1f2937",
-                borderRadius: "14px",
-                padding: "16px",
-                marginBottom: "12px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontWeight: "bold" }}>Marcus Lee</div>
-                  <div style={{ color: "#9ca3af", fontSize: "14px" }}>
-                    marcus@example.com
-                  </div>
-                </div>
-                <div style={{ color: "#fcd34d" }}>Needs Docs</div>
-              </div>
-              <div style={{ marginTop: "12px" }}>
-                <span style={badge}>Starter Plan</span>
-                <span style={badge}>Onboarding</span>
-                <span style={badge}>Past Due</span>
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: "#0f172a",
-                border: "1px solid #1f2937",
-                borderRadius: "14px",
-                padding: "16px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontWeight: "bold" }}>Olivia Carter</div>
-                  <div style={{ color: "#9ca3af", fontSize: "14px" }}>
-                    olivia@example.com
-                  </div>
-                </div>
-                <div style={{ color: "#86efac" }}>Active</div>
-              </div>
-              <div style={{ marginTop: "12px" }}>
-                <span style={badge}>Business Credit Build</span>
-                <span style={badge}>Round 1</span>
-                <span style={badge}>Paid</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>Quick Actions</h2>
-
-            <div style={{ display: "grid", gap: "10px" }}>
-              <button style={actionButtonStyle}>Upload Credit Report</button>
-              <button style={actionButtonStyle}>Generate Dispute Letters</button>
-              <button style={actionButtonStyle}>Create Invoice</button>
-              <button style={actionButtonStyle}>Send Client Message</button>
-            </div>
-
-            <div style={{ marginTop: "24px" }}>
-              <h3>Today&apos;s Activity</h3>
-              <ul style={{ color: "#d1d5db", paddingLeft: "20px", lineHeight: 1.8 }}>
-                <li>7 new clients completed onboarding</li>
-                <li>24 dispute letters ready for export</li>
-                <li>3 invoices failed renewal</li>
-                <li>11 client messages waiting</li>
+            <div style={styles.card}>
+              <h2 style={styles.heading}>Dashboard Connected</h2>
+              <p style={styles.subtext}>
+                Your app is now connected to Supabase Auth.
+              </p>
+              <ul style={styles.list}>
+                <li>You can create an admin account.</li>
+                <li>You can sign in and sign out.</li>
+                <li>Next step is saving real clients to the database.</li>
               </ul>
             </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px",
-          }}
-        >
-          <div style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>Open Disputes</h2>
-
-            <div style={rowStyle}>
-              <div>
-                <div style={{ fontWeight: "bold" }}>Capital One</div>
-                <div style={{ color: "#9ca3af", fontSize: "14px" }}>
-                  Sarah Johnson • Late payment inaccurate
-                </div>
-              </div>
-              <div style={{ color: "#93c5fd" }}>Sent</div>
-            </div>
-
-            <div style={rowStyle}>
-              <div>
-                <div style={{ fontWeight: "bold" }}>Medical Collection</div>
-                <div style={{ color: "#9ca3af", fontSize: "14px" }}>
-                  Sarah Johnson • Not mine
-                </div>
-              </div>
-              <div style={{ color: "#fcd34d" }}>Under Review</div>
-            </div>
-
-            <div style={rowStyle}>
-              <div>
-                <div style={{ fontWeight: "bold" }}>Credit One</div>
-                <div style={{ color: "#9ca3af", fontSize: "14px" }}>
-                  Marcus Lee • Balance mismatch
-                </div>
-              </div>
-              <div style={{ color: "#d1d5db" }}>Draft</div>
-            </div>
-          </div>
-
-          <div style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>Documents</h2>
-
-            <div style={rowStyle}>
-              <div>Driver License.pdf</div>
-              <div style={{ color: "#9ca3af" }}>Sarah Johnson</div>
-            </div>
-
-            <div style={rowStyle}>
-              <div>Utility Bill.pdf</div>
-              <div style={{ color: "#9ca3af" }}>Sarah Johnson</div>
-            </div>
-
-            <div style={rowStyle}>
-              <div>SmartCredit Report.pdf</div>
-              <div style={{ color: "#9ca3af" }}>Sarah Johnson</div>
-            </div>
-
-            <div style={rowStyle}>
-              <div>Welcome Agreement.pdf</div>
-              <div style={{ color: "#9ca3af" }}>Marcus Lee</div>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </main>
   );
 }
 
-const actionButtonStyle = {
-  background: "#0f172a",
-  color: "white",
-  border: "1px solid #1f2937",
-  borderRadius: "12px",
-  padding: "14px",
-  textAlign: "left" as const,
-  cursor: "pointer",
-};
-
-const rowStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "12px",
-  padding: "14px 0",
-  borderBottom: "1px solid #1f2937",
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    minHeight: "100vh",
+    background: "#030712",
+    color: "white",
+    fontFamily: "Arial, sans-serif",
+    padding: "24px",
+  },
+  wrapper: {
+    maxWidth: "1000px",
+    margin: "0 auto",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "24px",
+  },
+  eyebrow: {
+    color: "#9ca3af",
+    fontSize: "14px",
+    marginBottom: "8px",
+  },
+  title: {
+    margin: 0,
+    fontSize: "42px",
+  },
+  card: {
+    background: "#111827",
+    border: "1px solid #1f2937",
+    borderRadius: "16px",
+    padding: "24px",
+    marginBottom: "20px",
+  },
+  topCard: {
+    background: "#111827",
+    border: "1px solid #1f2937",
+    borderRadius: "16px",
+    padding: "24px",
+    marginBottom: "20px",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "16px",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  heading: {
+    marginTop: 0,
+    marginBottom: "10px",
+  },
+  subtext: {
+    color: "#9ca3af",
+    marginTop: 0,
+    marginBottom: "18px",
+  },
+  label: {
+    display: "block",
+    marginBottom: "8px",
+    marginTop: "12px",
+  },
+  input: {
+    width: "100%",
+    padding: "14px",
+    borderRadius: "12px",
+    border: "1px solid #374151",
+    background: "#0f172a",
+    color: "white",
+    marginBottom: "12px",
+    boxSizing: "border-box",
+  },
+  buttonRow: {
+    display: "flex",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginTop: "12px",
+  },
+  primaryButton: {
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: "12px",
+    padding: "12px 18px",
+    cursor: "pointer",
+    fontWeight: "bold",
+  },
+  secondaryButton: {
+    background: "#1f2937",
+    color: "white",
+    border: "1px solid #374151",
+    borderRadius: "12px",
+    padding: "12px 18px",
+    cursor: "pointer",
+    fontWeight: "bold",
+  },
+  message: {
+    marginTop: "16px",
+    color: "#93c5fd",
+  },
+  loggedIn: {
+    color: "#9ca3af",
+    fontSize: "14px",
+    marginBottom: "8px",
+  },
+  email: {
+    fontSize: "20px",
+    fontWeight: "bold",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "16px",
+    marginBottom: "20px",
+  },
+  statCard: {
+    background: "#111827",
+    border: "1px solid #1f2937",
+    borderRadius: "16px",
+    padding: "20px",
+  },
+  statLabel: {
+    color: "#9ca3af",
+    marginBottom: "10px",
+  },
+  statValue: {
+    fontSize: "32px",
+    fontWeight: "bold",
+  },
+  list: {
+    color: "#d1d5db",
+    lineHeight: 1.8,
+    paddingLeft: "20px",
+  },
 };
