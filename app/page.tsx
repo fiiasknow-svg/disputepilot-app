@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient, Session } from "@supabase/supabase-js";
 
 type ClientRow = {
@@ -36,9 +36,8 @@ export default function Home() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  const supabase = useMemo(() => {
-    return createClient(supabaseUrl, supabaseAnonKey);
-  }, [supabaseUrl, supabaseAnonKey]);
+  const supabase = useMemo(() => createClient(supabaseUrl, supabaseAnonKey), [supabaseUrl, supabaseAnonKey]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [session, setSession] = useState<Session | null>(null);
 
@@ -82,8 +81,8 @@ export default function Home() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
     });
 
     return () => subscription.unsubscribe();
@@ -91,9 +90,9 @@ export default function Home() {
 
   useEffect(() => {
     if (session) {
-      loadClients();
-      loadDisputes();
-      loadNotes();
+      void loadClients();
+      void loadDisputes();
+      void loadNotes();
     } else {
       setClients([]);
       setDisputes([]);
@@ -102,44 +101,29 @@ export default function Home() {
   }, [session]);
 
   const loadClients = async () => {
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .order("created_at", { ascending: false });
-
+    const { data, error } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
     if (error) {
       setMessage(error.message);
       return;
     }
-
     setClients(data || []);
   };
 
   const loadDisputes = async () => {
-    const { data, error } = await supabase
-      .from("disputes")
-      .select("*")
-      .order("created_at", { ascending: false });
-
+    const { data, error } = await supabase.from("disputes").select("*").order("created_at", { ascending: false });
     if (error) {
       setMessage(error.message);
       return;
     }
-
     setDisputes(data || []);
   };
 
   const loadNotes = async () => {
-    const { data, error } = await supabase
-      .from("notes")
-      .select("*")
-      .order("created_at", { ascending: false });
-
+    const { data, error } = await supabase.from("notes").select("*").order("created_at", { ascending: false });
     if (error) {
       setMessage(error.message);
       return;
     }
-
     setNotes(data || []);
   };
 
@@ -147,16 +131,10 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signUp({ email, password });
 
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage("Account created. Check your email for confirmation.");
-    }
+    if (error) setMessage(error.message);
+    else setMessage("Account created. Check your email for confirmation.");
 
     setLoading(false);
   };
@@ -165,16 +143,10 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage("Signed in successfully.");
-    }
+    if (error) setMessage(error.message);
+    else setMessage("Signed in successfully.");
 
     setLoading(false);
   };
@@ -253,7 +225,7 @@ export default function Home() {
   const handleAddNote = async () => {
     if (!session?.user) return;
 
-    if (!noteText) {
+    if (!noteText.trim()) {
       setMessage("Enter a note.");
       return;
     }
@@ -286,8 +258,17 @@ export default function Home() {
     setSavingNote(false);
   };
 
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleUpload = async () => {
-    if (!file || !session?.user) {
+    if (!session?.user) {
+      setMessage("You must be signed in.");
+      return;
+    }
+
+    if (!file) {
       setMessage("Choose a file first.");
       return;
     }
@@ -295,17 +276,19 @@ export default function Home() {
     setUploading(true);
     setMessage("");
 
-    const filePath = `${session.user.id}/${Date.now()}-${file.name}`;
+    const safeName = file.name.replace(/\s+/g, "-");
+    const filePath = `${session.user.id}/${Date.now()}-${safeName}`;
 
-    const { error } = await supabase.storage
-      .from("documents")
-      .upload(filePath, file);
+    const { error } = await supabase.storage.from("documents").upload(filePath, file, {
+      upsert: false,
+    });
 
     if (error) {
       setMessage(error.message);
     } else {
       setMessage("File uploaded successfully.");
       setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
 
     setUploading(false);
@@ -328,6 +311,7 @@ export default function Home() {
       <main style={styles.page}>
         <div style={styles.card}>
           <h1>Missing Supabase environment variables</h1>
+          <p style={styles.subtext}>Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel.</p>
         </div>
       </main>
     );
@@ -409,33 +393,21 @@ export default function Home() {
               />
 
               <label style={styles.label}>Status</label>
-              <select
-                style={styles.input}
-                value={clientStatus}
-                onChange={(e) => setClientStatus(e.target.value)}
-              >
+              <select style={styles.input} value={clientStatus} onChange={(e) => setClientStatus(e.target.value)}>
                 <option>Active</option>
                 <option>Needs Docs</option>
                 <option>Lead</option>
               </select>
 
               <label style={styles.label}>Plan</label>
-              <select
-                style={styles.input}
-                value={clientPlan}
-                onChange={(e) => setClientPlan(e.target.value)}
-              >
+              <select style={styles.input} value={clientPlan} onChange={(e) => setClientPlan(e.target.value)}>
                 <option>Standard Plan</option>
                 <option>Premium Repair</option>
                 <option>Business Credit Build</option>
               </select>
 
               <div style={styles.buttonRow}>
-                <button
-                  style={styles.primaryButton}
-                  onClick={handleAddClient}
-                  disabled={savingClient}
-                >
+                <button style={styles.primaryButton} onClick={handleAddClient} disabled={savingClient}>
                   {savingClient ? "Saving..." : "Save Client"}
                 </button>
               </div>
@@ -487,25 +459,19 @@ export default function Home() {
               </select>
 
               <div style={styles.buttonRow}>
-                <button
-                  style={styles.primaryButton}
-                  onClick={handleAddDispute}
-                  disabled={savingDispute}
-                >
+                <button style={styles.primaryButton} onClick={handleAddDispute} disabled={savingDispute}>
                   {savingDispute ? "Saving..." : "Save Dispute"}
                 </button>
               </div>
+
+              {message ? <p style={styles.message}>{message}</p> : null}
             </div>
 
             <div style={styles.card}>
               <h2 style={styles.heading}>Add Note</h2>
 
               <label style={styles.label}>Client</label>
-              <select
-                style={styles.input}
-                value={noteClientId}
-                onChange={(e) => setNoteClientId(e.target.value)}
-              >
+              <select style={styles.input} value={noteClientId} onChange={(e) => setNoteClientId(e.target.value)}>
                 <option value="">Optional client</option>
                 {clients.map((client) => (
                   <option key={client.id} value={client.id}>
@@ -515,11 +481,7 @@ export default function Home() {
               </select>
 
               <label style={styles.label}>Dispute</label>
-              <select
-                style={styles.input}
-                value={noteDisputeId}
-                onChange={(e) => setNoteDisputeId(e.target.value)}
-              >
+              <select style={styles.input} value={noteDisputeId} onChange={(e) => setNoteDisputeId(e.target.value)}>
                 <option value="">Optional dispute</option>
                 {disputes.map((dispute) => (
                   <option key={dispute.id} value={dispute.id}>
@@ -537,11 +499,7 @@ export default function Home() {
               />
 
               <div style={styles.buttonRow}>
-                <button
-                  style={styles.primaryButton}
-                  onClick={handleAddNote}
-                  disabled={savingNote}
-                >
+                <button style={styles.primaryButton} onClick={handleAddNote} disabled={savingNote}>
                   {savingNote ? "Saving..." : "Save Note"}
                 </button>
               </div>
@@ -553,20 +511,23 @@ export default function Home() {
               <h2 style={styles.heading}>Upload Document</h2>
 
               <input
+                ref={fileInputRef}
                 type="file"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
-                style={{ marginBottom: "12px" }}
+                style={styles.hiddenFileInput}
               />
 
               <div style={styles.buttonRow}>
-                <button
-                  style={styles.primaryButton}
-                  onClick={handleUpload}
-                  disabled={uploading}
-                >
+                <button type="button" style={styles.secondaryButton} onClick={openFilePicker}>
+                  Choose File
+                </button>
+
+                <button type="button" style={styles.primaryButton} onClick={handleUpload} disabled={uploading}>
                   {uploading ? "Uploading..." : "Upload File"}
                 </button>
               </div>
+
+              <p style={styles.subtext}>{file ? `Selected file: ${file.name}` : "No file chosen yet."}</p>
 
               {message ? <p style={styles.message}>{message}</p> : null}
             </div>
@@ -586,9 +547,7 @@ export default function Home() {
               </div>
               <div style={styles.statCard}>
                 <div style={styles.statLabel}>Draft Disputes</div>
-                <div style={styles.statValue}>
-                  {disputes.filter((d) => d.status === "Draft").length}
-                </div>
+                <div style={styles.statValue}>{disputes.filter((d) => d.status === "Draft").length}</div>
               </div>
             </div>
 
@@ -626,9 +585,7 @@ export default function Home() {
                     <div key={dispute.id} style={styles.clientCard}>
                       <div>
                         <div style={styles.clientName}>{dispute.creditor}</div>
-                        <div style={styles.clientMeta}>
-                          {getClientName(dispute.client_id)}
-                        </div>
+                        <div style={styles.clientMeta}>{getClientName(dispute.client_id)}</div>
                         <div style={styles.clientMeta}>{dispute.reason}</div>
                       </div>
                       <div style={styles.rightInfo}>
@@ -651,12 +608,8 @@ export default function Home() {
                     <div key={note.id} style={styles.clientCard}>
                       <div>
                         <div style={styles.clientName}>{note.note_text}</div>
-                        <div style={styles.clientMeta}>
-                          Client: {getClientName(note.client_id)}
-                        </div>
-                        <div style={styles.clientMeta}>
-                          Dispute: {getDisputeLabel(note.dispute_id)}
-                        </div>
+                        <div style={styles.clientMeta}>Client: {getClientName(note.client_id)}</div>
+                        <div style={styles.clientMeta}>Dispute: {getDisputeLabel(note.dispute_id)}</div>
                       </div>
                     </div>
                   ))}
@@ -722,8 +675,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   subtext: {
     color: "#9ca3af",
-    marginTop: 0,
-    marginBottom: "18px",
+    marginTop: "10px",
+    marginBottom: "0",
   },
   label: {
     display: "block",
@@ -751,6 +704,13 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: "120px",
     boxSizing: "border-box",
     resize: "vertical",
+  },
+  hiddenFileInput: {
+    position: "absolute",
+    left: "-9999px",
+    opacity: 0,
+    width: "1px",
+    height: "1px",
   },
   buttonRow: {
     display: "flex",
