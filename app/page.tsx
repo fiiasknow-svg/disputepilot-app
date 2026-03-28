@@ -23,6 +23,15 @@ type DisputeRow = {
   status: string;
 };
 
+type NoteRow = {
+  id: string;
+  created_at: string;
+  user_id: string;
+  client_id: string | null;
+  dispute_id: string | null;
+  note_text: string;
+};
+
 export default function Home() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -51,6 +60,12 @@ export default function Home() {
   const [disputeStatus, setDisputeStatus] = useState("Draft");
   const [savingDispute, setSavingDispute] = useState(false);
 
+  const [notes, setNotes] = useState<NoteRow[]>([]);
+  const [noteClientId, setNoteClientId] = useState("");
+  const [noteDisputeId, setNoteDisputeId] = useState("");
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
   useEffect(() => {
     const getSession = async () => {
       const {
@@ -74,9 +89,11 @@ export default function Home() {
     if (session) {
       loadClients();
       loadDisputes();
+      loadNotes();
     } else {
       setClients([]);
       setDisputes([]);
+      setNotes([]);
     }
   }, [session]);
 
@@ -106,6 +123,20 @@ export default function Home() {
     }
 
     setDisputes(data || []);
+  };
+
+  const loadNotes = async () => {
+    const { data, error } = await supabase
+      .from("notes")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setNotes(data || []);
   };
 
   const handleSignUp = async () => {
@@ -213,9 +244,50 @@ export default function Home() {
     setSavingDispute(false);
   };
 
-  const getClientName = (clientId: string) => {
+  const handleAddNote = async () => {
+    if (!session?.user) return;
+    if (!noteText) {
+      setMessage("Enter a note.");
+      return;
+    }
+    if (!noteClientId && !noteDisputeId) {
+      setMessage("Choose a client or a dispute.");
+      return;
+    }
+
+    setSavingNote(true);
+    setMessage("");
+
+    const { error } = await supabase.from("notes").insert({
+      user_id: session.user.id,
+      client_id: noteClientId || null,
+      dispute_id: noteDisputeId || null,
+      note_text: noteText,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setNoteClientId("");
+      setNoteDisputeId("");
+      setNoteText("");
+      setMessage("Note added.");
+      await loadNotes();
+    }
+
+    setSavingNote(false);
+  };
+
+  const getClientName = (clientId: string | null) => {
+    if (!clientId) return "No client";
     const client = clients.find((c) => c.id === clientId);
     return client ? client.full_name : "Unknown Client";
+  };
+
+  const getDisputeLabel = (disputeId: string | null) => {
+    if (!disputeId) return "No dispute";
+    const dispute = disputes.find((d) => d.id === disputeId);
+    return dispute ? `${dispute.creditor} - ${dispute.status}` : "Unknown Dispute";
   };
 
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -390,6 +462,56 @@ export default function Home() {
                   {savingDispute ? "Saving..." : "Save Dispute"}
                 </button>
               </div>
+            </div>
+
+            <div style={styles.card}>
+              <h2 style={styles.heading}>Add Note</h2>
+
+              <label style={styles.label}>Client</label>
+              <select
+                style={styles.input}
+                value={noteClientId}
+                onChange={(e) => setNoteClientId(e.target.value)}
+              >
+                <option value="">Optional client</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.full_name}
+                  </option>
+                ))}
+              </select>
+
+              <label style={styles.label}>Dispute</label>
+              <select
+                style={styles.input}
+                value={noteDisputeId}
+                onChange={(e) => setNoteDisputeId(e.target.value)}
+              >
+                <option value="">Optional dispute</option>
+                {disputes.map((dispute) => (
+                  <option key={dispute.id} value={dispute.id}>
+                    {dispute.creditor} - {getClientName(dispute.client_id)}
+                  </option>
+                ))}
+              </select>
+
+              <label style={styles.label}>Note</label>
+              <textarea
+                style={styles.textarea}
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Enter note details"
+              />
+
+              <div style={styles.buttonRow}>
+                <button
+                  style={styles.primaryButton}
+                  onClick={handleAddNote}
+                  disabled={savingNote}
+                >
+                  {savingNote ? "Saving..." : "Save Note"}
+                </button>
+              </div>
 
               {message ? <p style={styles.message}>{message}</p> : null}
             </div>
@@ -404,15 +526,13 @@ export default function Home() {
                 <div style={styles.statValue}>{disputes.length}</div>
               </div>
               <div style={styles.statCard}>
+                <div style={styles.statLabel}>Total Notes</div>
+                <div style={styles.statValue}>{notes.length}</div>
+              </div>
+              <div style={styles.statCard}>
                 <div style={styles.statLabel}>Draft Disputes</div>
                 <div style={styles.statValue}>
                   {disputes.filter((d) => d.status === "Draft").length}
-                </div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statLabel}>Sent Disputes</div>
-                <div style={styles.statValue}>
-                  {disputes.filter((d) => d.status === "Sent").length}
                 </div>
               </div>
             </div>
@@ -458,6 +578,30 @@ export default function Home() {
                       </div>
                       <div style={styles.rightInfo}>
                         <div style={styles.badge}>{dispute.status}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={styles.card}>
+              <h2 style={styles.heading}>Saved Notes</h2>
+
+              {notes.length === 0 ? (
+                <p style={styles.subtext}>No notes saved yet.</p>
+              ) : (
+                <div style={styles.clientList}>
+                  {notes.map((note) => (
+                    <div key={note.id} style={styles.clientCard}>
+                      <div>
+                        <div style={styles.clientName}>{note.note_text}</div>
+                        <div style={styles.clientMeta}>
+                          Client: {getClientName(note.client_id)}
+                        </div>
+                        <div style={styles.clientMeta}>
+                          Dispute: {getDisputeLabel(note.dispute_id)}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -540,6 +684,18 @@ const styles: Record<string, React.CSSProperties> = {
     color: "white",
     marginBottom: "12px",
     boxSizing: "border-box",
+  },
+  textarea: {
+    width: "100%",
+    padding: "14px",
+    borderRadius: "12px",
+    border: "1px solid #374151",
+    background: "#0f172a",
+    color: "white",
+    marginBottom: "12px",
+    minHeight: "120px",
+    boxSizing: "border-box",
+    resize: "vertical",
   },
   buttonRow: {
     display: "flex",
