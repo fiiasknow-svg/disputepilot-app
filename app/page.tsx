@@ -13,6 +13,16 @@ type ClientRow = {
   plan: string;
 };
 
+type DisputeRow = {
+  id: string;
+  created_at: string;
+  user_id: string;
+  client_id: string;
+  creditor: string;
+  reason: string;
+  status: string;
+};
+
 export default function Home() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -33,6 +43,13 @@ export default function Home() {
   const [clientStatus, setClientStatus] = useState("Active");
   const [clientPlan, setClientPlan] = useState("Standard Plan");
   const [savingClient, setSavingClient] = useState(false);
+
+  const [disputes, setDisputes] = useState<DisputeRow[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [creditor, setCreditor] = useState("");
+  const [reason, setReason] = useState("");
+  const [disputeStatus, setDisputeStatus] = useState("Draft");
+  const [savingDispute, setSavingDispute] = useState(false);
 
   useEffect(() => {
     const getSession = async () => {
@@ -56,8 +73,10 @@ export default function Home() {
   useEffect(() => {
     if (session) {
       loadClients();
+      loadDisputes();
     } else {
       setClients([]);
+      setDisputes([]);
     }
   }, [session]);
 
@@ -73,6 +92,20 @@ export default function Home() {
     }
 
     setClients(data || []);
+  };
+
+  const loadDisputes = async () => {
+    const { data, error } = await supabase
+      .from("disputes")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setDisputes(data || []);
   };
 
   const handleSignUp = async () => {
@@ -146,6 +179,43 @@ export default function Home() {
     }
 
     setSavingClient(false);
+  };
+
+  const handleAddDispute = async () => {
+    if (!session?.user) return;
+    if (!selectedClientId || !creditor || !reason) {
+      setMessage("Choose a client, creditor, and reason.");
+      return;
+    }
+
+    setSavingDispute(true);
+    setMessage("");
+
+    const { error } = await supabase.from("disputes").insert({
+      user_id: session.user.id,
+      client_id: selectedClientId,
+      creditor,
+      reason,
+      status: disputeStatus,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setSelectedClientId("");
+      setCreditor("");
+      setReason("");
+      setDisputeStatus("Draft");
+      setMessage("Dispute added.");
+      await loadDisputes();
+    }
+
+    setSavingDispute(false);
+  };
+
+  const getClientName = (clientId: string) => {
+    const client = clients.find((c) => c.id === clientId);
+    return client ? client.full_name : "Unknown Client";
   };
 
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -264,6 +334,62 @@ export default function Home() {
                   {savingClient ? "Saving..." : "Save Client"}
                 </button>
               </div>
+            </div>
+
+            <div style={styles.card}>
+              <h2 style={styles.heading}>Add Dispute</h2>
+
+              <label style={styles.label}>Client</label>
+              <select
+                style={styles.input}
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+              >
+                <option value="">Select client</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.full_name}
+                  </option>
+                ))}
+              </select>
+
+              <label style={styles.label}>Creditor</label>
+              <input
+                style={styles.input}
+                value={creditor}
+                onChange={(e) => setCreditor(e.target.value)}
+                placeholder="Capital One, Experian, etc."
+              />
+
+              <label style={styles.label}>Reason</label>
+              <input
+                style={styles.input}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Late payment inaccurate, not mine, etc."
+              />
+
+              <label style={styles.label}>Status</label>
+              <select
+                style={styles.input}
+                value={disputeStatus}
+                onChange={(e) => setDisputeStatus(e.target.value)}
+              >
+                <option>Draft</option>
+                <option>Sent</option>
+                <option>Under Review</option>
+                <option>Deleted</option>
+              </select>
+
+              <div style={styles.buttonRow}>
+                <button
+                  style={styles.primaryButton}
+                  onClick={handleAddDispute}
+                  disabled={savingDispute}
+                >
+                  {savingDispute ? "Saving..." : "Save Dispute"}
+                </button>
+              </div>
 
               {message ? <p style={styles.message}>{message}</p> : null}
             </div>
@@ -274,15 +400,19 @@ export default function Home() {
                 <div style={styles.statValue}>{clients.length}</div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statLabel}>Active Clients</div>
+                <div style={styles.statLabel}>Total Disputes</div>
+                <div style={styles.statValue}>{disputes.length}</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statLabel}>Draft Disputes</div>
                 <div style={styles.statValue}>
-                  {clients.filter((c) => c.status === "Active").length}
+                  {disputes.filter((d) => d.status === "Draft").length}
                 </div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statLabel}>Needs Docs</div>
+                <div style={styles.statLabel}>Sent Disputes</div>
                 <div style={styles.statValue}>
-                  {clients.filter((c) => c.status === "Needs Docs").length}
+                  {disputes.filter((d) => d.status === "Sent").length}
                 </div>
               </div>
             </div>
@@ -303,6 +433,31 @@ export default function Home() {
                       <div style={styles.rightInfo}>
                         <div style={styles.badge}>{client.status}</div>
                         <div style={styles.clientMeta}>{client.plan}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={styles.card}>
+              <h2 style={styles.heading}>Saved Disputes</h2>
+
+              {disputes.length === 0 ? (
+                <p style={styles.subtext}>No disputes saved yet.</p>
+              ) : (
+                <div style={styles.clientList}>
+                  {disputes.map((dispute) => (
+                    <div key={dispute.id} style={styles.clientCard}>
+                      <div>
+                        <div style={styles.clientName}>{dispute.creditor}</div>
+                        <div style={styles.clientMeta}>
+                          {getClientName(dispute.client_id)}
+                        </div>
+                        <div style={styles.clientMeta}>{dispute.reason}</div>
+                      </div>
+                      <div style={styles.rightInfo}>
+                        <div style={styles.badge}>{dispute.status}</div>
                       </div>
                     </div>
                   ))}
