@@ -41,6 +41,7 @@ export default function Home() {
   }, [supabaseUrl, supabaseAnonKey]);
 
   const [session, setSession] = useState<Session | null>(null);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -65,8 +66,10 @@ export default function Home() {
   const [noteDisputeId, setNoteDisputeId] = useState("");
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
-const [file, setFile] = useState<File | null>(null);
-const [uploading, setUploading] = useState(false);
+
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
   useEffect(() => {
     const getSession = async () => {
       const {
@@ -183,6 +186,7 @@ const [uploading, setUploading] = useState(false);
 
   const handleAddClient = async () => {
     if (!session?.user) return;
+
     if (!clientName || !clientEmail) {
       setMessage("Enter client name and email.");
       return;
@@ -215,6 +219,7 @@ const [uploading, setUploading] = useState(false);
 
   const handleAddDispute = async () => {
     if (!session?.user) return;
+
     if (!selectedClientId || !creditor || !reason) {
       setMessage("Choose a client, creditor, and reason.");
       return;
@@ -247,10 +252,12 @@ const [uploading, setUploading] = useState(false);
 
   const handleAddNote = async () => {
     if (!session?.user) return;
+
     if (!noteText) {
       setMessage("Enter a note.");
       return;
     }
+
     if (!noteClientId && !noteDisputeId) {
       setMessage("Choose a client or a dispute.");
       return;
@@ -279,27 +286,32 @@ const [uploading, setUploading] = useState(false);
     setSavingNote(false);
   };
 
-  const getClientName = (clientId: string | null) => {const handleUpload = async () => {
-  if (!file || !session?.user) return;
+  const handleUpload = async () => {
+    if (!file || !session?.user) {
+      setMessage("Choose a file first.");
+      return;
+    }
 
-  setUploading(true);
-  setMessage("");
+    setUploading(true);
+    setMessage("");
 
-  const filePath = `${session.user.id}/${Date.now()}-${file.name}`;
+    const filePath = `${session.user.id}/${Date.now()}-${file.name}`;
 
-  const { error } = await supabase.storage
-    .from("documents")
-    .upload(filePath, file);
+    const { error } = await supabase.storage
+      .from("documents")
+      .upload(filePath, file);
 
-  if (error) {
-    setMessage(error.message);
-  } else {
-    setMessage("File uploaded successfully.");
-    setFile(null);
-  }
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("File uploaded successfully.");
+      setFile(null);
+    }
 
-  setUploading(false);
-};
+    setUploading(false);
+  };
+
+  const getClientName = (clientId: string | null) => {
     if (!clientId) return "No client";
     const client = clients.find((c) => c.id === clientId);
     return client ? client.full_name : "Unknown Client";
@@ -537,6 +549,28 @@ const [uploading, setUploading] = useState(false);
               {message ? <p style={styles.message}>{message}</p> : null}
             </div>
 
+            <div style={styles.card}>
+              <h2 style={styles.heading}>Upload Document</h2>
+
+              <input
+                type="file"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                style={{ marginBottom: "12px" }}
+              />
+
+              <div style={styles.buttonRow}>
+                <button
+                  style={styles.primaryButton}
+                  onClick={handleUpload}
+                  disabled={uploading}
+                >
+                  {uploading ? "Uploading..." : "Upload File"}
+                </button>
+              </div>
+
+              {message ? <p style={styles.message}>{message}</p> : null}
+            </div>
+
             <div style={styles.grid}>
               <div style={styles.statCard}>
                 <div style={styles.statLabel}>Total Clients</div>
@@ -581,27 +615,7 @@ const [uploading, setUploading] = useState(false);
               )}
             </div>
 
-            <div style={styles.card}><div style={styles.card}>
-  <h2 style={styles.heading}>Upload Document</h2>
-
-  <input
-    type="file"
-    onChange={(e) => setFile(e.target.files?.[0] || null)}
-    style={{ marginBottom: "12px" }}
-  />
-
-  <div style={styles.buttonRow}>
-    <button
-      style={styles.primaryButton}
-      onClick={handleUpload}
-      disabled={uploading}
-    >
-      {uploading ? "Uploading..." : "Upload File"}
-    </button>
-  </div>
-
-  {message ? <p style={styles.message}>{message}</p> : null}
-</div>
+            <div style={styles.card}>
               <h2 style={styles.heading}>Saved Disputes</h2>
 
               {disputes.length === 0 ? (
