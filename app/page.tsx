@@ -65,7 +65,8 @@ export default function Home() {
   const [noteDisputeId, setNoteDisputeId] = useState("");
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
-
+const [file, setFile] = useState<File | null>(null);
+const [uploading, setUploading] = useState(false);
   useEffect(() => {
     const getSession = async () => {
       const {
@@ -278,7 +279,27 @@ export default function Home() {
     setSavingNote(false);
   };
 
-  const getClientName = (clientId: string | null) => {
+  const getClientName = (clientId: string | null) => {const handleUpload = async () => {
+  if (!file || !session?.user) return;
+
+  setUploading(true);
+  setMessage("");
+
+  const filePath = `${session.user.id}/${Date.now()}-${file.name}`;
+
+  const { error } = await supabase.storage
+    .from("documents")
+    .upload(filePath, file);
+
+  if (error) {
+    setMessage(error.message);
+  } else {
+    setMessage("File uploaded successfully.");
+    setFile(null);
+  }
+
+  setUploading(false);
+};
     if (!clientId) return "No client";
     const client = clients.find((c) => c.id === clientId);
     return client ? client.full_name : "Unknown Client";
@@ -560,7 +581,27 @@ export default function Home() {
               )}
             </div>
 
-            <div style={styles.card}>
+            <div style={styles.card}><div style={styles.card}>
+  <h2 style={styles.heading}>Upload Document</h2>
+
+  <input
+    type="file"
+    onChange={(e) => setFile(e.target.files?.[0] || null)}
+    style={{ marginBottom: "12px" }}
+  />
+
+  <div style={styles.buttonRow}>
+    <button
+      style={styles.primaryButton}
+      onClick={handleUpload}
+      disabled={uploading}
+    >
+      {uploading ? "Uploading..." : "Upload File"}
+    </button>
+  </div>
+
+  {message ? <p style={styles.message}>{message}</p> : null}
+</div>
               <h2 style={styles.heading}>Saved Disputes</h2>
 
               {disputes.length === 0 ? (
