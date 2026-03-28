@@ -3,6 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient, Session } from "@supabase/supabase-js";
 
+type ClientRow = {
+  id: string;
+  created_at: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  status: string;
+  plan: string;
+};
+
 export default function Home() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -16,6 +26,13 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [clients, setClients] = useState<ClientRow[]>([]);
+  const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientStatus, setClientStatus] = useState("Active");
+  const [clientPlan, setClientPlan] = useState("Standard Plan");
+  const [savingClient, setSavingClient] = useState(false);
 
   useEffect(() => {
     const getSession = async () => {
@@ -35,6 +52,28 @@ export default function Home() {
 
     return () => subscription.unsubscribe();
   }, [supabase]);
+
+  useEffect(() => {
+    if (session) {
+      loadClients();
+    } else {
+      setClients([]);
+    }
+  }, [session]);
+
+  const loadClients = async () => {
+    const { data, error } = await supabase
+      .from("clients")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setClients(data || []);
+  };
 
   const handleSignUp = async () => {
     setLoading(true);
@@ -77,15 +116,43 @@ export default function Home() {
     setMessage("Signed out.");
   };
 
+  const handleAddClient = async () => {
+    if (!session?.user) return;
+    if (!clientName || !clientEmail) {
+      setMessage("Enter client name and email.");
+      return;
+    }
+
+    setSavingClient(true);
+    setMessage("");
+
+    const { error } = await supabase.from("clients").insert({
+      user_id: session.user.id,
+      full_name: clientName,
+      email: clientEmail,
+      status: clientStatus,
+      plan: clientPlan,
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setClientName("");
+      setClientEmail("");
+      setClientStatus("Active");
+      setClientPlan("Standard Plan");
+      setMessage("Client added.");
+      await loadClients();
+    }
+
+    setSavingClient(false);
+  };
+
   if (!supabaseUrl || !supabaseAnonKey) {
     return (
       <main style={styles.page}>
         <div style={styles.card}>
           <h1>Missing Supabase environment variables</h1>
-          <p>
-            Add NEXT_PUBLIC_SUPABASE_URL and
-            NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel and locally.
-          </p>
         </div>
       </main>
     );
@@ -104,9 +171,7 @@ export default function Home() {
         {!session ? (
           <div style={styles.card}>
             <h2 style={styles.heading}>Admin Login</h2>
-            <p style={styles.subtext}>
-              Create your account first, then sign in.
-            </p>
+            <p style={styles.subtext}>Create your account first, then sign in.</p>
 
             <label style={styles.label}>Email</label>
             <input
@@ -127,19 +192,10 @@ export default function Home() {
             />
 
             <div style={styles.buttonRow}>
-              <button
-                style={styles.primaryButton}
-                onClick={handleSignIn}
-                disabled={loading}
-              >
+              <button style={styles.primaryButton} onClick={handleSignIn} disabled={loading}>
                 {loading ? "Please wait..." : "Sign In"}
               </button>
-
-              <button
-                style={styles.secondaryButton}
-                onClick={handleSignUp}
-                disabled={loading}
-              >
+              <button style={styles.secondaryButton} onClick={handleSignUp} disabled={loading}>
                 Create Account
               </button>
             </div>
@@ -151,43 +207,107 @@ export default function Home() {
             <div style={styles.topCard}>
               <div>
                 <div style={styles.loggedIn}>Logged in as</div>
-                <div style={styles.email}>{session.user.email}</div>
+                <div style={styles.emailText}>{session.user.email}</div>
               </div>
-
               <button style={styles.primaryButton} onClick={handleSignOut}>
                 Sign Out
               </button>
             </div>
 
+            <div style={styles.card}>
+              <h2 style={styles.heading}>Add Client</h2>
+
+              <label style={styles.label}>Full Name</label>
+              <input
+                style={styles.input}
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Client full name"
+              />
+
+              <label style={styles.label}>Email</label>
+              <input
+                style={styles.input}
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                placeholder="client@email.com"
+              />
+
+              <label style={styles.label}>Status</label>
+              <select
+                style={styles.input}
+                value={clientStatus}
+                onChange={(e) => setClientStatus(e.target.value)}
+              >
+                <option>Active</option>
+                <option>Needs Docs</option>
+                <option>Lead</option>
+              </select>
+
+              <label style={styles.label}>Plan</label>
+              <select
+                style={styles.input}
+                value={clientPlan}
+                onChange={(e) => setClientPlan(e.target.value)}
+              >
+                <option>Standard Plan</option>
+                <option>Premium Repair</option>
+                <option>Business Credit Build</option>
+              </select>
+
+              <div style={styles.buttonRow}>
+                <button
+                  style={styles.primaryButton}
+                  onClick={handleAddClient}
+                  disabled={savingClient}
+                >
+                  {savingClient ? "Saving..." : "Save Client"}
+                </button>
+              </div>
+
+              {message ? <p style={styles.message}>{message}</p> : null}
+            </div>
+
             <div style={styles.grid}>
               <div style={styles.statCard}>
+                <div style={styles.statLabel}>Total Clients</div>
+                <div style={styles.statValue}>{clients.length}</div>
+              </div>
+              <div style={styles.statCard}>
                 <div style={styles.statLabel}>Active Clients</div>
-                <div style={styles.statValue}>128</div>
+                <div style={styles.statValue}>
+                  {clients.filter((c) => c.status === "Active").length}
+                </div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statLabel}>Open Disputes</div>
-                <div style={styles.statValue}>342</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statLabel}>Monthly Revenue</div>
-                <div style={styles.statValue}>$9,480</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statLabel}>Pending Tasks</div>
-                <div style={styles.statValue}>27</div>
+                <div style={styles.statLabel}>Needs Docs</div>
+                <div style={styles.statValue}>
+                  {clients.filter((c) => c.status === "Needs Docs").length}
+                </div>
               </div>
             </div>
 
             <div style={styles.card}>
-              <h2 style={styles.heading}>Dashboard Connected</h2>
-              <p style={styles.subtext}>
-                Your app is now connected to Supabase Auth.
-              </p>
-              <ul style={styles.list}>
-                <li>You can create an admin account.</li>
-                <li>You can sign in and sign out.</li>
-                <li>Next step is saving real clients to the database.</li>
-              </ul>
+              <h2 style={styles.heading}>Saved Clients</h2>
+
+              {clients.length === 0 ? (
+                <p style={styles.subtext}>No clients saved yet.</p>
+              ) : (
+                <div style={styles.clientList}>
+                  {clients.map((client) => (
+                    <div key={client.id} style={styles.clientCard}>
+                      <div>
+                        <div style={styles.clientName}>{client.full_name}</div>
+                        <div style={styles.clientMeta}>{client.email}</div>
+                      </div>
+                      <div style={styles.rightInfo}>
+                        <div style={styles.badge}>{client.status}</div>
+                        <div style={styles.clientMeta}>{client.plan}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -299,7 +419,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "14px",
     marginBottom: "8px",
   },
-  email: {
+  emailText: {
     fontSize: "20px",
     fontWeight: "bold",
   },
@@ -323,9 +443,37 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "32px",
     fontWeight: "bold",
   },
-  list: {
-    color: "#d1d5db",
-    lineHeight: 1.8,
-    paddingLeft: "20px",
+  clientList: {
+    display: "grid",
+    gap: "12px",
+  },
+  clientCard: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    alignItems: "center",
+    background: "#0f172a",
+    border: "1px solid #1f2937",
+    borderRadius: "14px",
+    padding: "16px",
+    flexWrap: "wrap",
+  },
+  clientName: {
+    fontSize: "18px",
+    fontWeight: "bold",
+    marginBottom: "6px",
+  },
+  clientMeta: {
+    color: "#9ca3af",
+  },
+  rightInfo: {
+    textAlign: "right",
+  },
+  badge: {
+    display: "inline-block",
+    background: "#1f2937",
+    borderRadius: "999px",
+    padding: "6px 10px",
+    marginBottom: "6px",
   },
 };
