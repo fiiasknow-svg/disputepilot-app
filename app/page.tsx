@@ -32,7 +32,7 @@ type NoteRow = {
   note_text: string;
 };
 
-type ActiveSection = "dashboard" | "clients" | "disputes" | "notes" | "documents";
+type ActiveSection = "dashboard" | "clients" | "disputes" | "notes" | "documents" | "letters";
 
 const NAV_ITEMS: { id: ActiveSection; label: string; icon: string }[] = [
   { id: "dashboard", label: "Dashboard", icon: "⊞" },
@@ -40,7 +40,38 @@ const NAV_ITEMS: { id: ActiveSection; label: string; icon: string }[] = [
   { id: "disputes", label: "Dispute Manager", icon: "⚖" },
   { id: "notes", label: "Notes", icon: "✎" },
   { id: "documents", label: "Documents", icon: "📁" },
+  { id: "letters", label: "Letters", icon: "✉" },
 ];
+
+type LetterTemplate = "section609" | "section611" | "goodwill" | "debtValidation";
+
+const LETTER_TEMPLATES: { id: LetterTemplate; label: string; description: string }[] = [
+  { id: "section609", label: "Section 609 Letter", description: "Request original source documentation under FCRA §609" },
+  { id: "section611", label: "Section 611 Letter", description: "Demand reinvestigation of inaccurate items under FCRA §611" },
+  { id: "goodwill", label: "Goodwill Letter", description: "Ask creditor to remove negative item as a goodwill gesture" },
+  { id: "debtValidation", label: "Debt Validation Letter", description: "Demand collector prove the debt is valid before collecting" },
+];
+
+function buildLetter(
+  template: LetterTemplate,
+  clientName: string,
+  clientEmail: string,
+  creditor: string,
+  reason: string,
+  date: string
+): string {
+  const header = `${date}\n\n${clientName}\n${clientEmail}\n\nRe: Dispute of Inaccurate Credit Information – ${creditor}\n\nTo Whom It May Concern,\n\n`;
+  const footer = `\n\nSincerely,\n\n${clientName}\n${clientEmail}`;
+
+  const bodies: Record<LetterTemplate, string> = {
+    section609: `I am writing to request that you provide verification of the following item currently appearing on my credit report, as required under the Fair Credit Reporting Act (FCRA) Section 609.\n\nCreditor / Account: ${creditor}\nReason for Dispute: ${reason}\n\nUnder Section 609 of the FCRA, you are required to provide copies of the original documents you used to verify this account. If you cannot provide this documentation within 30 days, you are obligated to remove this item from my credit report immediately.\n\nPlease send the requested documentation to the address listed above. I expect written confirmation of the removal or verification within 30 days as required by law.`,
+    section611: `I am writing to formally dispute the accuracy of the following item on my credit report under the Fair Credit Reporting Act (FCRA) Section 611, which requires you to conduct a reasonable reinvestigation of disputed information.\n\nCreditor / Account: ${creditor}\nReason for Dispute: ${reason}\n\nThis information is inaccurate and I am requesting that it be investigated and corrected or removed from my credit report. Under Section 611, you must complete your reinvestigation within 30 days (or 45 days if I submit additional information during the period). If the information cannot be verified, it must be deleted.\n\nPlease confirm in writing the results of your investigation.`,
+    goodwill: `I am writing to respectfully request a goodwill adjustment regarding the following account on my credit report.\n\nCreditor / Account: ${creditor}\nReason: ${reason}\n\nI have been a customer and understand that this negative mark has impacted my credit profile. I take full responsibility for any past difficulties and want you to know that my financial situation has since improved significantly.\n\nI am kindly asking that you consider removing this negative entry as a gesture of goodwill. I believe this one mark does not reflect my overall creditworthiness, and its removal would greatly help me in achieving my financial goals.\n\nThank you for your time and consideration. I sincerely hope you will grant this request.`,
+    debtValidation: `I am writing in response to your recent attempt to collect a debt. Pursuant to the Fair Debt Collection Practices Act (FDCPA) Section 809(b), I am disputing this debt and requesting validation.\n\nCreditor / Account: ${creditor}\nReason for Dispute: ${reason}\n\nPlease provide the following within 30 days:\n  1. The amount of the debt and how it was calculated\n  2. The name and address of the original creditor\n  3. A copy of any signed agreement creating the debt\n  4. Proof that your agency is licensed to collect debts in my state\n  5. Proof that the statute of limitations has not expired\n\nUntil you can validate this debt, please cease all collection activity and do not report this debt to any credit bureau. Failure to comply will be considered a violation of the FDCPA.`,
+  };
+
+  return header + bodies[template] + footer;
+}
 
 export default function Home() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -79,6 +110,15 @@ export default function Home() {
 
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  const [letterClientId, setLetterClientId] = useState("");
+  const [letterDisputeId, setLetterDisputeId] = useState("");
+  const [letterTemplate, setLetterTemplate] = useState<LetterTemplate>("section609");
+  const [generatedLetter, setGeneratedLetter] = useState("");
+  const [letterCopied, setLetterCopied] = useState(false);
+
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
+  const [editingDisputeId, setEditingDisputeId] = useState<string | null>(null);
 
   const [activeSection, setActiveSection] = useState<ActiveSection>("dashboard");
 
@@ -254,6 +294,96 @@ export default function Home() {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
     setUploading(false);
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    const { error } = await supabase.from("clients").delete().eq("id", id);
+    if (error) { setMessage(error.message); return; }
+    setClients((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  const handleEditClient = (c: ClientRow) => {
+    setEditingClientId(c.id);
+    setClientName(c.full_name);
+    setClientEmail(c.email);
+    setClientStatus(c.status);
+    setClientPlan(c.plan);
+    setActiveSection("clients");
+  };
+
+  const handleUpdateClient = async () => {
+    if (!editingClientId) return;
+    setSavingClient(true);
+    setMessage("");
+    const { error } = await supabase
+      .from("clients")
+      .update({ full_name: clientName, email: clientEmail, status: clientStatus, plan: clientPlan })
+      .eq("id", editingClientId);
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setEditingClientId(null);
+      setClientName("");
+      setClientEmail("");
+      setClientStatus("Active");
+      setClientPlan("Standard Plan");
+      setMessage("Customer updated successfully.");
+      await loadClients();
+    }
+    setSavingClient(false);
+  };
+
+  const handleDeleteDispute = async (id: string) => {
+    const { error } = await supabase.from("disputes").delete().eq("id", id);
+    if (error) { setMessage(error.message); return; }
+    setDisputes((prev) => prev.filter((d) => d.id !== id));
+  };
+
+  const handleEditDispute = (d: DisputeRow) => {
+    setEditingDisputeId(d.id);
+    setSelectedClientId(d.client_id);
+    setCreditor(d.creditor);
+    setReason(d.reason);
+    setDisputeStatus(d.status);
+    setActiveSection("disputes");
+  };
+
+  const handleUpdateDispute = async () => {
+    if (!editingDisputeId) return;
+    setSavingDispute(true);
+    setMessage("");
+    const { error } = await supabase
+      .from("disputes")
+      .update({ client_id: selectedClientId, creditor, reason, status: disputeStatus })
+      .eq("id", editingDisputeId);
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setEditingDisputeId(null);
+      setSelectedClientId("");
+      setCreditor("");
+      setReason("");
+      setDisputeStatus("Draft");
+      setMessage("Dispute updated successfully.");
+      await loadDisputes();
+    }
+    setSavingDispute(false);
+  };
+
+  const handleGenerateLetter = () => {
+    const client = clients.find((c) => c.id === letterClientId);
+    const dispute = disputes.find((d) => d.id === letterDisputeId);
+    if (!client || !dispute) { setMessage("Select a client and a dispute to generate a letter."); return; }
+    const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    setGeneratedLetter(buildLetter(letterTemplate, client.full_name, client.email, dispute.creditor, dispute.reason, date));
+    setMessage("");
+  };
+
+  const handleCopyLetter = () => {
+    navigator.clipboard.writeText(generatedLetter).then(() => {
+      setLetterCopied(true);
+      setTimeout(() => setLetterCopied(false), 2000);
+    });
   };
 
   const getClientName = (clientId: string | null) => {
@@ -469,7 +599,15 @@ export default function Home() {
           {activeSection === "clients" && (
             <div style={s.twoCol}>
               <div style={s.card}>
-                <h3 style={s.cardTitle}>Add New Customer</h3>
+                <h3 style={s.cardTitle}>{editingClientId ? "Edit Customer" : "Add New Customer"}</h3>
+                {editingClientId && (
+                  <button
+                    style={{ ...s.btnSecondary, marginBottom: 16, fontSize: 13 }}
+                    onClick={() => { setEditingClientId(null); setClientName(""); setClientEmail(""); setClientStatus("Active"); setClientPlan("Standard Plan"); }}
+                  >
+                    ← Cancel Edit
+                  </button>
+                )}
                 <label style={s.label}>Full Name</label>
                 <input
                   style={s.input}
@@ -506,10 +644,10 @@ export default function Home() {
                 </select>
                 <button
                   style={{ ...s.btnPrimary, marginTop: 20, width: "100%" }}
-                  onClick={handleAddClient}
+                  onClick={editingClientId ? handleUpdateClient : handleAddClient}
                   disabled={savingClient}
                 >
-                  {savingClient ? "Saving..." : "Save Customer"}
+                  {savingClient ? "Saving..." : editingClientId ? "Update Customer" : "Save Customer"}
                 </button>
               </div>
 
@@ -526,6 +664,10 @@ export default function Home() {
                         <div style={s.rowSub}>{c.email} · {c.plan}</div>
                       </div>
                       <StatusBadge status={c.status} />
+                      <div style={{ display: "flex", gap: 6, marginLeft: 8 }}>
+                        <button style={s.actionBtn} onClick={() => handleEditClient(c)}>Edit</button>
+                        <button style={{ ...s.actionBtn, ...s.actionBtnDanger }} onClick={() => handleDeleteClient(c.id)}>Delete</button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -537,7 +679,15 @@ export default function Home() {
           {activeSection === "disputes" && (
             <div style={s.twoCol}>
               <div style={s.card}>
-                <h3 style={s.cardTitle}>Add New Dispute</h3>
+                <h3 style={s.cardTitle}>{editingDisputeId ? "Edit Dispute" : "Add New Dispute"}</h3>
+                {editingDisputeId && (
+                  <button
+                    style={{ ...s.btnSecondary, marginBottom: 16, fontSize: 13 }}
+                    onClick={() => { setEditingDisputeId(null); setSelectedClientId(""); setCreditor(""); setReason(""); setDisputeStatus("Draft"); }}
+                  >
+                    ← Cancel Edit
+                  </button>
+                )}
                 <label style={s.label}>Client</label>
                 <select
                   style={s.input}
@@ -576,10 +726,10 @@ export default function Home() {
                 </select>
                 <button
                   style={{ ...s.btnPrimary, marginTop: 20, width: "100%" }}
-                  onClick={handleAddDispute}
+                  onClick={editingDisputeId ? handleUpdateDispute : handleAddDispute}
                   disabled={savingDispute}
                 >
-                  {savingDispute ? "Saving..." : "Save Dispute"}
+                  {savingDispute ? "Saving..." : editingDisputeId ? "Update Dispute" : "Save Dispute"}
                 </button>
               </div>
 
@@ -598,6 +748,10 @@ export default function Home() {
                         <div style={s.rowSub}>{getClientName(d.client_id)} · {d.reason}</div>
                       </div>
                       <DisputeBadge status={d.status} />
+                      <div style={{ display: "flex", gap: 6, marginLeft: 8 }}>
+                        <button style={s.actionBtn} onClick={() => handleEditDispute(d)}>Edit</button>
+                        <button style={{ ...s.actionBtn, ...s.actionBtnDanger }} onClick={() => handleDeleteDispute(d.id)}>Delete</button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -666,6 +820,87 @@ export default function Home() {
                       </div>
                     </div>
                   ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ─── LETTERS ─── */}
+          {activeSection === "letters" && (
+            <div style={s.twoCol}>
+              <div style={s.card}>
+                <h3 style={s.cardTitle}>Generate Dispute Letter</h3>
+                <label style={s.label}>Client</label>
+                <select
+                  style={s.input}
+                  value={letterClientId}
+                  onChange={(e) => { setLetterClientId(e.target.value); setLetterDisputeId(""); setGeneratedLetter(""); }}
+                >
+                  <option value="">Select client</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>{c.full_name}</option>
+                  ))}
+                </select>
+                <label style={s.label}>Dispute</label>
+                <select
+                  style={s.input}
+                  value={letterDisputeId}
+                  onChange={(e) => { setLetterDisputeId(e.target.value); setGeneratedLetter(""); }}
+                  disabled={!letterClientId}
+                >
+                  <option value="">Select dispute</option>
+                  {disputes
+                    .filter((d) => d.client_id === letterClientId)
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>{d.creditor} – {d.reason}</option>
+                    ))}
+                </select>
+                <label style={s.label}>Letter Type</label>
+                {LETTER_TEMPLATES.map((t) => (
+                  <label key={t.id} style={s.radioRow}>
+                    <input
+                      type="radio"
+                      name="letterTemplate"
+                      value={t.id}
+                      checked={letterTemplate === t.id}
+                      onChange={() => { setLetterTemplate(t.id); setGeneratedLetter(""); }}
+                      style={{ marginRight: 10 }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: "#0f172a" }}>{t.label}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{t.description}</div>
+                    </div>
+                  </label>
+                ))}
+                <button
+                  style={{ ...s.btnPrimary, marginTop: 20, width: "100%" }}
+                  onClick={handleGenerateLetter}
+                  disabled={!letterClientId || !letterDisputeId}
+                >
+                  Generate Letter
+                </button>
+              </div>
+
+              <div style={s.card}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h3 style={{ ...s.cardTitle, marginBottom: 0 }}>Letter Preview</h3>
+                  {generatedLetter && (
+                    <button style={s.btnSecondary} onClick={handleCopyLetter}>
+                      {letterCopied ? "Copied!" : "Copy to Clipboard"}
+                    </button>
+                  )}
+                </div>
+                {generatedLetter ? (
+                  <textarea
+                    style={{ ...s.input, minHeight: 480, fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.7, resize: "vertical" }}
+                    value={generatedLetter}
+                    onChange={(e) => setGeneratedLetter(e.target.value)}
+                  />
+                ) : (
+                  <div style={s.emptyLetterBox}>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>✉</div>
+                    <p style={{ color: "#64748b", margin: 0 }}>Select a client, dispute, and letter type, then click Generate Letter.</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -1182,6 +1417,47 @@ const s: Record<string, React.CSSProperties> = {
     textAlign: "center" as const,
     padding: "24px 0",
     margin: 0,
+  },
+
+  // Action buttons
+  actionBtn: {
+    fontSize: 12,
+    padding: "4px 10px",
+    borderRadius: 6,
+    border: "1px solid #e2e8f0",
+    background: "white",
+    color: "#475569",
+    cursor: "pointer",
+    whiteSpace: "nowrap" as const,
+  },
+  actionBtnDanger: {
+    color: "#dc2626",
+    borderColor: "#fecaca",
+    background: "#fff5f5",
+  },
+
+  // Letters
+  radioRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    padding: "12px 14px",
+    borderRadius: 8,
+    border: "1px solid #e2e8f0",
+    marginBottom: 8,
+    cursor: "pointer",
+    background: "white",
+  },
+  emptyLetterBox: {
+    minHeight: 300,
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#f8fafc",
+    borderRadius: 10,
+    border: "2px dashed #e2e8f0",
+    padding: 40,
+    textAlign: "center" as const,
   },
 
   // Footer
