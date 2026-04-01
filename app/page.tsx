@@ -11,6 +11,28 @@ type ClientRow = {
   email: string;
   status: string;
   plan: string;
+  phone?: string;
+  address?: string;
+  dob?: string;
+};
+
+type DocumentRow = {
+  name: string;
+  id: string;
+  updated_at: string;
+  created_at: string;
+  last_accessed_at: string;
+  metadata: Record<string, unknown>;
+};
+
+type LetterRow = {
+  id: string;
+  created_at: string;
+  user_id: string;
+  client_id: string;
+  dispute_id: string;
+  template: string;
+  content: string;
 };
 
 type DisputeRow = {
@@ -32,7 +54,7 @@ type NoteRow = {
   note_text: string;
 };
 
-type ActiveSection = "dashboard" | "clients" | "disputes" | "notes" | "documents" | "letters";
+type ActiveSection = "dashboard" | "clients" | "disputes" | "notes" | "documents" | "letters" | "reports";
 
 const NAV_ITEMS: { id: ActiveSection; label: string; icon: string }[] = [
   { id: "dashboard", label: "Dashboard", icon: "⊞" },
@@ -41,6 +63,7 @@ const NAV_ITEMS: { id: ActiveSection; label: string; icon: string }[] = [
   { id: "notes", label: "Notes", icon: "✎" },
   { id: "documents", label: "Documents", icon: "📁" },
   { id: "letters", label: "Letters", icon: "✉" },
+  { id: "reports", label: "Reports", icon: "📊" },
 ];
 
 type LetterTemplate = "section609" | "section611" | "goodwill" | "debtValidation";
@@ -91,9 +114,13 @@ export default function Home() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientAddress, setClientAddress] = useState("");
+  const [clientDOB, setClientDOB] = useState("");
   const [clientStatus, setClientStatus] = useState("Active");
   const [clientPlan, setClientPlan] = useState("Standard Plan");
   const [savingClient, setSavingClient] = useState(false);
+  const [activeClientId, setActiveClientId] = useState<string | null>(null);
 
   const [disputes, setDisputes] = useState<DisputeRow[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
@@ -116,6 +143,9 @@ export default function Home() {
   const [letterTemplate, setLetterTemplate] = useState<LetterTemplate>("section609");
   const [generatedLetter, setGeneratedLetter] = useState("");
   const [letterCopied, setLetterCopied] = useState(false);
+  const [savingLetter, setSavingLetter] = useState(false);
+  const [savedLetters, setSavedLetters] = useState<LetterRow[]>([]);
+  const [documents, setDocuments] = useState<DocumentRow[]>([]);
 
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [editingDisputeId, setEditingDisputeId] = useState<string | null>(null);
@@ -140,13 +170,13 @@ export default function Home() {
 
   useEffect(() => {
     if (session) {
-      void loadClients();
-      void loadDisputes();
-      void loadNotes();
+      void Promise.all([loadClients(), loadDisputes(), loadNotes(), loadLetters(), loadDocuments()]);
     } else {
       setClients([]);
       setDisputes([]);
       setNotes([]);
+      setSavedLetters([]);
+      setDocuments([]);
     }
   }, [session]);
 
@@ -175,6 +205,20 @@ export default function Home() {
       .order("created_at", { ascending: false });
     if (error) { setMessage(error.message); return; }
     setNotes(data || []);
+  };
+
+  const loadLetters = async () => {
+    const { data, error } = await supabase
+      .from("letters")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (!error) setSavedLetters(data || []);
+  };
+
+  const loadDocuments = async () => {
+    if (!session?.user) return;
+    const { data } = await supabase.storage.from("documents").list(session.user.id, { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+    setDocuments((data as DocumentRow[]) || []);
   };
 
   const handleSignUp = async () => {
@@ -208,14 +252,16 @@ export default function Home() {
       user_id: session.user.id,
       full_name: clientName,
       email: clientEmail,
+      phone: clientPhone || null,
+      address: clientAddress || null,
+      dob: clientDOB || null,
       status: clientStatus,
       plan: clientPlan,
     });
     if (error) {
       setMessage(error.message);
     } else {
-      setClientName("");
-      setClientEmail("");
+      setClientName(""); setClientEmail(""); setClientPhone(""); setClientAddress(""); setClientDOB("");
       setClientStatus("Active");
       setClientPlan("Standard Plan");
       setMessage("Customer added successfully.");
@@ -292,6 +338,7 @@ export default function Home() {
       setMessage("File uploaded successfully.");
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      await loadDocuments();
     }
     setUploading(false);
   };
@@ -306,6 +353,9 @@ export default function Home() {
     setEditingClientId(c.id);
     setClientName(c.full_name);
     setClientEmail(c.email);
+    setClientPhone(c.phone ?? "");
+    setClientAddress(c.address ?? "");
+    setClientDOB(c.dob ?? "");
     setClientStatus(c.status);
     setClientPlan(c.plan);
     setActiveSection("clients");
@@ -317,14 +367,13 @@ export default function Home() {
     setMessage("");
     const { error } = await supabase
       .from("clients")
-      .update({ full_name: clientName, email: clientEmail, status: clientStatus, plan: clientPlan })
+      .update({ full_name: clientName, email: clientEmail, phone: clientPhone || null, address: clientAddress || null, dob: clientDOB || null, status: clientStatus, plan: clientPlan })
       .eq("id", editingClientId);
     if (error) {
       setMessage(error.message);
     } else {
       setEditingClientId(null);
-      setClientName("");
-      setClientEmail("");
+      setClientName(""); setClientEmail(""); setClientPhone(""); setClientAddress(""); setClientDOB("");
       setClientStatus("Active");
       setClientPlan("Standard Plan");
       setMessage("Customer updated successfully.");
@@ -384,6 +433,29 @@ export default function Home() {
       setLetterCopied(true);
       setTimeout(() => setLetterCopied(false), 2000);
     });
+  };
+
+  const handleSaveLetter = async () => {
+    if (!session?.user || !generatedLetter || !letterClientId || !letterDisputeId) return;
+    setSavingLetter(true);
+    const { error } = await supabase.from("letters").insert({
+      user_id: session.user.id,
+      client_id: letterClientId,
+      dispute_id: letterDisputeId,
+      template: letterTemplate,
+      content: generatedLetter,
+    });
+    if (error) { setMessage(error.message); }
+    else { setMessage("Letter saved to history."); await loadLetters(); }
+    setSavingLetter(false);
+  };
+
+  const handlePrintLetter = () => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>Dispute Letter</title><style>body{font-family:Georgia,serif;line-height:1.8;padding:60px;max-width:700px;margin:0 auto;font-size:15px;color:#1a1a1a;}pre{white-space:pre-wrap;word-wrap:break-word;font-family:Georgia,serif;}</style></head><body><pre>${generatedLetter.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></body></html>`);
+    win.document.close();
+    win.print();
   };
 
   const getClientName = (clientId: string | null) => {
@@ -603,7 +675,7 @@ export default function Home() {
                 {editingClientId && (
                   <button
                     style={{ ...s.btnSecondary, marginBottom: 16, fontSize: 13 }}
-                    onClick={() => { setEditingClientId(null); setClientName(""); setClientEmail(""); setClientStatus("Active"); setClientPlan("Standard Plan"); }}
+                    onClick={() => { setEditingClientId(null); setClientName(""); setClientEmail(""); setClientPhone(""); setClientAddress(""); setClientDOB(""); setClientStatus("Active"); setClientPlan("Standard Plan"); }}
                   >
                     ← Cancel Edit
                   </button>
@@ -621,6 +693,27 @@ export default function Home() {
                   value={clientEmail}
                   onChange={(e) => setClientEmail(e.target.value)}
                   placeholder="client@email.com"
+                />
+                <label style={s.label}>Phone</label>
+                <input
+                  style={s.input}
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  placeholder="(555) 000-0000"
+                />
+                <label style={s.label}>Address</label>
+                <input
+                  style={s.input}
+                  value={clientAddress}
+                  onChange={(e) => setClientAddress(e.target.value)}
+                  placeholder="123 Main St, City, State ZIP"
+                />
+                <label style={s.label}>Date of Birth</label>
+                <input
+                  style={s.input}
+                  type="date"
+                  value={clientDOB}
+                  onChange={(e) => setClientDOB(e.target.value)}
                 />
                 <label style={s.label}>Status</label>
                 <select
@@ -657,14 +750,14 @@ export default function Home() {
                   <p style={s.emptyTxt}>No customers saved yet.</p>
                 ) : (
                   clients.map((c) => (
-                    <div key={c.id} style={s.listRow}>
+                    <div key={c.id} style={{ ...s.listRow, cursor: "pointer" }} onClick={() => setActiveClientId(c.id)}>
                       <div style={s.rowAvatar}>{c.full_name.charAt(0).toUpperCase()}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={s.rowName}>{c.full_name}</div>
                         <div style={s.rowSub}>{c.email} · {c.plan}</div>
                       </div>
                       <StatusBadge status={c.status} />
-                      <div style={{ display: "flex", gap: 6, marginLeft: 8 }}>
+                      <div style={{ display: "flex", gap: 6, marginLeft: 8 }} onClick={(e) => e.stopPropagation()}>
                         <button style={s.actionBtn} onClick={() => handleEditClient(c)}>Edit</button>
                         <button style={{ ...s.actionBtn, ...s.actionBtnDanger }} onClick={() => handleDeleteClient(c.id)}>Delete</button>
                       </div>
@@ -674,6 +767,55 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* ─── CLIENT DETAIL ─── */}
+          {activeSection === "clients" && activeClientId && (() => {
+            const client = clients.find((c) => c.id === activeClientId);
+            if (!client) return null;
+            const clientDisputes = disputes.filter((d) => d.client_id === activeClientId);
+            const clientNotes = notes.filter((n) => n.client_id === activeClientId);
+            return (
+              <div style={s.detailOverlay} onClick={() => setActiveClientId(null)}>
+                <div style={s.detailPanel} onClick={(e) => e.stopPropagation()}>
+                  <div style={s.detailHeader}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <div style={{ ...s.rowAvatar, width: 52, height: 52, fontSize: 22 }}>{client.full_name.charAt(0).toUpperCase()}</div>
+                      <div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>{client.full_name}</div>
+                        <div style={{ color: "#64748b", fontSize: 14 }}>{client.email}</div>
+                      </div>
+                    </div>
+                    <button style={s.detailClose} onClick={() => setActiveClientId(null)}>✕</button>
+                  </div>
+
+                  <div style={s.detailGrid}>
+                    <div style={s.detailField}><span style={s.detailLabel}>Phone</span><span>{client.phone || "—"}</span></div>
+                    <div style={s.detailField}><span style={s.detailLabel}>DOB</span><span>{client.dob || "—"}</span></div>
+                    <div style={s.detailField}><span style={s.detailLabel}>Status</span><StatusBadge status={client.status} /></div>
+                    <div style={s.detailField}><span style={s.detailLabel}>Plan</span><span>{client.plan}</span></div>
+                    {client.address && <div style={{ ...s.detailField, gridColumn: "1 / -1" }}><span style={s.detailLabel}>Address</span><span>{client.address}</span></div>}
+                  </div>
+
+                  <h4 style={s.detailSectionTitle}>Disputes ({clientDisputes.length})</h4>
+                  {clientDisputes.length === 0 ? <p style={s.emptyTxt}>No disputes for this client.</p> : clientDisputes.map((d) => (
+                    <div key={d.id} style={s.listRow}>
+                      <div style={{ ...s.rowAvatar, background: "#fef3c7", color: "#92400e" }}>{d.creditor.charAt(0)}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}><div style={s.rowName}>{d.creditor}</div><div style={s.rowSub}>{d.reason}</div></div>
+                      <DisputeBadge status={d.status} />
+                    </div>
+                  ))}
+
+                  <h4 style={s.detailSectionTitle}>Notes ({clientNotes.length})</h4>
+                  {clientNotes.length === 0 ? <p style={s.emptyTxt}>No notes for this client.</p> : clientNotes.map((n) => (
+                    <div key={n.id} style={s.listRow}>
+                      <div style={{ ...s.rowAvatar, background: "#f0fdf4", color: "#166534" }}>✎</div>
+                      <div style={{ flex: 1, minWidth: 0 }}><div style={s.rowName}>{n.note_text}</div></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ─── DISPUTES ─── */}
           {activeSection === "disputes" && (
@@ -884,10 +1026,12 @@ export default function Home() {
               <div style={s.card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <h3 style={{ ...s.cardTitle, marginBottom: 0 }}>Letter Preview</h3>
-                  {generatedLetter && (
-                    <button style={s.btnSecondary} onClick={handleCopyLetter}>
-                      {letterCopied ? "Copied!" : "Copy to Clipboard"}
-                    </button>
+                    {generatedLetter && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={s.btnSecondary} onClick={handleCopyLetter}>{letterCopied ? "Copied!" : "Copy"}</button>
+                      <button style={s.btnSecondary} onClick={handlePrintLetter}>Print / PDF</button>
+                      <button style={s.btnPrimary} onClick={handleSaveLetter} disabled={savingLetter}>{savingLetter ? "Saving..." : "Save"}</button>
+                    </div>
                   )}
                 </div>
                 {generatedLetter ? (
@@ -906,9 +1050,24 @@ export default function Home() {
             </div>
           )}
 
+          {activeSection === "letters" && savedLetters.length > 0 && (
+            <div style={{ ...s.card, marginTop: 24 }}>
+              <h3 style={s.cardTitle}>Letter History ({savedLetters.length})</h3>
+              {savedLetters.map((l) => (
+                <div key={l.id} style={s.listRow}>
+                  <div style={{ ...s.rowAvatar, background: "#ede9fe", color: "#5b21b6" }}>✉</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={s.rowName}>{LETTER_TEMPLATES.find((t) => t.id === l.template)?.label ?? l.template}</div>
+                    <div style={s.rowSub}>{getClientName(l.client_id)} · {new Date(l.created_at).toLocaleDateString()}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* ─── DOCUMENTS ─── */}
           {activeSection === "documents" && (
-            <div style={{ maxWidth: 600 }}>
+            <div style={s.twoCol}>
               <div style={s.card}>
                 <h3 style={s.cardTitle}>Upload Document</h3>
                 <p style={{ color: "#64748b", marginTop: 0, marginBottom: 24 }}>
@@ -938,8 +1097,101 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+
+              <div style={s.card}>
+                <h3 style={s.cardTitle}>Uploaded Files ({documents.length})</h3>
+                {documents.length === 0 ? (
+                  <p style={s.emptyTxt}>No documents uploaded yet.</p>
+                ) : (
+                  documents.map((doc) => {
+                    const ext = doc.name.split(".").pop()?.toUpperCase() ?? "FILE";
+                    return (
+                      <div key={doc.id} style={s.listRow}>
+                        <div style={{ ...s.rowAvatar, background: "#f0f9ff", color: "#0369a1", fontSize: 11, fontWeight: 700 }}>{ext}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={s.rowName}>{doc.name.replace(/^\d+-/, "")}</div>
+                          <div style={s.rowSub}>{new Date(doc.created_at).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
+          {/* ─── REPORTS ─── */}
+          {activeSection === "reports" && (() => {
+            const statusList = ["Draft", "Sent", "Under Review", "Deleted"] as const;
+            const maxCount = Math.max(...statusList.map((s) => disputes.filter((d) => d.status === s).length), 1);
+            const planList = ["Standard Plan", "Premium Repair", "Business Credit Build"];
+            const planColors = ["#dbeafe", "#dcfce7", "#fef9c3"];
+            const topClients = clients
+              .map((c) => ({ ...c, count: disputes.filter((d) => d.client_id === c.id).length }))
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 5);
+            return (
+              <>
+                <div style={s.statsRow}>
+                  <StatCard icon="👥" label="Total Customers" value={clients.length} color="#dbeafe" />
+                  <StatCard icon="✅" label="Active Clients" value={clients.filter((c) => c.status === "Active").length} color="#dcfce7" />
+                  <StatCard icon="⚖" label="Total Disputes" value={disputes.length} color="#fef9c3" />
+                  <StatCard icon="✉" label="Letters Generated" value={savedLetters.length} color="#ede9fe" />
+                </div>
+
+                <div style={s.overviewGrid}>
+                  <div style={s.card}>
+                    <h3 style={s.cardTitle}>Disputes by Status</h3>
+                    {statusList.map((status) => {
+                      const count = disputes.filter((d) => d.status === status).length;
+                      const pct = Math.round((count / maxCount) * 100);
+                      return (
+                        <div key={status} style={{ marginBottom: 16 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                            <span style={{ fontSize: 14, color: "#0f172a", fontWeight: 500 }}>{status}</span>
+                            <span style={{ fontSize: 14, color: "#64748b" }}>{count}</span>
+                          </div>
+                          <div style={{ height: 8, background: "#f1f5f9", borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${pct}%`, background: "#2563eb", borderRadius: 4, transition: "width 0.3s" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={s.card}>
+                    <h3 style={s.cardTitle}>Top Clients by Disputes</h3>
+                    {topClients.length === 0 ? (
+                      <p style={s.emptyTxt}>No data yet.</p>
+                    ) : topClients.map((c, i) => (
+                      <div key={c.id} style={s.listRow}>
+                        <div style={{ ...s.rowAvatar, background: "#f1f5f9", color: "#475569", fontWeight: 700 }}>{i + 1}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={s.rowName}>{c.full_name}</div>
+                          <div style={s.rowSub}>{c.count} dispute{c.count !== 1 ? "s" : ""}</div>
+                        </div>
+                        <StatusBadge status={c.status} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={s.card}>
+                  <h3 style={s.cardTitle}>Clients by Plan</h3>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" as const }}>
+                    {planList.map((plan, i) => {
+                      const count = clients.filter((c) => c.plan === plan).length;
+                      return (
+                        <div key={plan} style={{ flex: "1 1 160px", background: planColors[i], borderRadius: 12, padding: "20px 24px" }}>
+                          <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a" }}>{count}</div>
+                          <div style={{ fontSize: 13, color: "#475569", marginTop: 4 }}>{plan}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </main>
 
         <footer style={s.footer}>
@@ -1417,6 +1669,72 @@ const s: Record<string, React.CSSProperties> = {
     textAlign: "center" as const,
     padding: "24px 0",
     margin: 0,
+  },
+
+  // Client detail overlay
+  detailOverlay: {
+    position: "fixed" as const,
+    inset: 0,
+    background: "rgba(0,0,0,0.45)",
+    zIndex: 100,
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "flex-end",
+  },
+  detailPanel: {
+    background: "white",
+    width: "100%",
+    maxWidth: 520,
+    height: "100vh",
+    overflowY: "auto" as const,
+    padding: "28px 32px",
+    boxShadow: "-8px 0 40px rgba(0,0,0,0.15)",
+  },
+  detailHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottom: "1px solid #e2e8f0",
+  },
+  detailClose: {
+    background: "#f1f5f9",
+    border: "none",
+    borderRadius: 8,
+    width: 34,
+    height: 34,
+    cursor: "pointer",
+    fontSize: 16,
+    color: "#64748b",
+  },
+  detailGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+    marginBottom: 24,
+  },
+  detailField: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 4,
+    fontSize: 14,
+    color: "#0f172a",
+  },
+  detailLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.06em",
+    color: "#94a3b8",
+  },
+  detailSectionTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#0f172a",
+    margin: "20px 0 12px",
+    paddingTop: 16,
+    borderTop: "1px solid #f1f5f9",
   },
 
   // Action buttons
