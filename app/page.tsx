@@ -54,7 +54,7 @@ type NoteRow = {
   note_text: string;
 };
 
-type ActiveSection = "dashboard" | "clients" | "disputes" | "notes" | "documents" | "letters" | "reports";
+type ActiveSection = "dashboard" | "clients" | "disputes" | "notes" | "documents" | "letters" | "reports" | "calendar";
 
 const NAV_ITEMS: { id: ActiveSection; label: string; icon: string }[] = [
   { id: "dashboard", label: "Dashboard", icon: "⊞" },
@@ -64,6 +64,7 @@ const NAV_ITEMS: { id: ActiveSection; label: string; icon: string }[] = [
   { id: "documents", label: "Documents", icon: "📁" },
   { id: "letters", label: "Letters", icon: "✉" },
   { id: "reports", label: "Reports", icon: "📊" },
+  { id: "calendar", label: "Calendar", icon: "📅" },
 ];
 
 type LetterTemplate = "section609" | "section611" | "goodwill" | "debtValidation";
@@ -149,6 +150,11 @@ export default function Home() {
 
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [editingDisputeId, setEditingDisputeId] = useState<string | null>(null);
+
+  const today = new Date();
+  const [calMonth, setCalMonth] = useState(today.getMonth());
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calSelectedDay, setCalSelectedDay] = useState<string | null>(null);
 
   const [activeSection, setActiveSection] = useState<ActiveSection>("dashboard");
 
@@ -649,19 +655,55 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Dispute status strip */}
-              <div style={s.card}>
-                <h3 style={s.cardTitle}>Dispute Status Overview</h3>
-                <div style={s.statusStrip}>
-                  {(["Draft", "Sent", "Under Review", "Deleted"] as const).map((status) => {
-                    const count = disputes.filter((d) => d.status === status).length;
-                    return (
-                      <div key={status} style={s.statusCell}>
-                        <div style={s.statusCount}>{count}</div>
-                        <div style={s.statusLabel}>{status}</div>
-                      </div>
-                    );
-                  })}
+              {/* Dispute status strip + Upcoming events */}
+              <div style={s.overviewGrid}>
+                <div style={s.card}>
+                  <h3 style={s.cardTitle}>Dispute Status Overview</h3>
+                  <div style={s.statusStrip}>
+                    {(["Draft", "Sent", "Under Review", "Deleted"] as const).map((status) => {
+                      const count = disputes.filter((d) => d.status === status).length;
+                      return (
+                        <div key={status} style={s.statusCell}>
+                          <div style={s.statusCount}>{count}</div>
+                          <div style={s.statusLabel}>{status}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div style={s.card}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={s.cardTitle}>Upcoming Deadlines</h3>
+                    <button style={s.seeAllBtn} onClick={() => setActiveSection("calendar")}>View Calendar →</button>
+                  </div>
+                  {(() => {
+                    const upcoming = disputes
+                      .filter((d) => d.status === "Sent")
+                      .map((d) => {
+                        const deadline = new Date(d.created_at);
+                        deadline.setDate(deadline.getDate() + 30);
+                        return { ...d, deadline };
+                      })
+                      .filter((d) => d.deadline >= today)
+                      .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())
+                      .slice(0, 5);
+                    if (upcoming.length === 0) return <p style={s.emptyTxt}>No upcoming deadlines.</p>;
+                    return upcoming.map((d) => {
+                      const daysLeft = Math.ceil((d.deadline.getTime() - today.getTime()) / 86400000);
+                      return (
+                        <div key={d.id} style={s.listRow}>
+                          <div style={{ ...s.rowAvatar, background: daysLeft <= 7 ? "#fee2e2" : "#fef9c3", color: daysLeft <= 7 ? "#991b1b" : "#713f12", fontSize: 13, fontWeight: 700 }}>
+                            {daysLeft}d
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={s.rowName}>{d.creditor}</div>
+                            <div style={s.rowSub}>{getClientName(d.client_id)} · due {d.deadline.toLocaleDateString()}</div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             </>
@@ -1119,6 +1161,130 @@ export default function Home() {
               </div>
             </div>
           )}
+          {/* ─── CALENDAR ─── */}
+          {activeSection === "calendar" && (() => {
+            // Build event map: dateStr -> list of event labels
+            const events: Record<string, { label: string; color: string }[]> = {};
+            const addEvent = (dateStr: string, label: string, color: string) => {
+              if (!events[dateStr]) events[dateStr] = [];
+              events[dateStr].push({ label, color });
+            };
+
+            disputes.forEach((d) => {
+              const created = new Date(d.created_at).toISOString().slice(0, 10);
+              addEvent(created, `Dispute filed: ${d.creditor}`, "#dbeafe");
+              if (d.status === "Sent") {
+                const deadline = new Date(d.created_at);
+                deadline.setDate(deadline.getDate() + 30);
+                addEvent(deadline.toISOString().slice(0, 10), `30-day deadline: ${d.creditor}`, "#fee2e2");
+              }
+            });
+            clients.forEach((c) => {
+              const created = new Date(c.created_at).toISOString().slice(0, 10);
+              addEvent(created, `Client added: ${c.full_name}`, "#dcfce7");
+            });
+
+            // Calendar grid
+            const firstDay = new Date(calYear, calMonth, 1).getDay();
+            const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+            const monthName = new Date(calYear, calMonth).toLocaleString("en-US", { month: "long", year: "numeric" });
+            const todayStr = today.toISOString().slice(0, 10);
+
+            const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+            while (cells.length % 7 !== 0) cells.push(null);
+
+            const selectedEvents = calSelectedDay ? (events[calSelectedDay] ?? []) : [];
+
+            return (
+              <div style={s.twoCol}>
+                <div style={s.card}>
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                    <button style={s.calNavBtn} onClick={() => {
+                      if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
+                      else setCalMonth(m => m - 1);
+                      setCalSelectedDay(null);
+                    }}>‹</button>
+                    <h3 style={{ ...s.cardTitle, margin: 0 }}>{monthName}</h3>
+                    <button style={s.calNavBtn} onClick={() => {
+                      if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
+                      else setCalMonth(m => m + 1);
+                      setCalSelectedDay(null);
+                    }}>›</button>
+                  </div>
+
+                  {/* Day labels */}
+                  <div style={s.calGrid}>
+                    {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
+                      <div key={d} style={s.calDayLabel}>{d}</div>
+                    ))}
+
+                    {/* Day cells */}
+                    {cells.map((day, i) => {
+                      if (!day) return <div key={`empty-${i}`} />;
+                      const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                      const isToday = dateStr === todayStr;
+                      const isSelected = dateStr === calSelectedDay;
+                      const dayEvents = events[dateStr] ?? [];
+                      return (
+                        <div
+                          key={dateStr}
+                          style={{
+                            ...s.calCell,
+                            ...(isToday ? s.calCellToday : {}),
+                            ...(isSelected ? s.calCellSelected : {}),
+                          }}
+                          onClick={() => setCalSelectedDay(isSelected ? null : dateStr)}
+                        >
+                          <span style={{ fontSize: 13, fontWeight: isToday ? 700 : 400 }}>{day}</span>
+                          {dayEvents.slice(0, 2).map((ev, j) => (
+                            <div key={j} style={{ ...s.calDot, background: ev.color }} />
+                          ))}
+                          {dayEvents.length > 2 && <div style={{ fontSize: 10, color: "#94a3b8" }}>+{dayEvents.length - 2}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Event detail panel */}
+                <div style={s.card}>
+                  <h3 style={s.cardTitle}>
+                    {calSelectedDay
+                      ? new Date(calSelectedDay + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+                      : "Select a date"}
+                  </h3>
+                  {!calSelectedDay ? (
+                    <p style={s.emptyTxt}>Click a date to see events.</p>
+                  ) : selectedEvents.length === 0 ? (
+                    <p style={s.emptyTxt}>No events on this date.</p>
+                  ) : (
+                    selectedEvents.map((ev, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
+                        <div style={{ width: 12, height: 12, borderRadius: "50%", background: ev.color, border: "1px solid #e2e8f0", flexShrink: 0 }} />
+                        <span style={{ fontSize: 14, color: "#0f172a" }}>{ev.label}</span>
+                      </div>
+                    ))
+                  )}
+
+                  <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #f1f5f9" }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 700, color: "#64748b", margin: "0 0 12px", textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Legend</h4>
+                    {[
+                      { color: "#dcfce7", label: "Client added" },
+                      { color: "#dbeafe", label: "Dispute filed" },
+                      { color: "#fee2e2", label: "30-day response deadline" },
+                    ].map((item) => (
+                      <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <div style={{ width: 12, height: 12, borderRadius: "50%", background: item.color, border: "1px solid #e2e8f0" }} />
+                        <span style={{ fontSize: 13, color: "#64748b" }}>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ─── REPORTS ─── */}
           {activeSection === "reports" && (() => {
             const statusList = ["Draft", "Sent", "Under Review", "Deleted"] as const;
@@ -1669,6 +1835,60 @@ const s: Record<string, React.CSSProperties> = {
     textAlign: "center" as const,
     padding: "24px 0",
     margin: 0,
+  },
+
+  // Calendar
+  calNavBtn: {
+    background: "#f1f5f9",
+    border: "1px solid #e2e8f0",
+    borderRadius: 8,
+    width: 34,
+    height: 34,
+    cursor: "pointer",
+    fontSize: 18,
+    color: "#475569",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, 1fr)",
+    gap: 4,
+  },
+  calDayLabel: {
+    textAlign: "center" as const,
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#94a3b8",
+    textTransform: "uppercase" as const,
+    padding: "4px 0 8px",
+  },
+  calCell: {
+    minHeight: 64,
+    borderRadius: 8,
+    border: "1px solid #f1f5f9",
+    padding: "6px 8px",
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 3,
+    background: "white",
+    transition: "background 0.15s",
+  },
+  calCellToday: {
+    border: "2px solid #2563eb",
+    background: "#eff6ff",
+  },
+  calCellSelected: {
+    background: "#2563eb",
+    color: "white",
+    border: "2px solid #1d4ed8",
+  },
+  calDot: {
+    width: "100%",
+    height: 4,
+    borderRadius: 2,
   },
 
   // Client detail overlay
