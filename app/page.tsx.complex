@@ -1,0 +1,14 @@
+﻿"use client";
+
+import CDMLayout from "@/components/CDMLayout";
+
+export default function DashboardPage() {
+  return (
+    <CDMLayout>
+      <div style={{ padding: "24px" }}>
+        <h1 style={{ fontSize: "24px", fontWeight: "600", marginBottom: "24px" }}>Dashboard</h1>
+        <p>Welcome to DisputePilot. Select an option from the sidebar to get started.</p>
+      </div>
+    </CDMLayout>
+  );
+}

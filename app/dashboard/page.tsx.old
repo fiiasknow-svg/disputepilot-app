@@ -1,0 +1,77 @@
+"use client";
+
+import CDMLayout from "../../components/CDMLayout";
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        background: "white",
+        borderRadius: 12,
+        padding: "18px 20px",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+      }}
+    >
+      <div style={{ color: "#64748b", fontSize: 13, marginBottom: 6 }}>{label}</div>
+      <div style={{ color: "#0f172a", fontSize: 24, fontWeight: 700 }}>{value}</div>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <CDMLayout>
+      <div style={{ padding: 24 }}>
+        <h1 style={{ margin: 0, color: "#0f172a", fontSize: 28 }}>Dashboard</h1>
+        <p style={{ color: "#64748b", marginTop: 8, marginBottom: 20 }}>
+          Overview of customers, disputes, and activity.
+        </p>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 14,
+            marginBottom: 20,
+          }}
+        >
+          <StatCard label="Total Customers" value="0" />
+          <StatCard label="Active Clients" value="0" />
+          <StatCard label="Total Disputes" value="0" />
+          <StatCard label="Draft Disputes" value="0" />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div
+            style={{
+              background: "white",
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              padding: 18,
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>Recent Customers</h2>
+            <p style={{ color: "#94a3b8", marginTop: 12, marginBottom: 0 }}>
+              No customers yet.
+            </p>
+          </div>
+
+          <div
+            style={{
+              background: "white",
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              padding: 18,
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>Recent Disputes</h2>
+            <p style={{ color: "#94a3b8", marginTop: 12, marginBottom: 0 }}>
+              No disputes yet.
+            </p>
+          </div>
+        </div>
+      </div>
+    </CDMLayout>
+  );
+}

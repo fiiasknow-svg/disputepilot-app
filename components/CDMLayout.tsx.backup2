@@ -1,0 +1,169 @@
+﻿"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const Icons = {
+  Dashboard: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
+  Users: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  FileText: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  DollarSign: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+  CreditCard: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
+  BarChart: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  Zap: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+  GraduationCap: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
+  Building: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/></svg>,
+  Printer: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
+  UserPlus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,
+  ClipboardList: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14l2 2 4-4"/></svg>,
+  MessageSquare: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+  Bell: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  Shield: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  Settings: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  Mail: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
+  ChevronDown: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,
+  LogOut: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+};
+
+const navGroups = [
+  {
+    key: "core",
+    label: "Core",
+    icon: Icons.Dashboard,
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: Icons.Dashboard },
+      { label: "Clients", href: "/clients", icon: Icons.Users },
+      { label: "Credit Monitoring", href: "/clients/credit-monitoring", icon: Icons.CreditCard },
+      { label: "Disputes", href: "/disputes", icon: Icons.FileText },
+      { label: "Dispute Status", href: "/disputes/status", icon: Icons.ClipboardList },
+      { label: "Dispute Strategies", href: "/disputes/strategies", icon: Icons.Zap },
+      { label: "Credit Analysis", href: "/credit-analysis", icon: Icons.BarChart },
+    ],
+  },
+  {
+    key: "billing",
+    label: "Billing",
+    icon: Icons.DollarSign,
+    items: [
+      { label: "Invoices", href: "/billing/invoices", icon: Icons.FileText },
+      { label: "Create Invoice", href: "/billing/invoicing", icon: Icons.DollarSign },
+      { label: "Payment Processor", href: "/billing/payment-processor", icon: Icons.CreditCard },
+      { label: "Make Payment", href: "/billing/payment", icon: Icons.DollarSign },
+      { label: "Payment History", href: "/billing/payment-history", icon: Icons.BarChart },
+      { label: "Payment Service", href: "/billing/payment-service", icon: Icons.Settings },
+    ],
+  },
+  {
+    key: "leads",
+    label: "Leads & Affiliates",
+    icon: Icons.UserPlus,
+    items: [
+      { label: "Web Leads", href: "/leads", icon: Icons.Mail },
+      { label: "Affiliates", href: "/affiliates", icon: Icons.UserPlus },
+    ],
+  },
+  {
+    key: "letters",
+    label: "Letters",
+    icon: Icons.Mail,
+    items: [
+      { label: "Letter Vault", href: "/letters", icon: Icons.FileText },
+      { label: "LetterStream", href: "/letters/letterstream", icon: Icons.Printer },
+      { label: "Bulk Print", href: "/bulk-print", icon: Icons.Printer },
+    ],
+  },
+  {
+    key: "company",
+    label: "Company",
+    icon: Icons.Building,
+    items: [
+      { label: "Messages", href: "/company/messages", icon: Icons.MessageSquare },
+      { label: "Emails", href: "/company/emails", icon: Icons.Mail },
+      { label: "Reminders", href: "/company/reminders", icon: Icons.Bell },
+      { label: "PPD", href: "/company/ppd", icon: Icons.Shield },
+      { label: "Portals", href: "/company/portals", icon: Icons.Building },
+      { label: "Digital Signature", href: "/company/digital-signature", icon: Icons.FileText },
+      { label: "Setup", href: "/company/setup", icon: Icons.Settings },
+      { label: "Tasks", href: "/company/tasks", icon: Icons.ClipboardList },
+      { label: "Settings", href: "/company/settings", icon: Icons.Settings },
+      { label: "Configuration", href: "/company/settings/configuration", icon: Icons.Settings },
+      { label: "Agreements", href: "/company/settings/agreements", icon: Icons.FileText },
+      { label: "Notifications", href: "/company/settings/notifications", icon: Icons.Bell },
+      { label: "Education", href: "/company/settings/education", icon: Icons.GraduationCap },
+      { label: "Web Lead Form", href: "/company/settings/web-lead-form", icon: Icons.Mail },
+      { label: "Affiliate Form", href: "/company/settings/affiliate-form", icon: Icons.UserPlus },
+    ],
+  },
+  {
+    key: "more",
+    label: "More",
+    icon: Icons.Zap,
+    items: [
+      { label: "Tasks", href: "/tasks", icon: Icons.ClipboardList },
+      { label: "Employees", href: "/employees", icon: Icons.Users },
+      { label: "Reports", href: "/reports", icon: Icons.BarChart },
+      { label: "Automation", href: "/automation", icon: Icons.Zap },
+      { label: "Academy", href: "/academy", icon: Icons.GraduationCap },
+      { label: "Creditors & Collectors", href: "/creditors-collectors", icon: Icons.Building },
+    ],
+  },
+];
+
+export default function CDMLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    core: true, billing: true, leads: true, letters: true, company: true, more: true,
+  });
+
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#f5f5f5" }}>
+      <aside style={{ width: "280px", backgroundColor: "#1a1a2e", color: "#fff", display: "flex", flexDirection: "column", position: "fixed", height: "100vh", overflowY: "auto", zIndex: 100 }}>
+        <div style={{ padding: "20px", borderBottom: "1px solid #2d2d44", display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ width: "40px", height: "40px", backgroundColor: "#4f46e5", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "18px" }}>DP</div>
+          <span style={{ fontSize: "20px", fontWeight: "600" }}>DisputePilot</span>
+        </div>
+        <nav style={{ flex: 1, padding: "16px 0" }}>
+          {navGroups.map((group) => {
+            const GroupIcon = group.icon;
+            // FIX: Force all sections to always be expanded
+            const expanded = true;
+            return (
+              <div key={group.key} style={{ marginBottom: "8px" }}>
+                <button onClick={() => toggleSection(group.key)} style={{ width: "100%", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "transparent", border: "none", color: "#a0a0b0", cursor: "pointer", fontSize: "14px", fontWeight: "500", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "12px" }}><GroupIcon />{group.label}</span>
+                  <span style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}><Icons.ChevronDown /></span>
+                </button>
+                {expanded && (
+                  <div style={{ padding: "4px 0" }}>
+                    {group.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      const active = isActive(item.href);
+                      return (
+                        <Link key={item.href} href={item.href} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 20px 10px 52px", color: active ? "#fff" : "#b0b0c0", backgroundColor: active ? "#4f46e5" : "transparent", textDecoration: "none", fontSize: "14px", borderLeft: active ? "3px solid #6366f1" : "3px solid transparent" }}>
+                          <ItemIcon />{item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+        <div style={{ padding: "16px 20px", borderTop: "1px solid #2d2d44" }}>
+          <button style={{ width: "100%", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", backgroundColor: "transparent", border: "1px solid #4f46e5", borderRadius: "6px", color: "#fff", cursor: "pointer", fontSize: "14px", fontWeight: "500" }}>
+            <Icons.LogOut />Logout
+          </button>
+        </div>
+      </aside>
+      <main style={{ flex: 1, marginLeft: "280px", minHeight: "100vh" }}>{children}</main>
+    </div>
+  );
+}
