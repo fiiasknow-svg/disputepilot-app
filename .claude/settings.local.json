@@ -5,7 +5,10 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(git pull *)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(npx supabase *)",
+      "Bash(ls .env*)",
+      "Bash(curl -s -X POST https://wrjgjxltgpksjgifqszt.supabase.co/rest/v1/rpc/exec_sql -H 'apikey: sb_publishable_G1zl0EAYBdP10TbDueFfRg_A9TgBKBs' -H 'Authorization: Bearer sb_publishable_G1zl0EAYBdP10TbDueFfRg_A9TgBKBs' -H 'Content-Type: application/json' -d '{\"sql\":\"SELECT 1\"}')"
     ]
   }
 }

@@ -12,32 +12,13 @@ const PROCESSORS = ["Stripe", "Square", "PayPal", "Authorize.net", "NMI", "Other
 const PAYMENT_TYPES = ["Single Payment", "Recurring", "Installment"];
 
 function CardIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.5">
-      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-      <line x1="1" y1="10" x2="23" y2="10"/>
-    </svg>
-  );
+  return <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
 }
 function CashIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.5">
-      <rect x="2" y="6" width="20" height="12" rx="2"/>
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M6 6v-.01M18 6v-.01M6 18v-.01M18 18v-.01"/>
-    </svg>
-  );
+  return <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>;
 }
 function BankIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.5">
-      <rect x="3" y="10" width="18" height="11" rx="1"/>
-      <path d="M3 10l9-7 9 7"/>
-      <line x1="12" y1="10" x2="12" y2="21"/>
-      <line x1="7" y1="10" x2="7" y2="21"/>
-      <line x1="17" y1="10" x2="17" y2="21"/>
-    </svg>
-  );
+  return <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.5"><rect x="3" y="10" width="18" height="11" rx="1"/><path d="M3 10l9-7 9 7"/><line x1="12" y1="10" x2="12" y2="21"/><line x1="7" y1="10" x2="7" y2="21"/><line x1="17" y1="10" x2="17" y2="21"/></svg>;
 }
 
 export default function Page() {
@@ -50,7 +31,8 @@ export default function Page() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    supabase.from("clients").select("id, full_name").order("full_name").then(({ data }) => setClients(data || []));
+    supabase.from("clients").select("id, full_name").order("full_name")
+      .then(({ data }) => setClients(data || []));
   }, []);
 
   async function handleProcess() {

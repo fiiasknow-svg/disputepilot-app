@@ -22,7 +22,8 @@ export default function Page() {
   const [to, setTo] = useState("");
 
   useEffect(() => {
-    supabase.from("clients").select("id, full_name").order("full_name").then(({ data }) => setClients(data || []));
+    supabase.from("clients").select("id, full_name").order("full_name")
+      .then(({ data }) => setClients(data || []));
     load();
   }, []);
 
@@ -58,7 +59,6 @@ export default function Page() {
       <div style={{ padding: 24, maxWidth: 1200 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 20px", color: "#1e293b" }}>Payment History</h1>
 
-        {/* Filters */}
         <div style={{ background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", padding: "20px 24px", marginBottom: 20 }}>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
             <div>
@@ -93,12 +93,11 @@ export default function Page() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #f1f5f9" }}>
-          {([["history", "Payment History"], ["interval", "Interval Billing History"]] as const).map(([key, label]) => (
-            <button key={key} onClick={() => setTab(key)}
-              style={{ padding: "10px 24px", background: "none", border: "none", cursor: "pointer", fontSize: 14, fontWeight: tab === key ? 700 : 500, color: tab === key ? "#1e3a5f" : "#64748b", borderBottom: tab === key ? "2px solid #1e3a5f" : "2px solid transparent", marginBottom: -2 }}>
-              {label}
+        <div style={{ display: "flex", borderBottom: "2px solid #f1f5f9" }}>
+          {(["history", "interval"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{ padding: "10px 24px", background: "none", border: "none", cursor: "pointer", fontSize: 14, fontWeight: tab === t ? 700 : 500, color: tab === t ? "#1e3a5f" : "#64748b", borderBottom: tab === t ? "2px solid #1e3a5f" : "2px solid transparent", marginBottom: -2 }}>
+              {t === "history" ? "Payment History" : "Interval Billing History"}
             </button>
           ))}
         </div>
@@ -129,7 +128,7 @@ export default function Page() {
                     <td style={{ padding: "11px 14px" }}>
                       <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>Active</span>
                     </td>
-                    <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b", maxWidth: 160 }}>{p.note || p.payment_type || "—"}</td>
+                    <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b" }}>{p.note || p.payment_type || "—"}</td>
                     <td style={{ padding: "11px 14px", fontSize: 14, fontWeight: 700, color: "#10b981", whiteSpace: "nowrap" }}>${parseFloat(p.amount || 0).toFixed(2)}</td>
                     <td style={{ padding: "11px 14px" }}>
                       <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>{p.status || "paid"}</span>
@@ -142,9 +141,7 @@ export default function Page() {
               </tbody>
             </table>
           ) : (
-            <div style={{ padding: 48, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
-              No interval billing history found.
-            </div>
+            <div style={{ padding: 48, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>No interval billing history found.</div>
           )}
         </div>
         {tab === "history" && (
