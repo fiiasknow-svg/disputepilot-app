@@ -98,6 +98,7 @@ const navGroups = [
 export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState<string[]>(["company", "dispute-manager", "billing", "leads", "academy"]);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const toggleExpand = (key: string) => {
@@ -151,12 +152,40 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div style={{ padding: "16px", borderTop: "1px solid #334155" }}>
-          <button style={{ width: "100%", padding: "10px", backgroundColor: "#f59e0b", color: "#fff", border: "none", borderRadius: "6px", fontSize: "13px", fontWeight: "500", cursor: "pointer" }}>
+          <button onClick={() => setHelpOpen(true)} style={{ width: "100%", padding: "10px", backgroundColor: "#f59e0b", color: "#fff", border: "none", borderRadius: "6px", fontSize: "13px", fontWeight: "500", cursor: "pointer" }}>
             Need Help?
           </button>
         </div>
       </aside>
       <main style={{ flex: 1, marginLeft: "280px", minHeight: "100vh" }}>{children}</main>
+
+      {helpOpen && (
+        <div onClick={() => setHelpOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, padding: 32, width: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#1e293b" }}>Need Help?</h2>
+              <button onClick={() => setHelpOpen(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8", lineHeight: 1 }}>×</button>
+            </div>
+            <p style={{ fontSize: 14, color: "#475569", marginBottom: 24, lineHeight: 1.6 }}>
+              Our support team is here to help you get the most out of DisputePilot.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <a href="mailto:support@disputepilot.com" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "#f0f9ff", borderRadius: 8, textDecoration: "none", color: "#0369a1", fontWeight: 600, fontSize: 14 }}>
+                <Icons.Mail />Email Support — support@disputepilot.com
+              </a>
+              <a href="https://docs.disputepilot.com" target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "#f8fafc", borderRadius: 8, textDecoration: "none", color: "#1e293b", fontWeight: 600, fontSize: 14 }}>
+                <Icons.FileText />Documentation &amp; Guides
+              </a>
+              <a href="https://disputepilot.com/schedule" target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "#fef9c3", borderRadius: 8, textDecoration: "none", color: "#92400e", fontWeight: 600, fontSize: 14 }}>
+                <Icons.Calendar />Schedule a 1-on-1 Onboarding Call
+              </a>
+            </div>
+            <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 20, textAlign: "center" as const }}>
+              Support hours: Mon–Fri, 9am–6pm EST
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

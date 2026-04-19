@@ -20,14 +20,17 @@ export default function Page() {
 
   useEffect(() => {
     async function load() {
-      const [c, d, l, inv] = await Promise.all([
-        supabase.from("clients").select("id, first_name, last_name, status, created_at", { count: "exact" }).order("created_at", { ascending: false }).limit(5),
-        supabase.from("disputes").select("id, account_name, bureau, status, created_at, clients(first_name,last_name)", { count: "exact" }).order("created_at", { ascending: false }).limit(5),
-        supabase.from("leads").select("id", { count: "exact" }),
+      const [c, d, l, inv, cCount, dCount, lCount] = await Promise.all([
+        supabase.from("clients").select("id, first_name, last_name, status, created_at").order("created_at", { ascending: false }).limit(5),
+        supabase.from("disputes").select("id, account_name, bureau, status, created_at, clients(first_name,last_name)").order("created_at", { ascending: false }).limit(5),
+        supabase.from("leads").select("id").limit(5),
         supabase.from("invoices").select("amount").eq("status", "paid"),
+        supabase.from("clients").select("*", { count: "exact", head: true }),
+        supabase.from("disputes").select("*", { count: "exact", head: true }),
+        supabase.from("leads").select("*", { count: "exact", head: true }),
       ]);
       const revenue = (inv.data || []).reduce((s: number, r: any) => s + (r.amount || 0), 0);
-      setStats({ clients: c.count || 0, disputes: d.count || 0, leads: l.count || 0, revenue });
+      setStats({ clients: cCount.count ?? 0, disputes: dCount.count ?? 0, leads: lCount.count ?? 0, revenue });
       setRecentClients(c.data || []);
       setRecentDisputes(d.data || []);
       const acts: any[] = [
@@ -53,7 +56,7 @@ export default function Page() {
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => router.push("/clients")} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 18px", cursor: "pointer", fontWeight: 600, fontSize: 14 }}>+ New Client</button>
             <button onClick={() => router.push("/disputes")} style={{ background: "#3b82f6", color: "#fff", border: "none", borderRadius: 7, padding: "9px 18px", cursor: "pointer", fontWeight: 600, fontSize: 14 }}>+ New Dispute</button>
-            <button onClick={() => router.push("/letters")} style={{ background: "#f1f5f9", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 7, padding: "9px 18px", cursor: "pointer", fontWeight: 600, fontSize: 14 }}>+ New Letter</button>
+            <button onClick={() => router.push("/letters/vault")} style={{ background: "#f1f5f9", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 7, padding: "9px 18px", cursor: "pointer", fontWeight: 600, fontSize: 14 }}>+ New Letter</button>
           </div>
         </div>
 

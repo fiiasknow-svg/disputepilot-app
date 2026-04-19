@@ -31,9 +31,15 @@ const PORTALS = [
   },
 ];
 
+const VIDEO_IDS: Record<string, string> = {
+  client: "dJ4vBsRbfpE",
+  affiliate: "FTQbiNvZqaY",
+};
+
 export default function Page() {
   const [open, setOpen] = useState<Record<string, number | null>>({ client: null, affiliate: null });
   const [copied, setCopied] = useState<string | null>(null);
+  const [videoModal, setVideoModal] = useState<string | null>(null);
 
   function toggle(portalKey: string, i: number) {
     setOpen(prev => ({ ...prev, [portalKey]: prev[portalKey] === i ? null : i }));
@@ -59,8 +65,8 @@ export default function Page() {
               </div>
               <div style={{ padding: 24, flex: 1 }}>
                 <p style={{ fontSize: 14, color: "#475569", lineHeight: 1.65, marginBottom: 20 }}>{portal.desc}</p>
-                <button style={{ width: "100%", padding: "10px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 24 }}>
-                  Watch Video
+                <button onClick={() => setVideoModal(portal.key)} style={{ width: "100%", padding: "10px", background: "#1e3a5f", border: "none", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  ▶ Watch Video
                 </button>
 
                 <h3 style={{ fontSize: 13, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 12px" }}>Frequently Asked Questions</h3>
@@ -90,6 +96,27 @@ export default function Page() {
           ))}
         </div>
       </div>
+
+      {videoModal && (
+        <div onClick={() => setVideoModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#000", borderRadius: 12, overflow: "hidden", width: "min(800px, 95vw)", boxShadow: "0 24px 80px rgba(0,0,0,0.5)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b" }}>
+              <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>
+                {PORTALS.find(p => p.key === videoModal)?.title}
+              </span>
+              <button onClick={() => setVideoModal(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer", lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${VIDEO_IDS[videoModal]}?autoplay=1`}
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </CDMLayout>
   );
 }

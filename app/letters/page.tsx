@@ -1,11 +1,9 @@
-﻿"use client";
-import CDMLayout from "@/components/CDMLayout";
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 export default function Page() {
-  return (
-    <CDMLayout>
-      <div style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Letters</h1>
-      </div>
-    </CDMLayout>
-  );
+  const router = useRouter();
+  useEffect(() => { router.replace("/letters/vault"); }, [router]);
+  return null;
 }
