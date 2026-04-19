@@ -1,0 +1,186 @@
+﻿"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+type GroupKey = "customers" | "disputes" | "billing" | "leads" | "letters" | "more" | "company";
+
+const SIDEBAR_GROUPS: {
+  key: GroupKey;
+  title: string;
+  items: { label: string; href: string }[];
+}[] = [
+  {
+    key: "customers",
+    title: "CUSTOMERS",
+    items: [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Customers", href: "/clients" },
+      { label: "Add New Customer", href: "/clients/new" },
+      { label: "Credit Monitoring", href: "/clients/credit-monitoring" },
+    ],
+  },
+  {
+    key: "disputes",
+    title: "DISPUTES",
+    items: [
+      { label: "Dispute Manager", href: "/disputes" },
+      { label: "Dispute Status", href: "/disputes/status" },
+      { label: "Dispute Strategies", href: "/disputes/strategies" },
+      { label: "Bulk Print", href: "/bulk-print" },
+      { label: "Creditors & Collectors", href: "/creditors-collectors" },
+    ],
+  },
+  {
+    key: "billing",
+    title: "BILLING",
+    items: [
+      { label: "Billing", href: "/billing/invoices" },
+      { label: "Invoicing", href: "/billing/invoicing" },
+      { label: "Payment Processor", href: "/billing/payment-processor" },
+      { label: "Payment", href: "/billing/payment" },
+      { label: "Payment History", href: "/billing/payment-history" },
+    ],
+  },
+  {
+    key: "leads",
+    title: "LEADS",
+    items: [
+      { label: "Leads", href: "/leads" },
+      { label: "Affiliates", href: "/affiliates" },
+    ],
+  },
+  {
+    key: "letters",
+    title: "LETTERS",
+    items: [
+      { label: "Letters", href: "/letters" },
+      { label: "LetterStream", href: "/letters/letterstream" },
+    ],
+  },
+  {
+    key: "more",
+    title: "MORE",
+    items: [
+      { label: "Credit Analysis", href: "/credit-analysis" },
+      { label: "Tasks", href: "/tasks" },
+      { label: "Employees", href: "/employees" },
+      { label: "Reports", href: "/reports" },
+      { label: "Automation", href: "/automation" },
+      { label: "Academy", href: "/academy" },
+    ],
+  },
+  {
+    key: "company",
+    title: "COMPANY",
+    items: [
+      { label: "Messages", href: "/company/messages" },
+      { label: "Emails", href: "/company/emails" },
+      { label: "Reminders", href: "/company/reminders" },
+      { label: "Portals", href: "/company/portals" },
+      { label: "Digital Signatures", href: "/company/digital-signature" },
+      { label: "Settings", href: "/company/settings" },
+    ],
+  },
+];
+
+function Sidebar() {
+  const pathname = usePathname();
+  const [expanded, setExpanded] = useState<Record<GroupKey, boolean>>({
+    customers: true,
+    disputes: true,
+    billing: true,
+    leads: true,
+    letters: true,
+    more: true,
+    company: true,
+  });
+
+  return (
+    <nav style={{ padding: "12px 10px", overflowY: "auto", height: "calc(100vh - 72px)" }}>
+      {SIDEBAR_GROUPS.map((group) => (
+        <div key={group.key} style={{ marginBottom: 8 }}>
+          <button
+            onClick={() => setExpanded((prev) => ({ ...prev, [group.key]: !prev[group.key] }))}
+            style={{
+              width: "100%",
+              background: "transparent",
+              color: "#7f8ea3",
+              border: "none",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              padding: "8px 10px",
+              cursor: "pointer",
+            }}
+          >
+            <span>{group.title}</span>
+            <span>{expanded[group.key] ? "▾" : "▸"}</span>
+          </button>
+
+          {expanded[group.key] &&
+            group.items.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    display: "block",
+                    margin: "2px 0",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    fontSize: 14,
+                    textDecoration: "none",
+                    color: active ? "#ffffff" : "#9aa7b7",
+                    background: active ? "#2563eb" : "transparent",
+                  }}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+export default function CDMLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f1f5f9" }}>
+      <aside
+        style={{
+          width: 280,
+          backgroundColor: "#0f172a",
+          color: "#fff",
+          height: "100vh",
+          position: "sticky",
+          top: 0,
+          borderRight: "1px solid #1e293b",
+          display: "flex",
+          flexDirection: "column",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            padding: "20px",
+            fontWeight: 700,
+            fontSize: 18,
+            borderBottom: "1px solid #1e293b",
+          }}
+        >
+          DisputePilot
+        </div>
+        <Sidebar />
+      </aside>
+      <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+    </div>
+  );
+}
