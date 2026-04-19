@@ -8,131 +8,141 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const METHOD_C: Record<string, string> = {
-  "Credit Card": "#3b82f6",
-  "ACH / Bank Transfer": "#10b981",
-  "Check": "#f59e0b",
-  "Cash": "#8b5cf6",
-  "Other": "#94a3b8",
-};
+const PAYMENT_TYPES = ["ALL", "Single Payment", "Recurring", "Installment"];
+const TABS = ["Payment History", "Interval Billing History"];
 
 export default function Page() {
+  const [tab, setTab] = useState("Payment History");
+  const [clients, setClients] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [clientFilter, setClientFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("ALL");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [methodFilter, setMethodFilter] = useState("All");
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const { data } = await supabase
-        .from("payments")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setPayments(data || []);
-      setFiltered(data || []);
-      setLoading(false);
-    }
-    load();
+    supabase.from("clients").select("id, full_name").order("full_name").then(({ data }) => setClients(data || []));
+    fetchPayments();
   }, []);
 
-  useEffect(() => {
+  async function fetchPayments() {
+    setLoading(true);
+    const { data } = await supabase.from("payments").select("*, clients(full_name)").order("created_at", { ascending: false });
+    setPayments(data || []);
+    setFiltered(data || []);
+    setLoading(false);
+  }
+
+  function search() {
     let result = payments;
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(p => p.client_name?.toLowerCase().includes(q) || p.note?.toLowerCase().includes(q));
-    }
-    if (methodFilter !== "All") result = result.filter(p => p.method === methodFilter);
+    if (clientFilter) result = result.filter(p => p.client_id === clientFilter);
+    if (typeFilter !== "ALL") result = result.filter(p => p.payment_type === typeFilter);
     if (dateFrom) result = result.filter(p => new Date(p.created_at) >= new Date(dateFrom));
     if (dateTo) result = result.filter(p => new Date(p.created_at) <= new Date(dateTo + "T23:59:59"));
     setFiltered(result);
-  }, [search, methodFilter, dateFrom, dateTo, payments]);
+  }
 
-  const total = filtered.reduce((s, p) => s + (p.amount || 0), 0);
+  function reset() {
+    setClientFilter("");
+    setTypeFilter("ALL");
+    setDateFrom("");
+    setDateTo("");
+    setFiltered(payments);
+  }
+
+  const selStyle = { padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, background: "#fff", minWidth: 160 };
 
   return (
     <CDMLayout>
-      <div style={{ padding: 24, maxWidth: 1100 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Payment History</h1>
-          <div style={{ background: "#dcfce7", color: "#166534", borderRadius: 8, padding: "8px 18px", fontWeight: 700, fontSize: 15 }}>
-            Total: ${total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+      <div style={{ padding: 24, maxWidth: 1200 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 20px", color: "#1e293b" }}>Payment History</h1>
+
+        {/* Filters */}
+        <div style={{ background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", padding: "20px 24px", marginBottom: 20 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>Select Client</label>
+              <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} style={selStyle}>
+                <option value="">All Clients</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>Payment Type</label>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={selStyle}>
+                {PAYMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>From Date</label>
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={selStyle} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>To Date</label>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={selStyle} />
+            </div>
+            <button onClick={search} style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontWeight: 700, fontSize: 14, cursor: "pointer", height: 40 }}>Search</button>
+            <button onClick={reset} style={{ padding: "9px 22px", background: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 7, fontWeight: 600, fontSize: 14, cursor: "pointer", height: 40 }}>Reset</button>
           </div>
         </div>
-        <p style={{ color: "#64748b", fontSize: 14, marginBottom: 20 }}>View and filter all processed payments.</p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 160px 160px", gap: 10, marginBottom: 20 }}>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search client or note…"
-            style={{ padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14 }}
-          />
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            style={{ padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14 }}
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            style={{ padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14 }}
-          />
-          <select
-            value={methodFilter}
-            onChange={e => setMethodFilter(e.target.value)}
-            style={{ padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14 }}
-          >
-            <option value="All">All Methods</option>
-            {Object.keys(METHOD_C).map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 2, borderBottom: "2px solid #f1f5f9", marginBottom: 0 }}>
+          {TABS.map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{ padding: "10px 22px", background: "none", border: "none", cursor: "pointer", fontWeight: tab === t ? 700 : 500, color: tab === t ? "#1e3a5f" : "#64748b", borderBottom: tab === t ? "2px solid #1e3a5f" : "2px solid transparent", marginBottom: -2, fontSize: 14 }}>{t}</button>
+          ))}
         </div>
 
-        <div style={{ background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#f8fafc" }}>
-              <tr>
-                {["Date", "Client", "Amount", "Method", "Note", "Status"].map(h => (
-                  <th key={h} style={{ textAlign: "left", padding: "12px 16px", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#94a3b8" }}>Loading…</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#94a3b8" }}>No payments found.</td></tr>
-              ) : filtered.map(p => (
-                <tr key={p.id} style={{ borderTop: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "#94a3b8" }}>
-                    {new Date(p.created_at).toLocaleDateString()}
-                  </td>
-                  <td style={{ padding: "12px 16px", fontSize: 14, fontWeight: 600, color: "#1e293b" }}>{p.client_name || "—"}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: "#10b981" }}>
-                    ${parseFloat(p.amount || 0).toFixed(2)}
-                  </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={{ background: (METHOD_C[p.method] || "#94a3b8") + "22", color: METHOD_C[p.method] || "#64748b", borderRadius: 5, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>
-                      {p.method || "—"}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "#64748b" }}>{p.note || "—"}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>
-                      {p.status || "paid"}
-                    </span>
-                  </td>
+        {/* Table */}
+        <div style={{ background: "#fff", borderRadius: "0 0 10px 10px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", overflow: "hidden" }}>
+          {tab === "Payment History" ? (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead style={{ background: "#f8fafc" }}>
+                <tr>
+                  {["Name", "Date Created", "Method", "Service", "Setup Status", "Description", "Amount", "Payment", "Action"].map(h => (
+                    <th key={h} style={{ textAlign: "left", padding: "11px 14px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#94a3b8" }}>Loading…</td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#94a3b8" }}>No payment records found.</td></tr>
+                ) : filtered.map(p => (
+                  <tr key={p.id} style={{ borderTop: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "11px 14px", fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap" }}>{p.clients?.full_name || "—"}</td>
+                    <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b", whiteSpace: "nowrap" }}>{new Date(p.created_at).toLocaleDateString()}</td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <span style={{ background: "#eff6ff", color: "#3b82f6", borderRadius: 5, padding: "3px 8px", fontSize: 12, fontWeight: 700 }}>{p.method || p.processor || "—"}</span>
+                    </td>
+                    <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b" }}>{p.service || "—"}</td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>Active</span>
+                    </td>
+                    <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b" }}>{p.note || p.payment_type || "—"}</td>
+                    <td style={{ padding: "11px 14px", fontSize: 14, fontWeight: 700, color: "#10b981" }}>${parseFloat(p.amount || 0).toFixed(2)}</td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>{p.status || "paid"}</span>
+                    </td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <button style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", color: "#1e3a5f", fontWeight: 600 }}>View</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ padding: 48, textAlign: "center", color: "#94a3b8" }}>
+              <p style={{ fontSize: 15 }}>No interval billing history yet.</p>
+            </div>
+          )}
         </div>
-        <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 12 }}>{filtered.length} payment{filtered.length !== 1 ? "s" : ""}</p>
+        {tab === "Payment History" && (
+          <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 10 }}>{filtered.length} record{filtered.length !== 1 ? "s" : ""}</p>
+        )}
       </div>
     </CDMLayout>
   );
