@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -27,110 +27,77 @@ const Icons = {
 };
 
 const navGroups = [
-  { key:"dashboard", label:"Dashboard", href:"/dashboard", icon:Icons.Dashboard, isSingle:true },
+  { key: "dashboard", label: "Dashboard", href: "/dashboard", icon: Icons.Dashboard, isSingle: true },
   {
-    key:"company", label:"Company", icon:Icons.Building,
-    items:[
-      { label:"Company Settings", href:"/company/settings", icon:Icons.Settings },
-      { label:"Portals/Mobile App", href:"/company/portals", icon:Icons.Company },
-      { label:"Manage Portal Content", href:"/company/portal-content", icon:Icons.FileText },
-      { label:"Credit Monitoring", href:"/company/credit-monitoring", icon:Icons.BarChart },
-      { label:"Digital Contracts", href:"/company/digital-contracts", icon:Icons.FileText },
-      { label:"Self Service Signup", href:"/company/self-service-signup", icon:Icons.UserPlus },
-      { label:"Client Auto Signup", href:"/company/client-auto-signup", icon:Icons.Zap },
-      { label:"Credit Analysis/Analyzer", href:"/credit-analysis", icon:Icons.BarChart },
-      { label:"Images/Documents", href:"/company/images-documents", icon:Icons.Image },
-      { label:"Manage Emails", href:"/company/manage-emails", icon:Icons.Mail },
-      { label:"Dispute Status", href:"/disputes/status", icon:Icons.BarChart },
-      { label:"Notify/Automation", href:"/company/notify-automation", icon:Icons.Zap },
-      { label:"Employees", href:"/employees", icon:Icons.Users },
-      { label:"Team Messages", href:"/company/team-messages", icon:Icons.MessageSquare },
-      { label:"Letter Vault", href:"/letters/vault", icon:Icons.FileText },
-      { label:"Calendar", href:"/calendar", icon:Icons.Calendar },
-      { label:"Configuration", href:"/settings/configuration", icon:Icons.Settings },
+    key: "company", label: "Company", icon: Icons.Building,
+    items: [
+      { label: "Company Settings", href: "/company/settings", icon: Icons.Settings },
+      { label: "Portals/Mobile App", href: "/company/portals", icon: Icons.Company },
+      { label: "Manage Portal Content", href: "/company/manage-portal-content", icon: Icons.FileText },
+      { label: "Credit Monitoring", href: "/company/credit-monitoring", icon: Icons.BarChart },
+      { label: "Digital Contracts", href: "/company/digital-contracts", icon: Icons.FileText },
+      { label: "Self Service Signup", href: "/company/self-service-signup", icon: Icons.UserPlus },
+      { label: "Client Auto Signup", href: "/company/client-auto-signup", icon: Icons.Zap },
+      { label: "Images/Documents", href: "/company/images-documents", icon: Icons.Image },
+      { label: "Manage Emails", href: "/company/manage-emails", icon: Icons.Mail },
+      { label: "Dispute Status", href: "/disputes/status", icon: Icons.BarChart },
+      { label: "Notify/Automation", href: "/company/notify-automation", icon: Icons.Zap },
+      { label: "Employees", href: "/employees", icon: Icons.Users },
+      { label: "Team Messages", href: "/company/team-messages", icon: Icons.MessageSquare },
+      { label: "Letter Vault", href: "/letters/vault", icon: Icons.FileText },
+      { label: "Calendar", href: "/calendar", icon: Icons.Calendar },
+      { label: "Configuration", href: "/settings/configuration", icon: Icons.Settings },
     ]
   },
-  { key:"customers", label:"Customers", href:"/clients", icon:Icons.Users, isSingle:true },
-  { key:"credit-analysis", label:"Credit Analysis/Analyzer", href:"/credit-analysis", icon:Icons.BarChart, isSingle:true },
+  { key: "customers", label: "Customers", href: "/clients", icon: Icons.Users, isSingle: true },
+  { key: "credit-analysis", label: "Credit Analysis/Analyzer", href: "/credit-analysis", icon: Icons.BarChart, isSingle: true },
+  { key: "dispute-manager", label: "Dispute Manager", href: "/disputes", icon: Icons.FileText, isSingle: true },
+  { key: "bulk-print", label: "Bulk Print", href: "/bulk-print", icon: Icons.Printer, isSingle: true },
+  { key: "billing", label: "Billing", href: "/billing", icon: Icons.DollarSign, isSingle: true },
+  { key: "leads", label: "Leads/Affiliates", href: "/leads", icon: Icons.Mail, isSingle: true },
   {
-    key:"dispute-manager", label:"Dispute Manager", icon:Icons.FileText,
-    items:[
-      { label:"All Disputes", href:"/disputes", icon:Icons.FileText },
-      { label:"Dispute Status", href:"/disputes/status", icon:Icons.BarChart },
-      { label:"Furnisher Addresses", href:"/disputes/furnisher-addresses", icon:Icons.Building },
-        { label:"AI/Metro 2 Letters", href:"/disputes/ai-metro-2-letters", icon:Icons.FileText },
-        { label:"Dispute Playbook", href:"/disputes/dispute-playbook", icon:Icons.BarChart },
+    key: "academy", label: "CRB Academy", icon: Icons.GraduationCap,
+    items: [
+      { label: "Credit Repair Specialist", href: "/academy/credit-repair", icon: Icons.GraduationCap },
+      { label: "FCRA Specialist", href: "/academy/fcra", icon: Icons.FileText },
+      { label: "FDCPA Specialist", href: "/academy/fdcpa", icon: Icons.FileText },
+      { label: "FCBA Specialist", href: "/academy/fcba", icon: Icons.FileText },
+      { label: "Compliance Specialist", href: "/academy/compliance", icon: Icons.Settings },
+      { label: "Rebuild Credit Specialist", href: "/academy/rebuild", icon: Icons.BarChart },
+      { label: "FICO Score Specialist", href: "/academy/fico", icon: Icons.BarChart },
+      { label: "Automation Specialist", href: "/academy/automation", icon: Icons.Zap },
+      { label: "Funding Specialist", href: "/academy/funding", icon: Icons.DollarSign },
     ]
   },
+  { key: "automation", label: "Automation", href: "/automation", icon: Icons.Zap, isSingle: true },
   {
-    key:"bulk-print", label:"Bulk Print", icon:Icons.Printer,
-    items:[
-      { label:"Bulk Print", href:"/bulk-print", icon:Icons.Printer },
-    ]
-  },
-  {
-    key:"letters", label:"Letters", icon:Icons.FileText,
-    items:[
-      { label:"All Letters", href:"/letters", icon:Icons.FileText },
-      { label:"Letter Vault", href:"/letters/vault", icon:Icons.FileText },
-      { label:"AI Rewriter", href:"/letters/ai-rewriter", icon:Icons.Zap },
-    ]
-  },
-  {
-    key:"billing", label:"Billing", icon:Icons.DollarSign,
-    items:[
-      { label:"Invoicing", href:"/billing/invoices", icon:Icons.FileText },
-      { label:"Credit Card Setup", href:"/billing/credit-card-setup", icon:Icons.DollarSign },
-      { label:"Services/Products", href:"/billing/services-products", icon:Icons.Settings },
-      { label:"Payments", href:"/billing/payments", icon:Icons.DollarSign },
-      { label:"Payment History", href:"/billing/payment-history", icon:Icons.BarChart },
-      { label:"Pay Per Deletion", href:"/billing/pay-per-deletion", icon:Icons.DollarSign },
+    key: "get-customers", label: "Get Customers", icon: Icons.UserPlus,
+    items: [
+      { label: "Get Customers", href: "/get-customers", icon: Icons.UserPlus },
+      { label: "Start - Run - Grow", href: "/get-customers/start-run-grow", icon: Icons.BarChart },
+      { label: "Business Strategies", href: "/get-customers/business-strategies", icon: Icons.FileText },
     ]
   },
   {
-    key:"leads", label:"Leads/Affiliates", icon:Icons.Mail,
-    items:[
-      { label:"Leads", href:"/leads", icon:Icons.Mail },
-      { label:"Affiliates", href:"/affiliates", icon:Icons.UserPlus },
-      { label:"Affiliate Website Form", href:"/affiliates/website-form", icon:Icons.Settings },
+    key: "partner", label: "Partner Resources", icon: Icons.Users,
+    items: [
+      { label: "Merchant Accounts", href: "/partner-resources/merchant-accounts", icon: Icons.Building },
+      { label: "Monitoring Commissions", href: "/partner-resources/monitoring-commissions", icon: Icons.BarChart },
+      { label: "Dispute Outsourcing", href: "/partner-resources/dispute-outsourcing", icon: Icons.FileText },
+      { label: "Rebuild Credit Affiliate", href: "/partner-resources/rebuild-credit-affiliate", icon: Icons.Users },
+      { label: "Partner and Earn", href: "/partner-resources/partner-and-earn", icon: Icons.UserPlus },
+      { label: "Save and Annual Plan", href: "/partner-resources/save-and-annual-plan", icon: Icons.FileText },
+      { label: "Offer Free Vacations", href: "/partner-resources/offer-free-vacations", icon: Icons.FileText },
+      { label: "Offer Business Funding", href: "/partner-resources/offer-business-funding", icon: Icons.FileText },
+      { label: "Credit Repair Class", href: "/partner-resources/credit-repair-class", icon: Icons.FileText },
+      { label: "Community", href: "/partner-resources/community", icon: Icons.Users },
     ]
   },
-  {
-    key:"academy", label:"CRB Academy", icon:Icons.GraduationCap,
-    items:[
-      { label:"Credit Repair Specialist", href:"/academy/credit-repair", icon:Icons.GraduationCap },
-      { label:"FCRA Specialist", href:"/academy/fcra", icon:Icons.FileText },
-      { label:"FCBA Specialist", href:"/academy/fcba", icon:Icons.FileText },
-      { label:"Compliance Specialist", href:"/academy/compliance", icon:Icons.Settings },
-      { label:"Rebuild Credit Specialist", href:"/academy/rebuild", icon:Icons.BarChart },
-      { label:"FICO Score Specialist", href:"/academy/fico", icon:Icons.BarChart },
-      { label:"Automation Specialist", href:"/academy/automation", icon:Icons.Zap },
-      { label:"Funding Specialist", href:"/academy/funding", icon:Icons.DollarSign },
-    ]
-  },
-  { key:"automation", label:"Automation", href:"/automation", icon:Icons.Zap, isSingle:true },
-  { key:"get-customers", label:"Get Customers", href:"/get-customers", icon:Icons.UserPlus, children:[
-    { label:"Get Customers", href:"/get-customers/get-customers", icon:Icons.UserPlus },
-    { label:"Start - Run - Grow", href:"/get-customers/start-run-grow", icon:Icons.BarChart },
-    { label:"Business Strategies", href:"/get-customers/business-strategies", icon:Icons.FileText },
-  ]},
-  { key:"partner", label:"Partner Resources", href:"/partner-resources", icon:Icons.Users, children:[
-    { label:"Merchant Accounts", href:"/partner-resources/merchant-accounts", icon:Icons.Building },
-    { label:"Monitoring Commissions", href:"/partner-resources/monitoring-commissions", icon:Icons.BarChart },
-    { label:"Dispute Outsourcing", href:"/partner-resources/dispute-outsourcing", icon:Icons.FileText },
-    { label:"Rebuild Credit Affiliate", href:"/partner-resources/rebuild-credit-affiliate", icon:Icons.Users },
-    { label:"Partner and Earn", href:"/partner-resources/partner-and-earn", icon:Icons.UserPlus },
-    { label:"Save and Annual Plan", href:"/partner-resources/save-and-annual-plan", icon:Icons.FileText },
-    { label:"Offer Free Vacations", href:"/partner-resources/offer-free-vacations", icon:Icons.FileText },
-    { label:"Offer Business Funding", href:"/partner-resources/offer-business-funding", icon:Icons.FileText },
-    { label:"Credit Repair Class", href:"/partner-resources/credit-repair-class", icon:Icons.FileText },
-    { label:"Community", href:"/partner-resources/community", icon:Icons.Users },
-  ]},
 ];
 
 export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters"]);
+  const [expanded, setExpanded] = useState<string[]>(["company", "dispute-manager", "billing", "leads", "academy"]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const toggleExpand = (key: string) => {
@@ -138,23 +105,23 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div style={{ display:"flex", minHeight:"100vh", backgroundColor:"#f8fafc" }}>
-      <aside style={{ width:"280px", backgroundColor:"#1e293b", color:"#94a3b8", display:"flex", flexDirection:"column", position:"fixed", height:"100vh", overflowY:"auto", fontSize:"13px", zIndex:100 }}>
-        <div style={{ padding:"16px", borderBottom:"1px solid #334155", display:"flex", alignItems:"center", gap:"12px" }}>
-          <div style={{ width:"40px", height:"40px", backgroundColor:"#3b82f6", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:"bold", color:"#fff", fontSize:"18px" }}>DP</div>
+    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+      <aside style={{ width: "280px", backgroundColor: "#1e293b", color: "#94a3b8", display: "flex", flexDirection: "column", position: "fixed", height: "100vh", overflowY: "auto", fontSize: "13px", zIndex: 100 }}>
+        <div style={{ padding: "16px", borderBottom: "1px solid #334155", display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ width: "40px", height: "40px", backgroundColor: "#3b82f6", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", color: "#fff", fontSize: "18px" }}>DP</div>
           <div>
-            <div style={{ color:"#fff", fontWeight:"600", fontSize:"16px" }}>DisputePilot</div>
-            <div style={{ color:"#64748b", fontSize:"11px" }}>Credit Repair CRM</div>
+            <div style={{ color: "#fff", fontWeight: "600", fontSize: "16px" }}>DisputePilot</div>
+            <div style={{ color: "#64748b", fontSize: "11px" }}>Credit Repair CRM</div>
           </div>
         </div>
-        <nav style={{ flex:1, padding:"8px 0" }}>
+        <nav style={{ flex: 1, padding: "8px 0" }}>
           {navGroups.map((group) => {
             const GroupIcon = group.icon;
             if ((group as any).isSingle) {
               const active = isActive((group as any).href);
               return (
-                <Link key={group.key} href={(group as any).href} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"10px 16px", color:active?"#fff":"#94a3b8", backgroundColor:active?"#3b82f6":"transparent", textDecoration:"none", borderLeft:active?"3px solid #60a5fa":"3px solid transparent", cursor:"pointer" }}>
-                  <GroupIcon /><span style={{ flex:1 }}>{group.label}</span>
+                <Link key={group.key} href={(group as any).href} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 16px", color: active ? "#fff" : "#94a3b8", backgroundColor: active ? "#3b82f6" : "transparent", textDecoration: "none", borderLeft: active ? "3px solid #60a5fa" : "3px solid transparent", cursor: "pointer" }}>
+                  <GroupIcon /><span style={{ flex: 1 }}>{group.label}</span>
                 </Link>
               );
             }
@@ -162,17 +129,17 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
             const hasActiveChild = (group as any).items?.some((item: any) => isActive(item.href));
             return (
               <div key={group.key}>
-                <button onClick={() => toggleExpand(group.key)} style={{ width:"100%", display:"flex", alignItems:"center", gap:"12px", padding:"10px 16px", color:hasActiveChild?"#fff":"#94a3b8", backgroundColor:hasActiveChild?"#3b82f6":"transparent", border:"none", borderLeft:hasActiveChild?"3px solid #60a5fa":"3px solid transparent", cursor:"pointer", fontSize:"13px", textAlign:"left" as const }}>
-                  <GroupIcon /><span style={{ flex:1 }}>{group.label}</span>
+                <button onClick={() => toggleExpand(group.key)} style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "10px 16px", color: hasActiveChild ? "#fff" : "#94a3b8", backgroundColor: hasActiveChild ? "#3b82f6" : "transparent", border: "none", borderLeft: hasActiveChild ? "3px solid #60a5fa" : "3px solid transparent", cursor: "pointer", fontSize: "13px", textAlign: "left" as const }}>
+                  <GroupIcon /><span style={{ flex: 1 }}>{group.label}</span>
                   {isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight />}
                 </button>
                 {isExpanded && (group as any).items && (
-                  <div style={{ backgroundColor:"#0f172a" }}>
+                  <div style={{ backgroundColor: "#0f172a" }}>
                     {(group as any).items.map((item: any) => {
                       const ItemIcon = item.icon;
                       const active = isActive(item.href);
                       return (
-                        <Link key={item.href} href={item.href} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"8px 16px 8px 44px", color:active?"#fff":"#64748b", backgroundColor:active?"#1e40af":"transparent", textDecoration:"none", fontSize:"12px", borderLeft:active?"3px solid #60a5fa":"3px solid transparent" }}>
+                        <Link key={item.href} href={item.href} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "8px 16px 8px 44px", color: active ? "#fff" : "#64748b", backgroundColor: active ? "#1e40af" : "transparent", textDecoration: "none", fontSize: "12px", borderLeft: active ? "3px solid #60a5fa" : "3px solid transparent" }}>
                           <ItemIcon />{item.label}
                         </Link>
                       );
@@ -183,38 +150,38 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ padding:"16px", borderTop:"1px solid #334155" }}>
-          <button style={{ width:"100%", padding:"10px", backgroundColor:"#f59e0b", color:"#fff", border:"none", borderRadius:"6px", fontSize:"13px", fontWeight:"500", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"8px" }}>
-            <span>&#128172;</span>Need Help?
+        <div style={{ padding: "16px", borderTop: "1px solid #334155" }}>
+          <button style={{ width: "100%", padding: "10px", backgroundColor: "#f59e0b", color: "#fff", border: "none", borderRadius: "6px", fontSize: "13px", fontWeight: "500", cursor: "pointer" }}>
+            Need Help?
           </button>
         </div>
       </aside>
-      <main style={{ flex:1, marginLeft:"280px", minHeight:"100vh" }}>{children}</main>
+      <main style={{ flex: 1, marginLeft: "280px", minHeight: "100vh" }}>{children}</main>
     </div>
   );
 }
 
 export function CDMBtn({ children, onClick, variant = "primary", style = {} }: any) {
-  const base = { padding:"8px 16px", borderRadius:"6px", border:"none", cursor:"pointer", fontWeight:600, fontSize:"13px", ...style };
-  const variants: any = { primary:{ background:"#2563eb", color:"#fff" }, secondary:{ background:"#f3f4f6", color:"#374151", border:"1px solid #e5e7eb" }, danger:{ background:"#ef4444", color:"#fff" }, success:{ background:"#16a34a", color:"#fff" } };
+  const base = { padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "13px", ...style };
+  const variants: any = { primary: { background: "#2563eb", color: "#fff" }, secondary: { background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }, danger: { background: "#ef4444", color: "#fff" }, success: { background: "#16a34a", color: "#fff" } };
   return <button onClick={onClick} style={{ ...base, ...variants[variant] }}>{children}</button>;
 }
 
 export function CDMTable({ columns, data, emptyMessage = "No data yet" }: any) {
   return (
-    <div style={{ background:"#fff", border:"1px solid #e5e7eb", borderRadius:"8px", overflow:"hidden" }}>
-      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"14px" }}>
+    <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
         <thead>
-          <tr style={{ background:"#f9fafb", borderBottom:"1px solid #e5e7eb" }}>
-            {columns.map((c: any) => <th key={c.key} style={{ padding:"12px 16px", textAlign:"left" as const, fontWeight:600, color:"#374151", fontSize:"12px", textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>{c.label}</th>)}
+          <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+            {columns.map((c: any) => <th key={c.key} style={{ padding: "12px 16px", textAlign: "left" as const, fontWeight: 600, color: "#374151", fontSize: "12px", textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{c.label}</th>)}
           </tr>
         </thead>
         <tbody>
           {!data?.length ? (
-            <tr><td colSpan={columns.length} style={{ padding:"32px", textAlign:"center" as const, color:"#888" }}>{emptyMessage}</td></tr>
+            <tr><td colSpan={columns.length} style={{ padding: "32px", textAlign: "center" as const, color: "#888" }}>{emptyMessage}</td></tr>
           ) : data.map((row: any, i: number) => (
-            <tr key={i} style={{ borderBottom:"1px solid #f3f4f6" }}>
-              {columns.map((c: any) => <td key={c.key} style={{ padding:"12px 16px", color:"#374151" }}>{c.render ? c.render(row) : row[c.key]}</td>)}
+            <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
+              {columns.map((c: any) => <td key={c.key} style={{ padding: "12px 16px", color: "#374151" }}>{c.render ? c.render(row) : row[c.key]}</td>)}
             </tr>
           ))}
         </tbody>
@@ -222,4 +189,3 @@ export function CDMTable({ columns, data, emptyMessage = "No data yet" }: any) {
     </div>
   );
 }
-

@@ -1,8 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 import CDMLayout from "@/components/CDMLayout";
-import { supabase } from "@/lib/supabase";
+
+const supabase = createClient(
+  "https://wrjgjxltgpksjgifqszt.supabase.co",
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 const STATUS_COLORS: Record<string, string> = {
   active: "#10b981", inactive: "#94a3b8", pending: "#f59e0b", cancelled: "#ef4444",
@@ -15,7 +20,7 @@ export default function Page() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", status: "active" });
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", status: "active" });
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -32,17 +37,17 @@ export default function Page() {
   useEffect(() => {
     const q = search.toLowerCase();
     setFiltered(clients.filter(c =>
-      `${c.first_name} ${c.last_name} ${c.email} ${c.phone}`.toLowerCase().includes(q)
+      `${c.full_name} ${c.email} ${c.phone}`.toLowerCase().includes(q)
     ));
   }, [search, clients]);
 
   async function save() {
-    if (!form.first_name || !form.last_name) return;
+    if (!form.full_name) return;
     setSaving(true);
     await supabase.from("clients").insert([form]);
     setSaving(false);
     setShowForm(false);
-    setForm({ first_name: "", last_name: "", email: "", phone: "", status: "active" });
+    setForm({ full_name: "", email: "", phone: "", status: "active" });
     load();
   }
 
@@ -65,15 +70,11 @@ export default function Page() {
             style={{ width: "100%", padding: "10px 14px", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
         </div>
 
-        {/* Add Client Modal */}
         {showForm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
             <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 440, boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
               <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 700 }}>Add New Client</h2>
-              {[
-                ["First Name", "first_name"], ["Last Name", "last_name"],
-                ["Email", "email"], ["Phone", "phone"],
-              ].map(([label, key]) => (
+              {[["Full Name", "full_name"], ["Email", "email"], ["Phone", "phone"]].map(([label, key]) => (
                 <div key={key} style={{ marginBottom: 14 }}>
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 }}>{label}</label>
                   <input value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
@@ -95,7 +96,6 @@ export default function Page() {
           </div>
         )}
 
-        {/* Delete Confirm */}
         {deleteId && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
             <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 360 }}>
@@ -109,7 +109,6 @@ export default function Page() {
           </div>
         )}
 
-        {/* Table */}
         <div style={{ background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead style={{ background: "#f8fafc" }}>
@@ -126,7 +125,7 @@ export default function Page() {
                 <tr key={c.id} style={{ borderTop: "1px solid #f1f5f9" }}>
                   <td style={{ padding: "12px 16px" }}>
                     <button onClick={() => router.push(`/clients/${c.id}`)} style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, color: "#1e3a5f", padding: 0 }}>
-                      {c.first_name} {c.last_name}
+                      {c.full_name}
                     </button>
                   </td>
                   <td style={{ padding: "12px 16px", fontSize: 14, color: "#475569" }}>{c.email || "—"}</td>
