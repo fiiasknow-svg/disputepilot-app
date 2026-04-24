@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -73,14 +73,16 @@ const navGroups = [
   {
     key: "get-customers", label: "Get Customers", icon: Icons.UserPlus,
     items: [
-      { label: "Get Customers", href: "/get-customers", icon: Icons.UserPlus },
+      { label: "Overview", href: "/get-customers", icon: Icons.UserPlus },
       { label: "Start - Run - Grow", href: "/get-customers/start-run-grow", icon: Icons.BarChart },
       { label: "Business Strategies", href: "/get-customers/business-strategies", icon: Icons.FileText },
+      { label: "Get Customers", href: "/get-customers/get-customers", icon: Icons.UserPlus },
     ]
   },
   {
     key: "partner", label: "Partner Resources", icon: Icons.Users,
     items: [
+      { label: "Partner Resources", href: "/partner-resources", icon: Icons.Users },
       { label: "Merchant Accounts", href: "/partner-resources/merchant-accounts", icon: Icons.Building },
       { label: "Monitoring Commissions", href: "/partner-resources/monitoring-commissions", icon: Icons.BarChart },
       { label: "Dispute Outsourcing", href: "/partner-resources/dispute-outsourcing", icon: Icons.FileText },
@@ -97,8 +99,19 @@ const navGroups = [
 
 export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState<string[]>(["company", "dispute-manager", "billing", "leads", "academy"]);
+  const [expanded, setExpanded] = useState<string[]>(["company", "dispute-manager", "billing", "leads", "academy", "get-customers", "partner"]);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const toggleExpand = (key: string) => {
@@ -107,7 +120,21 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#f8fafc" }}>
-      <aside style={{ width: "280px", backgroundColor: "#1e293b", color: "#94a3b8", display: "flex", flexDirection: "column", position: "fixed", height: "100vh", overflowY: "auto", fontSize: "13px", zIndex: 100 }}>
+      {isMobile && (
+        <button
+          onClick={() => setMobileOpen(o => !o)}
+          style={{ position: "fixed", top: 12, left: 12, zIndex: 200, background: "#1e293b", border: "none", borderRadius: 8, width: 40, height: 40, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5 }}
+          aria-label="Toggle menu"
+        >
+          <span style={{ width: 20, height: 2, background: "#fff", borderRadius: 2, transition: "transform 0.2s", transform: mobileOpen ? "rotate(45deg) translate(5px, 5px)" : "none" }} />
+          <span style={{ width: 20, height: 2, background: "#fff", borderRadius: 2, opacity: mobileOpen ? 0 : 1, transition: "opacity 0.2s" }} />
+          <span style={{ width: 20, height: 2, background: "#fff", borderRadius: 2, transition: "transform 0.2s", transform: mobileOpen ? "rotate(-45deg) translate(5px, -5px)" : "none" }} />
+        </button>
+      )}
+      {isMobile && mobileOpen && (
+        <div onClick={() => setMobileOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99 }} />
+      )}
+      <aside style={{ width: "280px", backgroundColor: "#1e293b", color: "#94a3b8", display: "flex", flexDirection: "column", position: "fixed", height: "100vh", overflowY: "auto", fontSize: "13px", zIndex: 100, transform: isMobile && !mobileOpen ? "translateX(-280px)" : "translateX(0)", transition: "transform 0.25s ease" }}>
         <div style={{ padding: "16px", borderBottom: "1px solid #334155", display: "flex", alignItems: "center", gap: "12px" }}>
           <div style={{ width: "40px", height: "40px", backgroundColor: "#3b82f6", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", color: "#fff", fontSize: "18px" }}>DP</div>
           <div>
@@ -157,7 +184,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main style={{ flex: 1, marginLeft: "280px", minHeight: "100vh" }}>{children}</main>
+      <main style={{ flex: 1, marginLeft: isMobile ? 0 : "280px", minHeight: "100vh", paddingTop: isMobile ? 56 : 0 }}>{children}</main>
 
       {helpOpen && (
         <div onClick={() => setHelpOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
