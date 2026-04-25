@@ -58,6 +58,8 @@ export default function Page() {
 
   // Subscriptions state
   const [subs, setSubs] = useState<any[]>([]);
+  const [showSubForm, setShowSubForm] = useState(false);
+  const [subForm, setSubForm] = useState({ client_id:"", plan:"", amount:"", billing_cycle:"monthly", status:"active" });
 
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -135,7 +137,7 @@ export default function Page() {
     const tax = (base*(parseFloat(invForm.tax_rate)||0))/100;
     const disc = parseFloat(invForm.discount)||0;
     const total = base + tax - disc;
-    const payload = { ...invForm, amount:total, base_amount:base, tax_rate:parseFloat(invForm.tax_rate)||0, discount:disc };
+    const payload = { ...invForm, amount:total, base_amount:base, tax_rate:parseFloat(invForm.tax_rate)||0, discount:disc, due_date:invForm.due_date||null };
     if (editingInv) await supabase.from("invoices").update(payload).eq("id",editingInv.id);
     else await supabase.from("invoices").insert([payload]);
     setSaving(false); setShowInvForm(false); setEditingInv(null);
@@ -173,7 +175,15 @@ export default function Page() {
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="invoices.csv"; a.click();
   }
 
-  function sendInvoice(inv: any) { alert(`Invoice sent to ${inv.clients?.email||"client"}`); }
+  async function sendInvoice(inv: any) {
+    const email = inv.clients?.email;
+    if (!email) { alert("No email on file for this client."); return; }
+    const subject = `Invoice ${invNumber(inv, 0)} — $${(inv.amount||0).toFixed(2)} due`;
+    const body = `Hi ${inv.clients?.first_name||""},\n\nPlease find your invoice details below:\n\nInvoice: ${invNumber(inv, 0)}\nAmount: $${(inv.amount||0).toFixed(2)}\nDue Date: ${inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "N/A"}\nDescription: ${inv.description||""}\nStatus: ${inv.status}\n\nThank you for being a DisputePilot client.\n\nBest regards,\nDisputePilot`;
+    const res = await fetch("/api/send-email", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ to: email, subject, body }) });
+    if (res.ok) alert(`Invoice emailed to ${email}`);
+    else alert("Failed to send email. Please try again.");
+  }
   function downloadPDF(inv: any) { alert(`PDF download for invoice ${invNumber(inv,0)} — connect PDF library`); }
   function copyPaymentLink(inv: any) { navigator.clipboard.writeText(`https://pay.disputepilot.app/inv/${inv.id}`); alert("Payment link copied!"); }
 
@@ -196,6 +206,19 @@ export default function Page() {
   async function deleteSvc(id: string) { await supabase.from("services").delete().eq("id",id); setServices(s=>s.filter(x=>x.id!==id)); }
   async function toggleSvcActive(s: any) { await supabase.from("services").update({active:!s.active}).eq("id",s.id); setServices(sv=>sv.map(x=>x.id===s.id?{...x,active:!x.active}:x)); }
   function clientsOnPlan(s: any) { return clients.filter(c=>c.service_plan===s.name).length; }
+
+  async function saveSubscription() {
+    if (!subForm.client_id) return;
+    setSaving(true);
+    await supabase.from("subscriptions").insert([{ ...subForm, amount: parseFloat(subForm.amount)||0 }]);
+    setSaving(false); setShowSubForm(false);
+    setSubForm({ client_id:"", plan:"", amount:"", billing_cycle:"monthly", status:"active" });
+    load();
+  }
+  async function deleteSub(id: string) {
+    await supabase.from("subscriptions").delete().eq("id", id);
+    setSubs(s => s.filter(x => x.id !== id));
+  }
   function exportSvcCSV() {
     const hdrs=["Name","Price","Type","Active","Description"];
     const rows=services.map(s=>[s.name,s.price,s.type,s.active?"Yes":"No",s.description||""].map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(","));
@@ -575,7 +598,7 @@ export default function Page() {
         {tab==="Subscriptions" && (
           <>
             <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16 }}>
-              <button style={{ background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, padding:"9px 20px", cursor:"pointer", fontWeight:700, fontSize:14 }}>+ New Subscription</button>
+              <button onClick={() => setShowSubForm(true)} style={{ background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, padding:"9px 20px", cursor:"pointer", fontWeight:700, fontSize:14 }}>+ New Subscription</button>
             </div>
             <div style={{ background:"#fff", borderRadius:10, boxShadow:"0 1px 4px rgba(0,0,0,0.07)", overflow:"hidden" }}>
               <table style={{ width:"100%", borderCollapse:"collapse" }}>
@@ -597,8 +620,7 @@ export default function Page() {
                         <td style={{ padding:"12px 16px" }}>{badge(s.status==="active"?"#10b981":"#94a3b8", s.status||"active")}</td>
                         <td style={{ padding:"12px 16px" }}>
                           <div style={{ display:"flex", gap:5 }}>
-                            <button style={{ fontSize:12, padding:"4px 10px", border:"1px solid #e2e8f0", borderRadius:5, background:"#f8fafc", cursor:"pointer" }}>Edit</button>
-                            <button style={{ fontSize:12, padding:"4px 10px", border:"1px solid #fca5a5", borderRadius:5, background:"#fff5f5", cursor:"pointer", color:"#ef4444" }}>Cancel</button>
+                            <button onClick={() => deleteSub(s.id)} style={{ fontSize:12, padding:"4px 10px", border:"1px solid #fca5a5", borderRadius:5, background:"#fff5f5", cursor:"pointer", color:"#ef4444" }}>Cancel</button>
                           </div>
                         </td>
                       </tr>
@@ -776,6 +798,40 @@ export default function Page() {
               <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
                 <button onClick={()=>{ setShowSvcForm(false); setEditingSvc(null); }} style={{ padding:"9px 20px", border:"1px solid #e2e8f0", borderRadius:7, background:"#fff", cursor:"pointer" }}>Cancel</button>
                 <button onClick={saveSvc} disabled={saving} style={{ padding:"9px 20px", background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontWeight:700 }}>{saving?"Saving…":editingSvc?"Save Changes":"Add Service"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── NEW SUBSCRIPTION MODAL ── */}
+        {showSubForm && (
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}>
+            <div style={{ background:"#fff", borderRadius:12, padding:28, width:440 }}>
+              <h2 style={{ margin:"0 0 20px", fontSize:18, fontWeight:700 }}>New Subscription</h2>
+              <div style={{ marginBottom:14 }}>
+                <label style={lbl}>Client *</label>
+                <select value={subForm.client_id} onChange={e=>setSubForm(f=>({...f,client_id:e.target.value}))} style={inp}>
+                  <option value="">Select client…</option>
+                  {clients.map(c=><option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>)}
+                </select>
+              </div>
+              <div style={{ marginBottom:14 }}>
+                <label style={lbl}>Plan</label>
+                <input value={subForm.plan} onChange={e=>setSubForm(f=>({...f,plan:e.target.value}))} style={inp} placeholder="e.g. Standard ($149/mo)" />
+              </div>
+              <div style={{ marginBottom:14 }}>
+                <label style={lbl}>Amount ($)</label>
+                <input type="number" value={subForm.amount} onChange={e=>setSubForm(f=>({...f,amount:e.target.value}))} style={inp} placeholder="149" />
+              </div>
+              <div style={{ marginBottom:20 }}>
+                <label style={lbl}>Billing Cycle</label>
+                <select value={subForm.billing_cycle} onChange={e=>setSubForm(f=>({...f,billing_cycle:e.target.value}))} style={inp}>
+                  {["monthly","quarterly","annually"].map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+                <button onClick={()=>setShowSubForm(false)} style={{ padding:"9px 20px", border:"1px solid #e2e8f0", borderRadius:7, background:"#fff", cursor:"pointer" }}>Cancel</button>
+                <button onClick={saveSubscription} disabled={saving} style={{ padding:"9px 20px", background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontWeight:700 }}>{saving?"Saving…":"Create Subscription"}</button>
               </div>
             </div>
           </div>

@@ -129,7 +129,7 @@ export default function Page() {
         supabase.from("disputes").select("id,account_name,bureau,status,round,created_at,updated_at,letter_title,clients(first_name,last_name)").order("created_at",{ascending:false}).limit(200),
         supabase.from("invoices").select("id,amount,status,created_at,clients(first_name,last_name)").order("created_at",{ascending:false}).limit(200),
         supabase.from("leads").select("id,first_name,last_name,status,source,created_at").order("created_at",{ascending:false}).limit(50),
-        supabase.from("letters").select("id,title,type,created_at,uses_count").order("created_at",{ascending:false}).limit(50),
+        supabase.from("letter_templates").select("id,title,type,created_at,uses_count").order("created_at",{ascending:false}).limit(50),
       ]);
       setClients(c.data||[]);
       setDisputes(d.data||[]);

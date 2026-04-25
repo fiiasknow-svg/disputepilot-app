@@ -82,6 +82,10 @@ export default function Page() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showBulkEmail, setShowBulkEmail] = useState(false);
+  const [bulkEmailSubject, setBulkEmailSubject] = useState("");
+  const [bulkEmailBody, setBulkEmailBody] = useState("");
+  const [bulkEmailSending, setBulkEmailSending] = useState(false);
 
   // ── Load ──
   async function load() {
@@ -129,11 +133,19 @@ export default function Page() {
   const allPageSelected = paged.length > 0 && paged.every(c => selected.has(c.id));
 
   // ── CRUD ──
+  function sanitizeClient(f: typeof EMPTY_FORM) {
+    return {
+      ...f,
+      dob: f.dob || null,
+      monthly_charge: f.monthly_charge || null,
+    };
+  }
+
   async function saveNew() {
     if (!form.first_name && !form.last_name) return;
     setSaving(true);
     const full_name = `${form.first_name} ${form.last_name}`.trim();
-    await supabase.from("clients").insert([{ ...form, full_name }]);
+    await supabase.from("clients").insert([{ ...sanitizeClient(form), full_name }]);
     setSaving(false);
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
@@ -144,7 +156,7 @@ export default function Page() {
     if (!editing) return;
     setSaving(true);
     const full_name = `${form.first_name} ${form.last_name}`.trim();
-    await supabase.from("clients").update({ ...form, full_name }).eq("id", editing.id);
+    await supabase.from("clients").update({ ...sanitizeClient(form), full_name }).eq("id", editing.id);
     setSaving(false);
     setEditing(null);
     setForm({ ...EMPTY_FORM });
@@ -426,7 +438,7 @@ export default function Page() {
         {selected.size > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 16px", marginBottom: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#1e3a5f" }}>{selected.size} selected</span>
-            <button onClick={() => { }} style={{ fontSize: 12, padding: "5px 13px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>✉ Send Email</button>
+            <button onClick={() => setShowBulkEmail(true)} style={{ fontSize: 12, padding: "5px 13px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>✉ Send Email</button>
             <button onClick={exportCSV} style={{ fontSize: 12, padding: "5px 13px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>↓ Export</button>
             <button onClick={() => setBulkStatusOpen(true)} style={{ fontSize: 12, padding: "5px 13px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>✎ Update Status</button>
             <button onClick={bulkDelete} style={{ fontSize: 12, padding: "5px 13px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, cursor: "pointer", fontWeight: 600, color: "#dc2626" }}>🗑 Delete</button>
@@ -703,6 +715,48 @@ export default function Page() {
               <button onClick={() => setShowImport(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
               <button onClick={importCSV} disabled={saving || !importText.trim()} style={{ padding: "9px 20px", background: importText.trim() ? "#1e3a5f" : "#94a3b8", color: "#fff", border: "none", borderRadius: 7, cursor: importText.trim() ? "pointer" : "not-allowed", fontWeight: 700 }}>
                 {saving ? "Importing…" : "Import"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Email Modal ── */}
+      {showBulkEmail && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:"#fff", borderRadius:12, padding:28, width:500, maxWidth:"95vw" }}>
+            <h3 style={{ margin:"0 0 4px", fontSize:17, fontWeight:800 }}>Send Email to {selected.size} Client{selected.size!==1?"s":""}</h3>
+            <p style={{ margin:"0 0 16px", fontSize:13, color:"#64748b" }}>
+              {clients.filter(c=>selected.has(c.id)&&c.email).length} of {selected.size} have an email address.
+            </p>
+            <div style={{ marginBottom:12 }}>
+              <label style={{ display:"block", fontSize:13, fontWeight:600, marginBottom:5 }}>Subject</label>
+              <input value={bulkEmailSubject} onChange={e=>setBulkEmailSubject(e.target.value)} placeholder="Email subject…"
+                style={{ width:"100%", padding:"9px 12px", border:"1px solid #e2e8f0", borderRadius:7, fontSize:14, boxSizing:"border-box" as const }} />
+            </div>
+            <div style={{ marginBottom:20 }}>
+              <label style={{ display:"block", fontSize:13, fontWeight:600, marginBottom:5 }}>Message</label>
+              <textarea value={bulkEmailBody} onChange={e=>setBulkEmailBody(e.target.value)} rows={5} placeholder="Write your message…"
+                style={{ width:"100%", padding:"9px 12px", border:"1px solid #e2e8f0", borderRadius:7, fontSize:14, resize:"vertical" as const, boxSizing:"border-box" as const }} />
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={()=>setShowBulkEmail(false)} style={{ padding:"9px 20px", background:"#f1f5f9", border:"1px solid #e2e8f0", borderRadius:7, fontWeight:600, cursor:"pointer" }}>Cancel</button>
+              <button
+                disabled={bulkEmailSending||!bulkEmailSubject}
+                onClick={async()=>{
+                  setBulkEmailSending(true);
+                  const targets = clients.filter(c=>selected.has(c.id)&&c.email);
+                  await Promise.all(targets.map(c=>
+                    fetch("/api/send-email",{method:"POST",headers:{"Content-Type":"application/json"},
+                      body:JSON.stringify({to:c.email,subject:bulkEmailSubject,body:bulkEmailBody})})
+                  ));
+                  setBulkEmailSending(false);
+                  setShowBulkEmail(false);
+                  setBulkEmailSubject(""); setBulkEmailBody("");
+                  alert(`Email sent to ${targets.length} client${targets.length!==1?"s":""}.`);
+                }}
+                style={{ padding:"9px 20px", background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", opacity:bulkEmailSending?0.6:1 }}>
+                {bulkEmailSending?"Sending…":"Send Email"}
               </button>
             </div>
           </div>

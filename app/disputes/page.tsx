@@ -99,10 +99,18 @@ export default function Page() {
   };
 
   // ── CRUD ──
+  function sanitizeDispute(f: typeof EMPTY_FORM) {
+    return {
+      ...f,
+      letter_id: f.letter_id || null,
+      response_date: f.response_date || null,
+    };
+  }
+
   async function saveNew() {
     if (!form.client_id || !form.account_name) return;
     setSaving(true);
-    await supabase.from("disputes").insert([form]);
+    await supabase.from("disputes").insert([sanitizeDispute(form)]);
     setSaving(false);
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
@@ -112,7 +120,7 @@ export default function Page() {
   async function saveEdit() {
     if (!editing) return;
     setSaving(true);
-    const { client_id: _c, ...rest } = form;
+    const { client_id: _c, ...rest } = sanitizeDispute(form);
     await supabase.from("disputes").update(rest).eq("id", editing.id);
     setSaving(false);
     setEditing(null);

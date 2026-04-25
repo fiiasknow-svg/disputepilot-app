@@ -119,7 +119,7 @@ export default function Page() {
   async function save() {
     if(!form.title||!form.date) return;
     setSaving(true);
-    const payload={...form, color:form.color||(EVENT_COLORS[form.type]||"#3b82f6")};
+    const payload={...form, color:form.color||(EVENT_COLORS[form.type]||"#3b82f6"), client_id: form.client_id || null};
     if(editingEvent) await supabase.from("calendar_events").update(payload).eq("id",editingEvent.id);
     else await supabase.from("calendar_events").insert([payload]);
     setSaving(false); setShowForm(false); setEditingEvent(null); setForm({...EMPTY_FORM});

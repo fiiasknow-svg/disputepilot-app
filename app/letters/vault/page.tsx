@@ -634,12 +634,12 @@ export default function Page() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("letters").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("letter_templates").select("*").order("created_at", { ascending: false });
     const rows = data || [];
     if (rows.length === 0) {
       setSeeding(true);
-      await supabase.from("letters").insert(SEED_LETTERS);
-      const { data: seeded } = await supabase.from("letters").select("*").order("created_at", { ascending: false });
+      await supabase.from("letter_templates").insert(SEED_LETTERS);
+      const { data: seeded } = await supabase.from("letter_templates").select("*").order("created_at", { ascending: false });
       const seedRows = seeded || [];
       setLetters(seedRows);
       const u: Record<string, number> = {};
@@ -660,7 +660,7 @@ export default function Page() {
   async function saveNew() {
     if (!form.title || !form.content) return;
     setSaving(true);
-    await supabase.from("letters").insert([{ ...form, uses_count: 0 }]);
+    await supabase.from("letter_templates").insert([{ ...form, uses_count: 0 }]);
     setSaving(false);
     setShowForm(false);
     setForm({ title: "", content: "", type: "template", bureau: "" });
@@ -670,7 +670,7 @@ export default function Page() {
   async function saveEdit() {
     if (!editing || !form.title || !form.content) return;
     setSaving(true);
-    await supabase.from("letters").update({ title: form.title, content: form.content, type: form.type, bureau: form.bureau }).eq("id", editing.id);
+    await supabase.from("letter_templates").update({ title: form.title, content: form.content, type: form.type, bureau: form.bureau }).eq("id", editing.id);
     setSaving(false);
     setEditing(null);
     setForm({ title: "", content: "", type: "template", bureau: "" });
@@ -678,12 +678,13 @@ export default function Page() {
   }
 
   function openEdit(letter: any) {
+    setPreview(null);
     setEditing(letter);
     setForm({ title: letter.title, content: letter.content, type: letter.type, bureau: letter.bureau || "" });
   }
 
   async function del(id: string) {
-    await supabase.from("letters").delete().eq("id", id);
+    await supabase.from("letter_templates").delete().eq("id", id);
     setLetters(l => l.filter(x => x.id !== id));
     setSelected(s => { const n = new Set(s); n.delete(id); return n; });
   }
@@ -692,7 +693,7 @@ export default function Page() {
     if (selected.size === 0) return;
     setBulkDeleting(true);
     const ids = Array.from(selected);
-    await supabase.from("letters").delete().in("id", ids);
+    await supabase.from("letter_templates").delete().in("id", ids);
     setLetters(l => l.filter(x => !selected.has(x.id)));
     setSelected(new Set());
     setBulkDeleting(false);
@@ -704,7 +705,7 @@ export default function Page() {
     setTimeout(() => setCopied(null), 2000);
     const newCount = (usages[letter.id] || 0) + 1;
     setUsages(u => ({ ...u, [letter.id]: newCount }));
-    await supabase.from("letters").update({ uses_count: newCount }).eq("id", letter.id);
+    await supabase.from("letter_templates").update({ uses_count: newCount }).eq("id", letter.id);
   }
 
   async function importLetters() {
@@ -718,7 +719,7 @@ export default function Page() {
     }
     if (!parsed.length) return;
     setSaving(true);
-    await supabase.from("letters").insert(parsed.map((l: any) => ({ title: l.title || "Imported Letter", content: l.content || "", type: l.type || "template", bureau: l.bureau || "", uses_count: 0 })));
+    await supabase.from("letter_templates").insert(parsed.map((l: any) => ({ title: l.title || "Imported Letter", content: l.content || "", type: l.type || "template", bureau: l.bureau || "", uses_count: 0 })));
     setSaving(false);
     setShowImport(false);
     setImportText("");

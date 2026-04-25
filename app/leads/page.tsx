@@ -58,6 +58,10 @@ export default function Page() {
   const [converting, setConverting] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
+  const [showBulkEmail, setShowBulkEmail] = useState(false);
+  const [bulkEmailSubject, setBulkEmailSubject] = useState("");
+  const [bulkEmailBody, setBulkEmailBody] = useState("");
+  const [bulkEmailSending, setBulkEmailSending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -102,13 +106,23 @@ export default function Page() {
     else setSelected(new Set(paged.map(l => l.id)));
   }
 
+  function sanitizeLead(f: typeof EMPTY_FORM) {
+    return {
+      ...f,
+      credit_score: f.credit_score || null,
+      monthly_budget: f.monthly_budget || null,
+      lead_score: f.lead_score || null,
+      follow_up_date: f.follow_up_date || null,
+    };
+  }
+
   async function save() {
     if (!form.first_name || !form.last_name) return;
     setSaving(true);
     if (editing) {
-      await supabase.from("leads").update({ ...form }).eq("id", editing.id);
+      await supabase.from("leads").update(sanitizeLead(form)).eq("id", editing.id);
     } else {
-      await supabase.from("leads").insert([{ ...form }]);
+      await supabase.from("leads").insert([sanitizeLead(form)]);
     }
     setSaving(false);
     setShowForm(false);
@@ -431,7 +445,7 @@ export default function Page() {
           <div style={{ background: "#1e3a5f", borderRadius: 8, padding: "10px 16px", marginBottom: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <span style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>{selected.size} selected</span>
             <div style={{ flex: 1 }} />
-            <button onClick={() => alert("Send Email — connect email integration")} style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>✉ Send Email</button>
+            <button onClick={() => setShowBulkEmail(true)} style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>✉ Send Email</button>
             <button onClick={exportCSV} style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>⬇ Export</button>
             <div style={{ position: "relative" }}>
               <button onClick={() => setBulkStatusOpen(o => !o)} style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Update Status ▾</button>
@@ -623,6 +637,48 @@ export default function Page() {
           </div>
         )}
       </div>
+
+      {/* ── Bulk Email Modal ── */}
+      {showBulkEmail && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:"#fff", borderRadius:12, padding:28, width:500, maxWidth:"95vw" }}>
+            <h3 style={{ margin:"0 0 4px", fontSize:17, fontWeight:800 }}>Send Email to {selected.size} Lead{selected.size!==1?"s":""}</h3>
+            <p style={{ margin:"0 0 16px", fontSize:13, color:"#64748b" }}>
+              {leads.filter(l=>selected.has(l.id)&&l.email).length} of {selected.size} have an email address.
+            </p>
+            <div style={{ marginBottom:12 }}>
+              <label style={{ display:"block", fontSize:13, fontWeight:600, marginBottom:5 }}>Subject</label>
+              <input value={bulkEmailSubject} onChange={e=>setBulkEmailSubject(e.target.value)} placeholder="Email subject…"
+                style={{ width:"100%", padding:"9px 12px", border:"1px solid #e2e8f0", borderRadius:7, fontSize:14, boxSizing:"border-box" as const }} />
+            </div>
+            <div style={{ marginBottom:20 }}>
+              <label style={{ display:"block", fontSize:13, fontWeight:600, marginBottom:5 }}>Message</label>
+              <textarea value={bulkEmailBody} onChange={e=>setBulkEmailBody(e.target.value)} rows={5} placeholder="Write your message…"
+                style={{ width:"100%", padding:"9px 12px", border:"1px solid #e2e8f0", borderRadius:7, fontSize:14, resize:"vertical" as const, boxSizing:"border-box" as const }} />
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={()=>setShowBulkEmail(false)} style={{ padding:"9px 20px", background:"#f1f5f9", border:"1px solid #e2e8f0", borderRadius:7, fontWeight:600, cursor:"pointer" }}>Cancel</button>
+              <button
+                disabled={bulkEmailSending||!bulkEmailSubject}
+                onClick={async()=>{
+                  setBulkEmailSending(true);
+                  const targets = leads.filter(l=>selected.has(l.id)&&l.email);
+                  await Promise.all(targets.map(l=>
+                    fetch("/api/send-email",{method:"POST",headers:{"Content-Type":"application/json"},
+                      body:JSON.stringify({to:l.email,subject:bulkEmailSubject,body:bulkEmailBody})})
+                  ));
+                  setBulkEmailSending(false);
+                  setShowBulkEmail(false);
+                  setBulkEmailSubject(""); setBulkEmailBody("");
+                  alert(`Email sent to ${targets.length} lead${targets.length!==1?"s":""}.`);
+                }}
+                style={{ padding:"9px 20px", background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", opacity:bulkEmailSending?0.6:1 }}>
+                {bulkEmailSending?"Sending…":"Send Email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </CDMLayout>
   );
 }
