@@ -24,9 +24,8 @@ export async function POST(req: NextRequest) {
   });
 
   if (error) {
-    console.error("[send-email] Resend error:", error);
-    console.error("[send-email] Full error:", JSON.stringify(error));
-    return NextResponse.json({ error: error.message, name: error.name }, { status: 400 });
+    console.error("[send-email] Resend error:", JSON.stringify(error, null, 2));
+    return NextResponse.json({ error: error.message || JSON.stringify(error) }, { status: 400 });
   }
 
   return NextResponse.json({ id: data?.id });

@@ -182,7 +182,7 @@ export default function Page() {
     const body = `Hi ${inv.clients?.first_name||""},\n\nPlease find your invoice details below:\n\nInvoice: ${invNumber(inv, 0)}\nAmount: $${(inv.amount||0).toFixed(2)}\nDue Date: ${inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "N/A"}\nDescription: ${inv.description||""}\nStatus: ${inv.status}\n\nThank you for being a DisputePilot client.\n\nBest regards,\nDisputePilot`;
     const res = await fetch("/api/send-email", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ to: email, subject, body }) });
     if (res.ok) alert(`Invoice emailed to ${email}`);
-    else alert("Failed to send email. Please try again.");
+    else { const err = await res.json().catch(()=>({})); alert(`Failed to send email: ${err.error || res.statusText}`); }
   }
   function downloadPDF(inv: any) { alert(`PDF download for invoice ${invNumber(inv,0)} — connect PDF library`); }
   function copyPaymentLink(inv: any) { navigator.clipboard.writeText(`https://pay.disputepilot.app/inv/${inv.id}`); alert("Payment link copied!"); }

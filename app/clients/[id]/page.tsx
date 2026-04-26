@@ -64,6 +64,7 @@ export default function Page() {
   const [emailBody,    setEmailBody]    = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [emailStatus,  setEmailStatus]  = useState<"idle"|"ok"|"err">("idle");
+  const [emailError,   setEmailError]   = useState("");
 
   useEffect(() => {
     async function load() {
@@ -469,7 +470,7 @@ export default function Page() {
               <label style={{display:"block",fontSize:13,fontWeight:600,color:"#374151",marginBottom:5}}>Message</label>
               <textarea value={emailBody} onChange={e=>setEmailBody(e.target.value)} rows={5} style={{...inp,resize:"vertical"}} placeholder="Write your message…"/>
             </div>
-            {emailStatus==="err"&&<p style={{color:"#ef4444",fontSize:13,margin:"0 0 12px"}}>Failed to send. Check the email address and try again.</p>}
+            {emailStatus==="err"&&<p style={{color:"#ef4444",fontSize:13,margin:"0 0 12px"}}>Failed to send: {emailError}</p>}
             <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
               <button onClick={()=>{setShowEmail(false);setEmailStatus("idle");}} style={{padding:"9px 20px",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:7,fontWeight:600,cursor:"pointer"}}>Cancel</button>
               <button
@@ -484,6 +485,8 @@ export default function Page() {
                     setActivity(a=>[{icon:"✉",label:`Email sent: "${emailSubject||"(no subject)"}"`,date:new Date().toISOString()},...a]);
                     setEmailSubject(""); setEmailBody(""); setEmailStatus("idle");
                   } else {
+                    const err = await res.json().catch(()=>({}));
+                    setEmailError(err.error || res.statusText || "Unknown error");
                     setEmailStatus("err");
                   }
                 }}

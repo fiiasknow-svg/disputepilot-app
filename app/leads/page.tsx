@@ -664,14 +664,17 @@ export default function Page() {
                 onClick={async()=>{
                   setBulkEmailSending(true);
                   const targets = leads.filter(l=>selected.has(l.id)&&l.email);
-                  await Promise.all(targets.map(l=>
+                  const results = await Promise.all(targets.map(l=>
                     fetch("/api/send-email",{method:"POST",headers:{"Content-Type":"application/json"},
                       body:JSON.stringify({to:l.email,subject:bulkEmailSubject,body:bulkEmailBody})})
+                    .then(async r=>({ ok:r.ok, email:l.email, err: r.ok ? null : (await r.json().catch(()=>({}))).error || r.statusText }))
                   ));
                   setBulkEmailSending(false);
                   setShowBulkEmail(false);
                   setBulkEmailSubject(""); setBulkEmailBody("");
-                  alert(`Email sent to ${targets.length} lead${targets.length!==1?"s":""}.`);
+                  const failed = results.filter(r=>!r.ok);
+                  if (failed.length) alert(`${results.length-failed.length} sent, ${failed.length} failed:\n${failed.map(f=>`${f.email}: ${f.err}`).join("\n")}`);
+                  else alert(`Email sent to ${targets.length} lead${targets.length!==1?"s":""}.`);
                 }}
                 style={{ padding:"9px 20px", background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", opacity:bulkEmailSending?0.6:1 }}>
                 {bulkEmailSending?"Sending…":"Send Email"}
