@@ -3,6 +3,10 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+export async function GET() {
+  return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
+}
+
 export async function POST(req: NextRequest) {
   const { to, subject, body } = await req.json();
   console.log("[send-email] Received:", { to, subject, bodyLength: body?.length });

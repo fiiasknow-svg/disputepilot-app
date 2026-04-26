@@ -404,7 +404,7 @@ export default function Page() {
                         </td>
                         <td style={{ padding:"11px 12px" }} onClick={e=>e.stopPropagation()}>
                           <div style={{ display:"flex", gap:4 }}>
-                            <button onClick={()=>sendInvoice(inv)} title="Send" style={{ width:28, height:28, border:"1px solid #e2e8f0", borderRadius:6, background:"#f8fafc", cursor:"pointer", fontSize:13 }}>✉️</button>
+                            <button type="button" onClick={()=>sendInvoice(inv)} title="Send" style={{ width:28, height:28, border:"1px solid #e2e8f0", borderRadius:6, background:"#f8fafc", cursor:"pointer", fontSize:13 }}>✉️</button>
                             <button onClick={()=>downloadPDF(inv)} title="PDF" style={{ width:28, height:28, border:"1px solid #e2e8f0", borderRadius:6, background:"#f8fafc", cursor:"pointer", fontSize:13 }}>📄</button>
                             <button onClick={()=>copyPaymentLink(inv)} title="Payment link" style={{ width:28, height:28, border:"1px solid #e2e8f0", borderRadius:6, background:"#f8fafc", cursor:"pointer", fontSize:13 }}>🔗</button>
                             <button onClick={()=>openEditInv(inv)} title="Edit" style={{ width:28, height:28, border:"1px solid #e2e8f0", borderRadius:6, background:"#f8fafc", cursor:"pointer", fontSize:13 }}>✏️</button>
@@ -698,7 +698,7 @@ export default function Page() {
               <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
                 <button onClick={()=>setViewInv(null)} style={{ padding:"9px 20px", border:"1px solid #e2e8f0", borderRadius:7, background:"#fff", cursor:"pointer" }}>Close</button>
                 <button onClick={()=>downloadPDF(viewInv)} style={{ padding:"9px 20px", background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontWeight:700 }}>📄 Download PDF</button>
-                <button onClick={()=>sendInvoice(viewInv)} style={{ padding:"9px 20px", background:"#3b82f6", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontWeight:700 }}>✉️ Send</button>
+                <button type="button" onClick={()=>sendInvoice(viewInv)} style={{ padding:"9px 20px", background:"#3b82f6", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontWeight:700 }}>✉️ Send</button>
               </div>
             </div>
           </div>

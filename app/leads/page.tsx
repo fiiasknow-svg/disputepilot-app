@@ -659,6 +659,7 @@ export default function Page() {
             <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
               <button onClick={()=>setShowBulkEmail(false)} style={{ padding:"9px 20px", background:"#f1f5f9", border:"1px solid #e2e8f0", borderRadius:7, fontWeight:600, cursor:"pointer" }}>Cancel</button>
               <button
+                type="button"
                 disabled={bulkEmailSending||!bulkEmailSubject}
                 onClick={async()=>{
                   setBulkEmailSending(true);
