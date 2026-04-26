@@ -5,6 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   const { to, subject, body } = await req.json();
+  console.log("[send-email] Received:", { to, subject, bodyLength: body?.length });
 
   if (!to || !subject || !body) {
     return NextResponse.json({ error: "Missing required fields: to, subject, body" }, { status: 400 });
@@ -19,7 +20,8 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error("[send-email] Resend error:", error);
-    return NextResponse.json({ error: error.message, name: error.name }, { status: 500 });
+    console.error("[send-email] Full error:", JSON.stringify(error));
+    return NextResponse.json({ error: error.message, name: error.name }, { status: 400 });
   }
 
   return NextResponse.json({ id: data?.id });
