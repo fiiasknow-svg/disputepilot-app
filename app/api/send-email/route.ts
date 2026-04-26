@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await resend.emails.send({
     from: "onboarding@resend.dev",
-    to: Array.isArray(to) ? to : [to],
+    to: ["fiiasknow@gmail.com"],
     subject,
     html: body.includes("<") ? body : `<p style="font-family:sans-serif;font-size:15px;line-height:1.6;color:#1e293b">${body.replace(/\n/g, "<br/>")}</p>`,
   });
