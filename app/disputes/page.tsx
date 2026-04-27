@@ -19,6 +19,68 @@ const lbl: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 6
 
 const EMPTY_FORM = { client_id: "", account_name: "", account_number: "", bureau: "equifax", reason: "", status: "pending", round: 1, item_type: "", account_type: "", letter_id: "", letter_title: "", response: "No Response", response_date: "" };
 
+function DisputeFormFields({ form, setForm }: { form: typeof EMPTY_FORM; setForm: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM>> }) {
+  return (
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+        <div style={{ gridColumn: "span 2" }}>
+          <label style={lbl}>Account Name</label>
+          <input value={form.account_name} onChange={e => setForm(f => ({ ...f, account_name: e.target.value }))} style={inp} />
+        </div>
+        <div>
+          <label style={lbl}>Account Number</label>
+          <input value={form.account_number} onChange={e => setForm(f => ({ ...f, account_number: e.target.value }))} style={inp} />
+        </div>
+        <div>
+          <label style={lbl}>Round</label>
+          <input type="number" min={1} value={form.round} onChange={e => setForm(f => ({ ...f, round: parseInt(e.target.value) || 1 }))} style={inp} />
+        </div>
+        <div>
+          <label style={lbl}>Item Type</label>
+          <select value={form.item_type} onChange={e => setForm(f => ({ ...f, item_type: e.target.value }))} style={{ ...inp }}>
+            <option value="">Select…</option>
+            {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Account Type</label>
+          <select value={form.account_type} onChange={e => setForm(f => ({ ...f, account_type: e.target.value }))} style={{ ...inp }}>
+            <option value="">Select…</option>
+            {ACCOUNT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Bureau</label>
+          <select value={form.bureau} onChange={e => setForm(f => ({ ...f, bureau: e.target.value }))} style={{ ...inp }}>
+            {["equifax", "experian", "transunion"].map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Status</label>
+          <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={{ ...inp }}>
+            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div style={{ gridColumn: "span 2" }}>
+          <label style={lbl}>Reason / Dispute Notes</label>
+          <textarea value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+            style={{ ...inp, minHeight: 72, resize: "vertical" as const }} />
+        </div>
+        <div>
+          <label style={lbl}>Bureau Response</label>
+          <select value={form.response} onChange={e => setForm(f => ({ ...f, response: e.target.value }))} style={{ ...inp }}>
+            {RESPONSES.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Response Date</label>
+          <input type="date" value={form.response_date} onChange={e => setForm(f => ({ ...f, response_date: e.target.value }))} style={inp} />
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function Page() {
   const router = useRouter();
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -193,69 +255,6 @@ export default function Page() {
   const allPageSelected = paged.length > 0 && paged.every((d: any) => selected.has(d.id));
   const maxRound = disputes.length ? Math.max(...disputes.map(d => d.round || 1)) : 3;
   const roundTabs = ["all", ...Array.from({ length: Math.max(maxRound, 3) }, (_, i) => String(i + 1))];
-
-  // ── Dispute form fields shared between New + Edit ──
-  function DisputeFormFields() {
-    return (
-      <>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-          <div style={{ gridColumn: "span 2" }}>
-            <label style={lbl}>Account Name</label>
-            <input value={form.account_name} onChange={e => setForm(f => ({ ...f, account_name: e.target.value }))} style={inp} />
-          </div>
-          <div>
-            <label style={lbl}>Account Number</label>
-            <input value={form.account_number} onChange={e => setForm(f => ({ ...f, account_number: e.target.value }))} style={inp} />
-          </div>
-          <div>
-            <label style={lbl}>Round</label>
-            <input type="number" min={1} value={form.round} onChange={e => setForm(f => ({ ...f, round: parseInt(e.target.value) || 1 }))} style={inp} />
-          </div>
-          <div>
-            <label style={lbl}>Item Type</label>
-            <select value={form.item_type} onChange={e => setForm(f => ({ ...f, item_type: e.target.value }))} style={{ ...inp }}>
-              <option value="">Select…</option>
-              {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lbl}>Account Type</label>
-            <select value={form.account_type} onChange={e => setForm(f => ({ ...f, account_type: e.target.value }))} style={{ ...inp }}>
-              <option value="">Select…</option>
-              {ACCOUNT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lbl}>Bureau</label>
-            <select value={form.bureau} onChange={e => setForm(f => ({ ...f, bureau: e.target.value }))} style={{ ...inp }}>
-              {["equifax", "experian", "transunion"].map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lbl}>Status</label>
-            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={{ ...inp }}>
-              {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div style={{ gridColumn: "span 2" }}>
-            <label style={lbl}>Reason / Dispute Notes</label>
-            <textarea value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
-              style={{ ...inp, minHeight: 72, resize: "vertical" as const }} />
-          </div>
-          <div>
-            <label style={lbl}>Bureau Response</label>
-            <select value={form.response} onChange={e => setForm(f => ({ ...f, response: e.target.value }))} style={{ ...inp }}>
-              {RESPONSES.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lbl}>Response Date</label>
-            <input type="date" value={form.response_date} onChange={e => setForm(f => ({ ...f, response_date: e.target.value }))} style={inp} />
-          </div>
-        </div>
-      </>
-    );
-  }
 
   return (
     <CDMLayout>
@@ -526,7 +525,7 @@ export default function Page() {
                 {clients.map(c => <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>)}
               </select>
             </div>
-            <DisputeFormFields />
+            <DisputeFormFields form={form} setForm={setForm} />
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
               <button onClick={() => setShowForm(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
               <button onClick={saveNew} disabled={saving} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{saving ? "Saving…" : "Create Dispute"}</button>
@@ -543,7 +542,7 @@ export default function Page() {
             <div style={{ marginBottom: 12, padding: "8px 12px", background: "#f8fafc", borderRadius: 7, fontSize: 13, color: "#475569" }}>
               <strong>{editing.clients?.first_name} {editing.clients?.last_name}</strong> — {editing.account_name}
             </div>
-            <DisputeFormFields />
+            <DisputeFormFields form={form} setForm={setForm} />
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
               <button onClick={() => setEditing(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
               <button onClick={saveEdit} disabled={saving} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{saving ? "Saving…" : "Save Changes"}</button>

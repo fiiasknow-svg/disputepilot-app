@@ -35,6 +35,98 @@ function avatarColor(name: string) {
 function tagList(t: string) { return t ? t.split(",").map(s => s.trim()).filter(Boolean) : []; }
 function scoreColor(s: number) { return s >= 700 ? "#10b981" : s >= 620 ? "#f59e0b" : "#ef4444"; }
 
+const inp: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" };
+const lbl: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 };
+const sel: React.CSSProperties = { ...inp, background: "#fff" };
+
+function FormFields({ form, setForm }: { form: typeof EMPTY_FORM; setForm: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM>> }) {
+  return (
+    <>
+      <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: 12, marginBottom: 16 }}>
+        <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Basic Info</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {[["First Name *", "first_name"], ["Last Name *", "last_name"], ["Email", "email"], ["Phone", "phone"]].map(([label, key]) => (
+            <div key={key}>
+              <label style={lbl}>{label}</label>
+              <input value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={inp} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: 12, marginBottom: 16 }}>
+        <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Address</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ gridColumn: "span 2" }}>
+            <label style={lbl}>Street Address</label>
+            <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} style={inp} placeholder="123 Main St" />
+          </div>
+          <div><label style={lbl}>City</label><input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} style={inp} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div><label style={lbl}>State</label><input value={form.state} maxLength={2} onChange={e => setForm(f => ({ ...f, state: e.target.value.toUpperCase() }))} style={inp} /></div>
+            <div><label style={lbl}>ZIP</label><input value={form.zip} onChange={e => setForm(f => ({ ...f, zip: e.target.value }))} style={inp} /></div>
+          </div>
+        </div>
+      </div>
+      <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: 12, marginBottom: 16 }}>
+        <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Lead Details</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label style={lbl}>Source</label>
+            <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} style={sel}>
+              {SOURCES.map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Status</label>
+            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={sel}>
+              {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Lead Score (0–100)</label>
+            <input type="number" min={0} max={100} value={form.lead_score} onChange={e => setForm(f => ({ ...f, lead_score: e.target.value }))} style={inp} placeholder="75" />
+          </div>
+          <div>
+            <label style={lbl}>Credit Score</label>
+            <input type="number" value={form.credit_score} onChange={e => setForm(f => ({ ...f, credit_score: e.target.value }))} style={inp} placeholder="640" />
+          </div>
+          <div>
+            <label style={lbl}>Service Plan Interest</label>
+            <select value={form.service_plan_interest} onChange={e => setForm(f => ({ ...f, service_plan_interest: e.target.value }))} style={sel}>
+              <option value="">— Select —</option>
+              {SERVICE_PLANS.map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Monthly Budget ($)</label>
+            <input type="number" value={form.monthly_budget} onChange={e => setForm(f => ({ ...f, monthly_budget: e.target.value }))} style={inp} placeholder="150" />
+          </div>
+          <div>
+            <label style={lbl}>Assigned Agent</label>
+            <select value={form.assigned_agent} onChange={e => setForm(f => ({ ...f, assigned_agent: e.target.value }))} style={sel}>
+              <option value="">— Unassigned —</option>
+              {AGENTS.map(a => <option key={a}>{a}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Follow-up Date</label>
+            <input type="date" value={form.follow_up_date} onChange={e => setForm(f => ({ ...f, follow_up_date: e.target.value }))} style={inp} />
+          </div>
+          <div style={{ gridColumn: "span 2" }}>
+            <label style={lbl}>Tags (comma-separated)</label>
+            <input value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} style={inp} placeholder="hot lead, no collections, homeowner" />
+          </div>
+          <div style={{ gridColumn: "span 2" }}>
+            <label style={lbl}>Notes</label>
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              style={{ ...inp, minHeight: 60, resize: "vertical" } as React.CSSProperties} />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function Page() {
   const router = useRouter();
   const [leads, setLeads] = useState<any[]>([]);
@@ -220,98 +312,6 @@ export default function Page() {
       return { first_name: obj.first_name || obj.name || "", last_name: obj.last_name || "", email: obj.email || "", phone: obj.phone || "", source: obj.source || "Other", status: obj.status || "new" };
     }).filter(r => r.first_name);
     supabase.from("leads").insert(rows).then(() => { setShowImport(false); setImportText(""); load(); });
-  }
-
-  const inp: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" };
-  const lbl: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 };
-  const sel: React.CSSProperties = { ...inp, background: "#fff" };
-
-  function FormFields() {
-    return (
-      <>
-        <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: 12, marginBottom: 16 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Basic Info</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {[["First Name *", "first_name"], ["Last Name *", "last_name"], ["Email", "email"], ["Phone", "phone"]].map(([label, key]) => (
-              <div key={key}>
-                <label style={lbl}>{label}</label>
-                <input value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={inp} />
-              </div>
-            ))}
-          </div>
-        </div>
-        <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: 12, marginBottom: 16 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Address</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div style={{ gridColumn: "span 2" }}>
-              <label style={lbl}>Street Address</label>
-              <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} style={inp} placeholder="123 Main St" />
-            </div>
-            <div><label style={lbl}>City</label><input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} style={inp} /></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <div><label style={lbl}>State</label><input value={form.state} maxLength={2} onChange={e => setForm(f => ({ ...f, state: e.target.value.toUpperCase() }))} style={inp} /></div>
-              <div><label style={lbl}>ZIP</label><input value={form.zip} onChange={e => setForm(f => ({ ...f, zip: e.target.value }))} style={inp} /></div>
-            </div>
-          </div>
-        </div>
-        <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: 12, marginBottom: 16 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Lead Details</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={lbl}>Source</label>
-              <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} style={sel}>
-                {SOURCES.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Status</label>
-              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={sel}>
-                {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Lead Score (0–100)</label>
-              <input type="number" min={0} max={100} value={form.lead_score} onChange={e => setForm(f => ({ ...f, lead_score: e.target.value }))} style={inp} placeholder="75" />
-            </div>
-            <div>
-              <label style={lbl}>Credit Score</label>
-              <input type="number" value={form.credit_score} onChange={e => setForm(f => ({ ...f, credit_score: e.target.value }))} style={inp} placeholder="640" />
-            </div>
-            <div>
-              <label style={lbl}>Service Plan Interest</label>
-              <select value={form.service_plan_interest} onChange={e => setForm(f => ({ ...f, service_plan_interest: e.target.value }))} style={sel}>
-                <option value="">— Select —</option>
-                {SERVICE_PLANS.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Monthly Budget ($)</label>
-              <input type="number" value={form.monthly_budget} onChange={e => setForm(f => ({ ...f, monthly_budget: e.target.value }))} style={inp} placeholder="150" />
-            </div>
-            <div>
-              <label style={lbl}>Assigned Agent</label>
-              <select value={form.assigned_agent} onChange={e => setForm(f => ({ ...f, assigned_agent: e.target.value }))} style={sel}>
-                <option value="">— Unassigned —</option>
-                {AGENTS.map(a => <option key={a}>{a}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Follow-up Date</label>
-              <input type="date" value={form.follow_up_date} onChange={e => setForm(f => ({ ...f, follow_up_date: e.target.value }))} style={inp} />
-            </div>
-            <div style={{ gridColumn: "span 2" }}>
-              <label style={lbl}>Tags (comma-separated)</label>
-              <input value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} style={inp} placeholder="hot lead, no collections, homeowner" />
-            </div>
-            <div style={{ gridColumn: "span 2" }}>
-              <label style={lbl}>Notes</label>
-              <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                style={{ ...inp, minHeight: 60, resize: "vertical" } as React.CSSProperties} />
-            </div>
-          </div>
-        </div>
-      </>
-    );
   }
 
   const TAG_COLORS = ["#3b82f6","#8b5cf6","#10b981","#f59e0b","#ef4444","#06b6d4","#ec4899"];
@@ -588,7 +588,7 @@ export default function Page() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
             <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 580, maxHeight: "92vh", overflowY: "auto" }}>
               <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 700 }}>{editing ? "Edit Lead" : "Add New Lead"}</h2>
-              <FormFields />
+              <FormFields form={form} setForm={setForm} />
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => { setShowForm(false); setEditing(null); setForm({ ...EMPTY_FORM }); }}
                   style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>

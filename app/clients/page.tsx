@@ -50,6 +50,100 @@ const lbl: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 7
 const fieldSection: React.CSSProperties = { marginBottom: 18 };
 const sectionHead: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: 10, paddingBottom: 6, borderBottom: "1px solid #f1f5f9" };
 
+function FormFields({ form, setForm }: { form: typeof EMPTY_FORM; setForm: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM>> }) {
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value }));
+  return (
+    <>
+      <div style={fieldSection}>
+        <p style={sectionHead}>Basic Info</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div><label style={lbl}>First Name *</label><input value={form.first_name} onChange={set("first_name")} style={inp} /></div>
+          <div><label style={lbl}>Last Name *</label><input value={form.last_name} onChange={set("last_name")} style={inp} /></div>
+          <div><label style={lbl}>Email</label><input type="email" value={form.email} onChange={set("email")} style={inp} /></div>
+          <div><label style={lbl}>Phone</label><input type="tel" value={form.phone} onChange={set("phone")} style={inp} /></div>
+          <div>
+            <label style={lbl}>Status</label>
+            <select value={form.status} onChange={set("status")} style={{ ...inp }}>
+              {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Credit Score</label>
+            <input type="number" min={300} max={850} value={form.credit_score} onChange={set("credit_score")} style={inp} placeholder="e.g. 582" />
+          </div>
+        </div>
+      </div>
+
+      <div style={fieldSection}>
+        <p style={sectionHead}>Personal</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div><label style={lbl}>Date of Birth</label><input type="date" value={form.dob} onChange={set("dob")} style={inp} /></div>
+          <div><label style={lbl}>SSN Last 4</label><input maxLength={4} value={form.ssn_last4} onChange={set("ssn_last4")} style={inp} placeholder="####" /></div>
+        </div>
+      </div>
+
+      <div style={fieldSection}>
+        <p style={sectionHead}>Address</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ gridColumn: "span 2" }}><label style={lbl}>Street Address</label><input value={form.address} onChange={set("address")} style={inp} /></div>
+          <div><label style={lbl}>City</label><input value={form.city} onChange={set("city")} style={inp} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div><label style={lbl}>State</label><input maxLength={2} value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value.toUpperCase() }))} style={inp} placeholder="GA" /></div>
+            <div><label style={lbl}>ZIP</label><input value={form.zip} onChange={set("zip")} style={inp} /></div>
+          </div>
+        </div>
+      </div>
+
+      <div style={fieldSection}>
+        <p style={sectionHead}>Service & Billing</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <label style={lbl}>Service Plan</label>
+            <select value={form.service_plan} onChange={set("service_plan")} style={{ ...inp }}>
+              {PLANS.map(p => <option key={p} value={p}>{p || "Select…"}</option>)}
+            </select>
+          </div>
+          <div><label style={lbl}>Monthly Charge ($)</label><input type="number" value={form.monthly_charge} onChange={set("monthly_charge")} style={inp} placeholder="0.00" /></div>
+          <div>
+            <label style={lbl}>Contract Status</label>
+            <select value={form.contract_status} onChange={set("contract_status")} style={{ ...inp }}>
+              {["unsigned", "pending", "signed"].map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Payment Status</label>
+            <select value={form.payment_status} onChange={set("payment_status")} style={{ ...inp }}>
+              {["current", "past_due", "no_card"].map(s => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style={fieldSection}>
+        <p style={sectionHead}>Additional Info</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <label style={lbl}>Referral Source</label>
+            <select value={form.referral_source} onChange={set("referral_source")} style={{ ...inp }}>
+              {SOURCES.map(s => <option key={s} value={s}>{s || "Select…"}</option>)}
+            </select>
+          </div>
+          <div><label style={lbl}>Assigned Agent</label><input value={form.assigned_agent} onChange={set("assigned_agent")} style={inp} placeholder="Agent name" /></div>
+          <div style={{ gridColumn: "span 2" }}>
+            <label style={lbl}>Tags (comma-separated)</label>
+            <input value={form.tags} onChange={set("tags")} style={inp} placeholder="VIP, New, At Risk" />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" id="portal" checked={form.portal_access} onChange={set("portal_access")} style={{ width: 15, height: 15, accentColor: "#1e3a5f" }} />
+            <label htmlFor="portal" style={{ fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}>Portal Access Enabled</label>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────
 export default function Page() {
   const router = useRouter();
@@ -257,101 +351,6 @@ export default function Page() {
     setImportText("");
     setImportFile(null);
     load();
-  }
-
-  // ── Form fields (shared New + Edit) ──
-  function FormFields() {
-    const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setForm(f => ({ ...f, [k]: e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value }));
-    return (
-      <>
-        <div style={fieldSection}>
-          <p style={sectionHead}>Basic Info</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div><label style={lbl}>First Name *</label><input value={form.first_name} onChange={set("first_name")} style={inp} /></div>
-            <div><label style={lbl}>Last Name *</label><input value={form.last_name} onChange={set("last_name")} style={inp} /></div>
-            <div><label style={lbl}>Email</label><input type="email" value={form.email} onChange={set("email")} style={inp} /></div>
-            <div><label style={lbl}>Phone</label><input type="tel" value={form.phone} onChange={set("phone")} style={inp} /></div>
-            <div>
-              <label style={lbl}>Status</label>
-              <select value={form.status} onChange={set("status")} style={{ ...inp }}>
-                {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Credit Score</label>
-              <input type="number" min={300} max={850} value={form.credit_score} onChange={set("credit_score")} style={inp} placeholder="e.g. 582" />
-            </div>
-          </div>
-        </div>
-
-        <div style={fieldSection}>
-          <p style={sectionHead}>Personal</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div><label style={lbl}>Date of Birth</label><input type="date" value={form.dob} onChange={set("dob")} style={inp} /></div>
-            <div><label style={lbl}>SSN Last 4</label><input maxLength={4} value={form.ssn_last4} onChange={set("ssn_last4")} style={inp} placeholder="####" /></div>
-          </div>
-        </div>
-
-        <div style={fieldSection}>
-          <p style={sectionHead}>Address</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div style={{ gridColumn: "span 2" }}><label style={lbl}>Street Address</label><input value={form.address} onChange={set("address")} style={inp} /></div>
-            <div><label style={lbl}>City</label><input value={form.city} onChange={set("city")} style={inp} /></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <div><label style={lbl}>State</label><input maxLength={2} value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value.toUpperCase() }))} style={inp} placeholder="GA" /></div>
-              <div><label style={lbl}>ZIP</label><input value={form.zip} onChange={set("zip")} style={inp} /></div>
-            </div>
-          </div>
-        </div>
-
-        <div style={fieldSection}>
-          <p style={sectionHead}>Service & Billing</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div>
-              <label style={lbl}>Service Plan</label>
-              <select value={form.service_plan} onChange={set("service_plan")} style={{ ...inp }}>
-                {PLANS.map(p => <option key={p} value={p}>{p || "Select…"}</option>)}
-              </select>
-            </div>
-            <div><label style={lbl}>Monthly Charge ($)</label><input type="number" value={form.monthly_charge} onChange={set("monthly_charge")} style={inp} placeholder="0.00" /></div>
-            <div>
-              <label style={lbl}>Contract Status</label>
-              <select value={form.contract_status} onChange={set("contract_status")} style={{ ...inp }}>
-                {["unsigned", "pending", "signed"].map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Payment Status</label>
-              <select value={form.payment_status} onChange={set("payment_status")} style={{ ...inp }}>
-                {["current", "past_due", "no_card"].map(s => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div style={fieldSection}>
-          <p style={sectionHead}>Additional Info</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div>
-              <label style={lbl}>Referral Source</label>
-              <select value={form.referral_source} onChange={set("referral_source")} style={{ ...inp }}>
-                {SOURCES.map(s => <option key={s} value={s}>{s || "Select…"}</option>)}
-              </select>
-            </div>
-            <div><label style={lbl}>Assigned Agent</label><input value={form.assigned_agent} onChange={set("assigned_agent")} style={inp} placeholder="Agent name" /></div>
-            <div style={{ gridColumn: "span 2" }}>
-              <label style={lbl}>Tags (comma-separated)</label>
-              <input value={form.tags} onChange={set("tags")} style={inp} placeholder="VIP, New, At Risk" />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input type="checkbox" id="portal" checked={form.portal_access} onChange={set("portal_access")} style={{ width: 15, height: 15, accentColor: "#1e3a5f" }} />
-              <label htmlFor="portal" style={{ fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}>Portal Access Enabled</label>
-            </div>
-          </div>
-        </div>
-      </>
-    );
   }
 
   // ── Avatar ──
@@ -631,7 +630,7 @@ export default function Page() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 600, maxHeight: "92vh", overflowY: "auto" }}>
             <h2 style={{ margin: "0 0 18px", fontSize: 18, fontWeight: 700 }}>Add New Client</h2>
-            <FormFields />
+            <FormFields form={form} setForm={setForm} />
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => setShowForm(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
               <button onClick={saveNew} disabled={saving} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{saving ? "Saving…" : "Save Client"}</button>
@@ -645,7 +644,7 @@ export default function Page() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 600, maxHeight: "92vh", overflowY: "auto" }}>
             <h2 style={{ margin: "0 0 18px", fontSize: 18, fontWeight: 700 }}>Edit Client — {clientName(editing)}</h2>
-            <FormFields />
+            <FormFields form={form} setForm={setForm} />
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => setEditing(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
               <button onClick={saveEdit} disabled={saving} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{saving ? "Saving…" : "Save Changes"}</button>
