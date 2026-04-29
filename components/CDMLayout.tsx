@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 
 const T13 = "\t\t\t\t\t\t\t\t\t\t\t\t\t";
 const T14 = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
-// CDM trial end: 48h after account creation (cookie ts 1777425620 = Apr 29, 2026 ~01:20 UTC)
-const CDM_TRIAL_END = 1777598420000;
+// CDM trial end: derived from observed countdown (35h at ~12:45 UTC Apr 29, 2026)
+const CDM_TRIAL_END = 1777594500000;
 
 const Icons = {
   Dashboard: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -156,7 +156,10 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters","partner"]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
-  const [giftHours] = useState(() => Math.floor((CDM_TRIAL_END - Date.now()) / 3600000));
+  const [giftHours, setGiftHours] = useState(0);
+  useEffect(() => {
+    setGiftHours(Math.floor((CDM_TRIAL_END - Date.now()) / 3600000));
+  }, []);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const toggleExpand = (key: string) => {
