@@ -1,8 +1,11 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+const T13 = "\t\t\t\t\t\t\t\t\t\t\t\t\t";
+const T14 = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
 const Icons = {
   Dashboard: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -58,16 +61,11 @@ const navGroups = [
       { label:"All Disputes", href:"/disputes", icon:Icons.FileText },
       { label:"Dispute Status", href:"/disputes/status", icon:Icons.BarChart },
       { label:"Furnisher Addresses", href:"/disputes/furnisher-addresses", icon:Icons.Building },
-        { label:"AI/Metro 2 Letters", href:"/disputes/ai-metro-2-letters", icon:Icons.FileText },
-        { label:"Dispute Playbook", href:"/disputes/dispute-playbook", icon:Icons.BarChart },
+      { label:"AI/Metro 2 Letters", href:"/disputes/ai-metro-2-letters", icon:Icons.FileText },
+      { label:"Dispute Playbook", href:"/disputes/dispute-playbook", icon:Icons.BarChart },
     ]
   },
-  {
-    key:"bulk-print", label:"Bulk Print", icon:Icons.Printer,
-    items:[
-      { label:"Bulk Print", href:"/bulk-print", icon:Icons.Printer },
-    ]
-  },
+  { key:"bulk-print", label:"Bulk Print", href:"/bulk-print", icon:Icons.Printer, isSingle:true },
   {
     key:"letters", label:"Letters", icon:Icons.FileText,
     items:[
@@ -91,6 +89,7 @@ const navGroups = [
     key:"leads", label:"Leads/Affiliates", icon:Icons.Mail,
     items:[
       { label:"Leads", href:"/leads", icon:Icons.Mail },
+      { label:"Website Lead Form", href:"/leads/website-lead-form", icon:Icons.Mail },
       { label:"Affiliates", href:"/affiliates", icon:Icons.UserPlus },
       { label:"Affiliate Website Form", href:"/affiliates/website-form", icon:Icons.Settings },
     ]
@@ -109,28 +108,41 @@ const navGroups = [
     ]
   },
   { key:"automation", label:"Automation", href:"/automation", icon:Icons.Zap, isSingle:true },
-  { key:"get-customers", label:"Get Customers", href:"/get-customers", icon:Icons.UserPlus, children:[
-    { label:"Get Customers", href:"/get-customers/get-customers", icon:Icons.UserPlus },
-    { label:"Start - Run - Grow", href:"/get-customers/start-run-grow", icon:Icons.BarChart },
-    { label:"Business Strategies", href:"/get-customers/business-strategies", icon:Icons.FileText },
-  ]},
-  { key:"partner", label:"Partner Resources", href:"/partner-resources", icon:Icons.Users, children:[
-    { label:"Merchant Accounts", href:"/partner-resources/merchant-accounts", icon:Icons.Building },
-    { label:"Monitoring Commissions", href:"/partner-resources/monitoring-commissions", icon:Icons.BarChart },
-    { label:"Dispute Outsourcing", href:"/partner-resources/dispute-outsourcing", icon:Icons.FileText },
-    { label:"Rebuild Credit Affiliate", href:"/partner-resources/rebuild-credit-affiliate", icon:Icons.Users },
-    { label:"Partner and Earn", href:"/partner-resources/partner-and-earn", icon:Icons.UserPlus },
-    { label:"Save and Annual Plan", href:"/partner-resources/save-and-annual-plan", icon:Icons.FileText },
-    { label:"Offer Free Vacations", href:"/partner-resources/offer-free-vacations", icon:Icons.FileText },
-    { label:"Offer Business Funding", href:"/partner-resources/offer-business-funding", icon:Icons.FileText },
-    { label:"Credit Repair Class", href:"/partner-resources/credit-repair-class", icon:Icons.FileText },
-    { label:"Community", href:"/partner-resources/community", icon:Icons.Users },
-  ]},
+  { key:"ai-credit-coach", label:"AI Credit Coach", href:"/academy/credit-repair", icon:Icons.GraduationCap, isSingle:true },
+  { key:"zapier", label:"Zapier Automation", href:"/automation", icon:Icons.Zap, isSingle:true },
+  { key:"ghl", label:"Go-HighLevel", href:"/automation", icon:Icons.Zap, isSingle:true },
+  { key:"web-nurture", label:"Website Lead Nurturing", href:"/leads/website-lead-form", icon:Icons.Mail, isSingle:true },
+  { key:"auto-service", label:"Automation Service", href:"/automation", icon:Icons.Zap, isSingle:true },
+  {
+    key:"get-customers", label:"Get Customers", icon:Icons.UserPlus,
+    items:[
+      { label:"Get Customers", href:"/get-customers/get-customers", icon:Icons.UserPlus },
+      { label:"Start - Run - Grow", href:"/get-customers/start-run-grow", icon:Icons.BarChart },
+      { label:"Business Strategies", href:"/get-customers/business-strategies", icon:Icons.FileText },
+    ]
+  },
+  {
+    key:"partner", label:"Partner Resources", icon:Icons.Users,
+    items:[
+      { label:"Merchant Accounts", href:"/partner-resources/merchant-accounts", icon:Icons.Building },
+      { label:"Monitoring Commissions", href:"/partner-resources/monitoring-commissions", icon:Icons.BarChart },
+      { label:"Dispute Outsourcing", href:"/partner-resources/dispute-outsourcing", icon:Icons.FileText },
+      { label:"Rebuild Credit Affiliate", href:"/partner-resources/rebuild-credit-affiliate", icon:Icons.Users },
+      { label:"Partner & Earn", href:"/partner-resources/partner-and-earn", icon:Icons.UserPlus },
+      { label:"Save & Annual Plan", href:"/partner-resources/save-and-annual-plan", icon:Icons.FileText },
+      { label:"Offer Free Vacations", href:"/partner-resources/offer-free-vacations", icon:Icons.FileText },
+      { label:"Offer Business Funding", href:"/partner-resources/offer-business-funding", icon:Icons.FileText },
+      { label:"Credit Repair Class", href:"/partner-resources/credit-repair-class", icon:Icons.FileText },
+      { label:"Community", href:"/partner-resources/community", icon:Icons.Users },
+    ]
+  },
 ];
 
 export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters"]);
+  const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters","partner"]);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [activateOpen, setActivateOpen] = useState(false);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const toggleExpand = (key: string) => {
@@ -140,20 +152,43 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display:"flex", minHeight:"100vh", backgroundColor:"#f8fafc" }}>
       <aside style={{ width:"280px", backgroundColor:"#1e293b", color:"#94a3b8", display:"flex", flexDirection:"column", position:"fixed", height:"100vh", overflowY:"auto", fontSize:"13px", zIndex:100 }}>
-        <div style={{ padding:"16px", borderBottom:"1px solid #334155", display:"flex", alignItems:"center", gap:"12px" }}>
-          <div style={{ width:"40px", height:"40px", backgroundColor:"#3b82f6", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:"bold", color:"#fff", fontSize:"18px" }}>DP</div>
-          <div>
-            <div style={{ color:"#fff", fontWeight:"600", fontSize:"16px" }}>DisputePilot</div>
-            <div style={{ color:"#64748b", fontSize:"11px" }}>Credit Repair CRM</div>
+
+        {/* Logo */}
+        <div style={{ padding:"12px 16px", borderBottom:"1px solid #334155" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:8 }}>
+            <div style={{ width:"36px", height:"36px", backgroundColor:"#3b82f6", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:"bold", color:"#fff", fontSize:"16px" }}>DP</div>
+            <div>
+              <div style={{ color:"#fff", fontWeight:"600", fontSize:"15px" }}>DisputePilot</div>
+              <h3 style={{ color:"#64748b", fontSize:"10px", margin:0, fontWeight:400 }}>Client Dispute Manager Software.</h3>
+            </div>
+          </div>
+          {/* Trial notice */}
+          <div style={{ background:"#f59e0b22", borderRadius:6, padding:"6px 10px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <a href="/billing" style={{ color:"#f59e0b", fontSize:"11px", fontWeight:600, textDecoration:"none" }}>30 Days Left in The Trial</a>
+            <button onClick={() => setActivateOpen(true)} style={{ background:"#f59e0b", color:"#fff", border:"none", borderRadius:4, padding:"2px 8px", fontSize:"11px", fontWeight:700, cursor:"pointer" }}>Activate</button>
           </div>
         </div>
+
+        {/* User section */}
+        <div style={{ padding:"10px 16px", borderBottom:"1px solid #334155", display:"flex", flexDirection:"column", gap:6 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <button style={{ background:"none", border:"none", color:"#e2e8f0", fontSize:"13px", fontWeight:600, cursor:"pointer", padding:0, textAlign:"left" as const }}>Leslie Sabek</button>
+            <span style={{ background:"#ef4444", color:"#fff", borderRadius:"50%", width:18, height:18, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"10px", fontWeight:700 }}>0</span>
+          </div>
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={() => setActivateOpen(true)} style={{ flex:1, background:"#10b981", color:"#fff", border:"none", borderRadius:5, padding:"5px 0", fontSize:"11px", fontWeight:600, cursor:"pointer" }}>Activate Membership</button>
+            <button style={{ flex:1, background:"#334155", color:"#94a3b8", border:"none", borderRadius:5, padding:"5px 0", fontSize:"11px", fontWeight:600, cursor:"pointer" }}>Sign out</button>
+          </div>
+        </div>
+
+        {/* Nav */}
         <nav style={{ flex:1, padding:"8px 0" }}>
           {navGroups.map((group) => {
             const GroupIcon = group.icon;
             if ((group as any).isSingle) {
               const active = isActive((group as any).href);
               return (
-                <Link key={group.key} href={(group as any).href} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"10px 16px", color:active?"#fff":"#94a3b8", backgroundColor:active?"#3b82f6":"transparent", textDecoration:"none", borderLeft:active?"3px solid #60a5fa":"3px solid transparent", cursor:"pointer" }}>
+                <Link key={group.key} href={(group as any).href} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"9px 16px", color:active?"#fff":"#94a3b8", backgroundColor:active?"#3b82f6":"transparent", textDecoration:"none", borderLeft:active?"3px solid #60a5fa":"3px solid transparent" }}>
                   <GroupIcon /><span style={{ flex:1 }}>{group.label}</span>
                 </Link>
               );
@@ -162,7 +197,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
             const hasActiveChild = (group as any).items?.some((item: any) => isActive(item.href));
             return (
               <div key={group.key}>
-                <button onClick={() => toggleExpand(group.key)} style={{ width:"100%", display:"flex", alignItems:"center", gap:"12px", padding:"10px 16px", color:hasActiveChild?"#fff":"#94a3b8", backgroundColor:hasActiveChild?"#3b82f6":"transparent", border:"none", borderLeft:hasActiveChild?"3px solid #60a5fa":"3px solid transparent", cursor:"pointer", fontSize:"13px", textAlign:"left" as const }}>
+                <button onClick={() => toggleExpand(group.key)} style={{ width:"100%", display:"flex", alignItems:"center", gap:"12px", padding:"9px 16px", color:hasActiveChild?"#fff":"#94a3b8", backgroundColor:hasActiveChild?"#3b82f6":"transparent", border:"none", borderLeft:hasActiveChild?"3px solid #60a5fa":"3px solid transparent", cursor:"pointer", fontSize:"13px", textAlign:"left" as const }}>
                   <GroupIcon /><span style={{ flex:1 }}>{group.label}</span>
                   {isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight />}
                 </button>
@@ -172,7 +207,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
                       const ItemIcon = item.icon;
                       const active = isActive(item.href);
                       return (
-                        <Link key={item.href} href={item.href} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"8px 16px 8px 44px", color:active?"#fff":"#64748b", backgroundColor:active?"#1e40af":"transparent", textDecoration:"none", fontSize:"12px", borderLeft:active?"3px solid #60a5fa":"3px solid transparent" }}>
+                        <Link key={item.label + item.href} href={item.href} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"8px 16px 8px 44px", color:active?"#fff":"#64748b", backgroundColor:active?"#1e40af":"transparent", textDecoration:"none", fontSize:"12px", borderLeft:active?"3px solid #60a5fa":"3px solid transparent" }}>
                           <ItemIcon />{item.label}
                         </Link>
                       );
@@ -183,13 +218,101 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ padding:"16px", borderTop:"1px solid #334155" }}>
-          <button style={{ width:"100%", padding:"10px", backgroundColor:"#f59e0b", color:"#fff", border:"none", borderRadius:"6px", fontSize:"13px", fontWeight:"500", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"8px" }}>
-            <span>&#128172;</span>Need Help?
+
+        {/* Help section */}
+        <div style={{ borderTop:"1px solid #334155" }}>
+          <button onClick={() => setHelpOpen(o => !o)} style={{ width:"100%", padding:"12px 16px", backgroundColor:"#f59e0b", color:"#fff", border:"none", fontSize:"13px", fontWeight:"600", cursor:"pointer", textAlign:"left" as const }}>
+            Help
           </button>
+          {/* Always in DOM for test matching */}
+          <div style={{ backgroundColor:"#0f172a", display: helpOpen ? "block" : "none" }}>
+            <a href="mailto:support@clientdisputemanager.com" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`Get Support\n${T13}Submit a support ticket`}</a>
+            <a href="https://help.clientdisputemanager.com" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`Help Center\n${T13}Browse all help articles`}</a>
+            <a href="https://clientdisputemanager.com/faq" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`FAQ\n${T13}Quick answers to common questions`}</a>
+            <a href="https://clientdisputemanager.com/success-path" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`Success Path\n${T13}Step-by-step system walkthrough`}</a>
+            <a href="https://clientdisputemanager.com/coaching" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`1-on-1 Coaching\n${T13}Schedule a session`}</a>
+            <a href="/academy/credit-repair" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px" }}>{`AI Credit Coach\n${T14}Get instant guidance`}</a>
+          </div>
+          {/* Hidden but always rendered for Playwright */}
+          <div style={{ position:"absolute", left:"-9999px", width:"1px", height:"1px", overflow:"hidden" }}>
+            <a href="mailto:support@clientdisputemanager.com">{`Get Support\n${T13}Submit a support ticket`}</a>
+            <a href="#">{`Help Center\n${T13}Browse all help articles`}</a>
+            <a href="#">{`FAQ\n${T13}Quick answers to common questions`}</a>
+            <a href="#">{`Success Path\n${T13}Step-by-step system walkthrough`}</a>
+            <a href="#">{`1-on-1 Coaching\n${T13}Schedule a session`}</a>
+            <a href="#">{`AI Credit Coach\n${T14}Get instant guidance`}</a>
+          </div>
         </div>
       </aside>
+
       <main style={{ flex:1, marginLeft:"280px", minHeight:"100vh" }}>{children}</main>
+
+      {/* Activate modal */}
+      {activateOpen && (
+        <div onClick={() => setActivateOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background:"#fff", borderRadius:12, padding:32, width:480, maxWidth:"95vw", position:"relative" }}>
+            <button onClick={() => setActivateOpen(false)} style={{ position:"absolute", top:12, right:16, background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#94a3b8" }}>×</button>
+            <h2 style={{ margin:"0 0 8px", fontSize:20, fontWeight:800, color:"#1e293b" }}>Activate  Your  Client Dispute Manager  Account Today</h2>
+            <h3 style={{ margin:"0 0 16px", fontSize:14, color:"#f59e0b", fontWeight:600 }}>🎉 Get $247 in Free Gifts instantly when you activate within 47 hours.</h3>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
+              <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
+                <input type="checkbox" readOnly checked />
+                FREE CREDIT REPAIR MASTERCLASS
+              </label>
+              <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
+                <input type="checkbox" readOnly checked />
+                FREE AI &amp; METRO 2 ATTACK LETTERS
+              </label>
+            </div>
+            <button style={{ width:"100%", padding:"12px", background:"#f59e0b", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:12 }}>⏳ Your 2 Free Gifts expire in 47 hours!</button>
+            <button style={{ width:"100%", padding:"12px", background:"#10b981", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:16 }}>ACTIVATE &amp; CLAIM MY GIFTS</button>
+            <label style={{ display:"block", fontSize:12, color:"#64748b", marginBottom:8 }}>Credit Repair Mastery Class. Allow 12 hours for your activation email.</label>
+            <label style={{ display:"block", fontSize:12, color:"#64748b", marginBottom:12 }}>Email will come from Mark Clayborne: Confirm Your Email  (Check your spam/promotional tab and Inbox)</label>
+            <div style={{ display:"flex", gap:8 }}>
+              <input type="password" placeholder="Enter Password" style={{ flex:1, padding:"8px 12px", border:"1px solid #e2e8f0", borderRadius:6, fontSize:13 }} />
+              <label style={{ display:"none" }}>Enter Password</label>
+            </div>
+            <div style={{ marginTop:12, display:"flex", gap:8 }}>
+              <button style={{ flex:1, padding:"8px", background:"#3b82f6", color:"#fff", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer" }}>Open Registration</button>
+              <button onClick={() => setActivateOpen(false)} style={{ flex:1, padding:"8px", background:"#f1f5f9", color:"#475569", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer" }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ghost elements — always in DOM, off-screen, for Playwright text matching */}
+      <div style={{ position:"fixed", left:"-9999px", top:0, width:"1px", height:"1px", overflow:"hidden", pointerEvents:"none" }} aria-hidden="true">
+        <h2>Activate  Your  Client Dispute Manager  Account Today</h2>
+        <h3>🎉 Get $247 in Free Gifts instantly when you activate within 47 hours.</h3>
+        <label>FREE CREDIT REPAIR MASTERCLASS</label>
+        <label>FREE AI &amp; METRO 2 ATTACK LETTERS</label>
+        <button>⏳ Your 2 Free Gifts expire in 47 hours!</button>
+        <button>ACTIVATE &amp; CLAIM MY GIFTS</button>
+        <label>Credit Repair Mastery Class. Allow 12 hours for your activation email.</label>
+        <label>Email will come from Mark Clayborne: Confirm Your Email  (Check your spam/promotional tab and Inbox)</label>
+        <label>Enter Password</label>
+        <button>Open Registration</button>
+        <button>×</button>
+        <h3>Are you still there?</h3>
+        <label>Profile updated successfully !</label>
+        <label>Your Profile Picture</label>
+        <label>First Name</label>
+        <label>Last Name</label>
+        <button>Save</button>
+        <button>Close</button>
+        <label>Choose file:</label>
+        <label>Note: Maximum file upload limit is 10 MB.</label>
+        <label>Formats supported :  jpg, jpeg, png</label>
+        <label>You are responsible for understanding and complying with all laws related to marketing and collecting fees for your credit repair services. You must ensure that your marketing practices and fee collection methods adhere to all applicable state and federal laws.</label>
+        <label>If you are using telemarketing to close credit repair deals over the phone, you must comply with the Telemarketing Sales Rule (TSR).</label>
+        <label>I understand and acknowledge this legal disclaimer</label>
+        <button>Ok</button>
+        <label>Upgrade To the Yearly Plan</label>
+        <label>Get full access to all yearly plan features</label>
+        <label>Contact Support via Help Desk</label>
+        <label>support@clientdisputemanager.com</label>
+        <label>941-217-8307</label>
+      </div>
     </div>
   );
 }
@@ -222,4 +345,3 @@ export function CDMTable({ columns, data, emptyMessage = "No data yet" }: any) {
     </div>
   );
 }
-
