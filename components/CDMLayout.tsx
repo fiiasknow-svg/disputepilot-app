@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -27,34 +27,44 @@ const Icons = {
   Bell: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
   Image: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
   MessageSquare: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+  Brain: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.98-3.17 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.46-4.05z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.98-3.17 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.46-4.05z"/></svg>,
+  Link: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+  Globe: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+  HelpCircle: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  Star: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  Video: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>,
+  Phone: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.16 6.16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
 };
 
 const navGroups = [
-  { key:"dashboard", label:"Dashboard", href:"/dashboard", icon:Icons.Dashboard, isSingle:true },
+  { key: "dashboard", label: "Dashboard", href: "/dashboard", icon: Icons.Dashboard, isSingle: true },
   {
-    key:"company", label:"Company", icon:Icons.Building,
-    items:[
-      { label:"Company Settings", href:"/company/settings", icon:Icons.Settings },
-      { label:"Portals/Mobile App", href:"/company/portals", icon:Icons.Company },
-      { label:"Manage Portal Content", href:"/company/portal-content", icon:Icons.FileText },
-      { label:"Credit Monitoring", href:"/company/credit-monitoring", icon:Icons.BarChart },
-      { label:"Digital Contracts", href:"/company/digital-contracts", icon:Icons.FileText },
-      { label:"Self Service Signup", href:"/company/self-service-signup", icon:Icons.UserPlus },
-      { label:"Client Auto Signup", href:"/company/client-auto-signup", icon:Icons.Zap },
-      { label:"Credit Analysis/Analyzer", href:"/credit-analysis", icon:Icons.BarChart },
-      { label:"Images/Documents", href:"/company/images-documents", icon:Icons.Image },
-      { label:"Manage Emails", href:"/company/manage-emails", icon:Icons.Mail },
-      { label:"Dispute Status", href:"/disputes/status", icon:Icons.BarChart },
-      { label:"Notify/Automation", href:"/company/notify-automation", icon:Icons.Zap },
-      { label:"Employees", href:"/employees", icon:Icons.Users },
-      { label:"Team Messages", href:"/company/team-messages", icon:Icons.MessageSquare },
-      { label:"Letter Vault", href:"/letters/vault", icon:Icons.FileText },
-      { label:"Calendar", href:"/calendar", icon:Icons.Calendar },
-      { label:"Configuration", href:"/settings/configuration", icon:Icons.Settings },
+    key: "company", label: "Company", icon: Icons.Building,
+    items: [
+      { label: "Company Settings", href: "/company/settings", icon: Icons.Settings },
+      { label: "Portals/Mobile App", href: "/company/portals", icon: Icons.Company },
+      { label: "Manage Portal Content", href: "/company/manage-portal-content", icon: Icons.FileText },
+      { label: "Credit Monitoring", href: "/company/credit-monitoring", icon: Icons.BarChart },
+      { label: "Digital Contracts", href: "/company/digital-contracts", icon: Icons.FileText },
+      { label: "Self Service Signup", href: "/company/self-service-signup", icon: Icons.UserPlus },
+      { label: "Client Auto Signup", href: "/company/client-auto-signup", icon: Icons.Zap },
+      { label: "Images/Documents", href: "/company/images-documents", icon: Icons.Image },
+      { label: "Manage Emails", href: "/company/manage-emails", icon: Icons.Mail },
+      { label: "Dispute Status", href: "/disputes/status", icon: Icons.BarChart },
+      { label: "Notify/Automation", href: "/company/notify-automation", icon: Icons.Zap },
+      { label: "Employees", href: "/employees", icon: Icons.Users },
+      { label: "Team Messages", href: "/company/team-messages", icon: Icons.MessageSquare },
+      { label: "Letter Vault", href: "/letters/vault", icon: Icons.FileText },
+      { label: "Calendar", href: "/calendar", icon: Icons.Calendar },
+      { label: "Configuration", href: "/settings/configuration", icon: Icons.Settings },
     ]
   },
-  { key:"customers", label:"Customers", href:"/clients", icon:Icons.Users, isSingle:true },
-  { key:"credit-analysis", label:"Credit Analysis/Analyzer", href:"/credit-analysis", icon:Icons.BarChart, isSingle:true },
+  { key: "customers", label: "Customers", href: "/clients", icon: Icons.Users, isSingle: true },
+  { key: "credit-analysis", label: "Credit Analysis/Analyzer", href: "/credit-analysis", icon: Icons.BarChart, isSingle: true },
+  { key: "dispute-manager", label: "Dispute Manager", href: "/disputes", icon: Icons.FileText, isSingle: true },
+  { key: "bulk-print", label: "Bulk Print", href: "/bulk-print", icon: Icons.Printer, isSingle: true },
+  { key: "billing", label: "Billing", href: "/billing", icon: Icons.DollarSign, isSingle: true },
+  { key: "leads", label: "Leads/Affiliates", href: "/leads", icon: Icons.Mail, isSingle: true },
   {
     key:"dispute-manager", label:"Dispute Manager", icon:Icons.FileText,
     items:[
@@ -202,7 +212,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
                   {isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight />}
                 </button>
                 {isExpanded && (group as any).items && (
-                  <div style={{ backgroundColor:"#0f172a" }}>
+                  <div style={{ backgroundColor: "#0f172a" }}>
                     {(group as any).items.map((item: any) => {
                       const ItemIcon = item.icon;
                       const active = isActive(item.href);
@@ -318,26 +328,26 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
 }
 
 export function CDMBtn({ children, onClick, variant = "primary", style = {} }: any) {
-  const base = { padding:"8px 16px", borderRadius:"6px", border:"none", cursor:"pointer", fontWeight:600, fontSize:"13px", ...style };
-  const variants: any = { primary:{ background:"#2563eb", color:"#fff" }, secondary:{ background:"#f3f4f6", color:"#374151", border:"1px solid #e5e7eb" }, danger:{ background:"#ef4444", color:"#fff" }, success:{ background:"#16a34a", color:"#fff" } };
+  const base = { padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "13px", ...style };
+  const variants: any = { primary: { background: "#2563eb", color: "#fff" }, secondary: { background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }, danger: { background: "#ef4444", color: "#fff" }, success: { background: "#16a34a", color: "#fff" } };
   return <button onClick={onClick} style={{ ...base, ...variants[variant] }}>{children}</button>;
 }
 
 export function CDMTable({ columns, data, emptyMessage = "No data yet" }: any) {
   return (
-    <div style={{ background:"#fff", border:"1px solid #e5e7eb", borderRadius:"8px", overflow:"hidden" }}>
-      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"14px" }}>
+    <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
         <thead>
-          <tr style={{ background:"#f9fafb", borderBottom:"1px solid #e5e7eb" }}>
-            {columns.map((c: any) => <th key={c.key} style={{ padding:"12px 16px", textAlign:"left" as const, fontWeight:600, color:"#374151", fontSize:"12px", textTransform:"uppercase" as const, letterSpacing:"0.05em" }}>{c.label}</th>)}
+          <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+            {columns.map((c: any) => <th key={c.key} style={{ padding: "12px 16px", textAlign: "left" as const, fontWeight: 600, color: "#374151", fontSize: "12px", textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{c.label}</th>)}
           </tr>
         </thead>
         <tbody>
           {!data?.length ? (
-            <tr><td colSpan={columns.length} style={{ padding:"32px", textAlign:"center" as const, color:"#888" }}>{emptyMessage}</td></tr>
+            <tr><td colSpan={columns.length} style={{ padding: "32px", textAlign: "center" as const, color: "#888" }}>{emptyMessage}</td></tr>
           ) : data.map((row: any, i: number) => (
-            <tr key={i} style={{ borderBottom:"1px solid #f3f4f6" }}>
-              {columns.map((c: any) => <td key={c.key} style={{ padding:"12px 16px", color:"#374151" }}>{c.render ? c.render(row) : row[c.key]}</td>)}
+            <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
+              {columns.map((c: any) => <td key={c.key} style={{ padding: "12px 16px", color: "#374151" }}>{c.render ? c.render(row) : row[c.key]}</td>)}
             </tr>
           ))}
         </tbody>
