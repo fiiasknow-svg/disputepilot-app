@@ -4,6 +4,6 @@ import { useRouter } from "next/navigation";
 
 export default function Page() {
   const router = useRouter();
-  useEffect(() => { router.replace("/letters/vault"); }, [router]);
+  useEffect(() => { router.replace("/letter-vault"); }, [router]);
   return null;
 }

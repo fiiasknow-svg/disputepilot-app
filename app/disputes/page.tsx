@@ -579,7 +579,7 @@ export default function Page() {
               Assigning to: <strong>{assignTarget.account_name}</strong> ({assignTarget.bureau})
             </p>
             {letters.length === 0 ? (
-              <p style={{ color: "#94a3b8", textAlign: "center", padding: 20 }}>No letters in vault. <a href="/letters/vault" style={{ color: "#1e3a5f" }}>Add letters first.</a></p>
+              <p style={{ color: "#94a3b8", textAlign: "center", padding: 20 }}>No letters in vault. <a href="/letter-vault" style={{ color: "#1e3a5f" }}>Add letters first.</a></p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
                 {letters.map(l => (

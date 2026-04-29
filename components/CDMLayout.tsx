@@ -56,7 +56,7 @@ const navGroups = [
       { label: "Notify/Automation", href: "/company/notify-automation", icon: Icons.Zap },
       { label: "Employees", href: "/employees", icon: Icons.Users },
       { label: "Team Messages", href: "/company/team-messages", icon: Icons.MessageSquare },
-      { label: "Letter Vault", href: "/letters/vault", icon: Icons.FileText },
+      { label: "Letter Vault", href: "/letter-vault", icon: Icons.FileText },
       { label: "Calendar", href: "/calendar", icon: Icons.Calendar },
       { label: "Configuration", href: "/settings/configuration", icon: Icons.Settings },
     ]
@@ -82,7 +82,7 @@ const navGroups = [
     key:"letters", label:"Letters", icon:Icons.FileText,
     items:[
       { label:"All Letters", href:"/letters", icon:Icons.FileText },
-      { label:"Letter Vault", href:"/letters/vault", icon:Icons.FileText },
+      { label:"Letter Vault", href:"/letter-vault", icon:Icons.FileText },
       { label:"AI Rewriter", href:"/letters/ai-rewriter", icon:Icons.Zap },
     ]
   },
