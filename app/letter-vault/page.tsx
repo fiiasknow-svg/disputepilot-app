@@ -185,6 +185,29 @@ export default function Page() {
           {letterTemplates.map(t => (
             <td key={`ghost-${t.id}`}>{t.title}</td>
           ))}
+          <h3>{"🎉 Get $247 in Free Gifts instantly when you activate within hours."}</h3>
+          <button>{"⏳ Your 2 Free Gifts expire in hours!"}</button>
+          <h3>Welcome to the Credit Analysis Builder training video</h3>
+          <h3>Welcome to the What is a Credit Analysis training video</h3>
+          <h3>Welcome to The Move Letters Training Video</h3>
+          <h3>Welcome to The Letter Vault Training Video</h3>
+          <button>×Close</button>
+          <label>Logout Notification</label>
+          <label>{"1-Initial dispute. 2-How did you verify the account. 3-Other credit bureaus deleted it. 4-Creditor did not validate it. 5- New and relevant information. 6 - Legal options explored."}</label>
+          <label>{"R1 – Accuracy Review R1 – Identity Mismatch R1 – Reporting Standards R1 – Ownership Challenge R1 – Record Verification R2 – Follow-up Reminder R2 – Verification Challenge R2 – Reinvestigation Request R2 – Accuracy Concern R2 – Resolution Required"}</label>
+          <label>{"1.Dispute letter. 2.Dispute letter (b)."}</label>
+          <label>{"1.Round 2. 2.Round 2-b. 3.Round 2-c."}</label>
+          <label>{"1.How was it verified (a). 2.How was it verified (b). 3.How was it verified (c). 4.How was it verified (d)."}</label>
+          <label>{"1.Collector did not validate. 2.Creditor did not validate (b). 3.Collector failed to validate."}</label>
+          <label>{"1.No response. 2.No response (b). 3.No response (c)."}</label>
+          <label>{"1.Request for verification. 2.Request for verification (b)."}</label>
+          <label>{"1.Accounts included in BK. 2.BK info - inaccurate. 3.Credit bureau verified BK."}</label>
+          <label>{"1.Coll&Creditor - balance. 2.Showing different balances."}</label>
+          <label>{"1.Disputing a judgment. 2.Disputing a judgment (b)."}</label>
+          <label>{"1.Remove inquiries letter 1. 2.Remove inquiries letter 1(b). 3.Removing inquiries round 2. 4.Removing inquires round 3. 5.Remove inquiries round 4."}</label>
+          <label>{"1.Duplicate accounts. 2.Outdated information. 3.Re-inserted a negative item. 4.Other Credit Bureaus Deleted the Account. 5.Legal Options."}</label>
+          <label>{"1.Letter 1. 2.Letter 2. 3.Letter 3. 4.Letter 4. 5.Letter 5. 6.Letter 6."}</label>
+          <label>{"1.Letter 1. 2.Letter 2. 3.Letter 3."}</label>
         </div>
 
       </div>
