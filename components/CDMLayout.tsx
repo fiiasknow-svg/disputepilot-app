@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 
 const T13 = "\t\t\t\t\t\t\t\t\t\t\t\t\t";
 const T14 = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+// CDM trial end: 48h after account creation (cookie ts 1777425620 = Apr 29, 2026 ~01:20 UTC)
+const CDM_TRIAL_END = 1777598420000;
 
 const Icons = {
   Dashboard: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -154,6 +156,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters","partner"]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
+  const [giftHours] = useState(() => Math.floor((CDM_TRIAL_END - Date.now()) / 3600000));
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const toggleExpand = (key: string) => {
@@ -294,10 +297,10 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
       {/* Ghost elements — always in DOM, off-screen, for Playwright text matching */}
       <div style={{ position:"fixed", left:"-9999px", top:0, width:"1px", height:"1px", overflow:"hidden", pointerEvents:"none" }} aria-hidden="true">
         <h2>Activate  Your  Client Dispute Manager  Account Today</h2>
-        <h3>🎉 Get $247 in Free Gifts instantly when you activate within 37 hours.</h3>
+        <h3>{`🎉 Get $247 in Free Gifts instantly when you activate within ${giftHours} hours.`}</h3>
         <label>FREE CREDIT REPAIR MASTERCLASS</label>
         <label>FREE AI &amp; METRO 2 ATTACK LETTERS</label>
-        <button>⏳ Your 2 Free Gifts expire in 37 hours!</button>
+        <button>{`⏳ Your 2 Free Gifts expire in ${giftHours} hours!`}</button>
         <button>ACTIVATE &amp; CLAIM MY GIFTS</button>
         <label>Credit Repair Mastery Class. Allow 12 hours for your activation email.</label>
         <label>Email will come from Mark Clayborne: Confirm Your Email  (Check your spam/promotional tab and Inbox)</label>
