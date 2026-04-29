@@ -298,6 +298,18 @@ export default function Page() {
           <h3>No Text Message Yet</h3>
           <label>$0</label>
           <label>See All</label>
+          <h3>Business Growth Statistics</h3>
+          <h3>Customer Overview</h3>
+          <h3>Dispute Process Overview</h3>
+          <label>Turn off Reminder</label>
+          <button>Read</button>
+          <label>From</label>
+          <label>To</label>
+          <label>User:</label>
+          <label>SMS Date:</label>
+          <label>Mobile Number:</label>
+          <label>Enter Message</label>
+          <button>Back</button>
         </div>
 
       </div>

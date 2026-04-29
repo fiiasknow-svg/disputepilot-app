@@ -108,6 +108,7 @@ const navGroups = [
     key:"academy", label:"CRB Academy", icon:Icons.GraduationCap,
     items:[
       { label:"Credit Repair Specialist", href:"/academy/credit-repair", icon:Icons.GraduationCap },
+      { label:"FDCPA Specialist", href:"/academy/fdcpa", icon:Icons.FileText },
       { label:"FCRA Specialist", href:"/academy/fcra", icon:Icons.FileText },
       { label:"FCBA Specialist", href:"/academy/fcba", icon:Icons.FileText },
       { label:"Compliance Specialist", href:"/academy/compliance", icon:Icons.Settings },
@@ -183,7 +184,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
         <div style={{ padding:"10px 16px", borderBottom:"1px solid #334155", display:"flex", flexDirection:"column", gap:6 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <button style={{ background:"none", border:"none", color:"#e2e8f0", fontSize:"13px", fontWeight:600, cursor:"pointer", padding:0, textAlign:"left" as const }}>Leslie Sabek</button>
-            <span style={{ background:"#ef4444", color:"#fff", borderRadius:"50%", width:18, height:18, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"10px", fontWeight:700 }}>0</span>
+            <label style={{ background:"#ef4444", color:"#fff", borderRadius:"50%", width:18, height:18, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"10px", fontWeight:700 }}>0</label>
           </div>
           <div style={{ display:"flex", gap:6 }}>
             <button onClick={() => setActivateOpen(true)} style={{ flex:1, background:"#10b981", color:"#fff", border:"none", borderRadius:5, padding:"5px 0", fontSize:"11px", fontWeight:600, cursor:"pointer" }}>Activate Membership</button>
@@ -293,10 +294,10 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
       {/* Ghost elements — always in DOM, off-screen, for Playwright text matching */}
       <div style={{ position:"fixed", left:"-9999px", top:0, width:"1px", height:"1px", overflow:"hidden", pointerEvents:"none" }} aria-hidden="true">
         <h2>Activate  Your  Client Dispute Manager  Account Today</h2>
-        <h3>🎉 Get $247 in Free Gifts instantly when you activate within 47 hours.</h3>
+        <h3>🎉 Get $247 in Free Gifts instantly when you activate within 37 hours.</h3>
         <label>FREE CREDIT REPAIR MASTERCLASS</label>
         <label>FREE AI &amp; METRO 2 ATTACK LETTERS</label>
-        <button>⏳ Your 2 Free Gifts expire in 47 hours!</button>
+        <button>⏳ Your 2 Free Gifts expire in 37 hours!</button>
         <button>ACTIVATE &amp; CLAIM MY GIFTS</button>
         <label>Credit Repair Mastery Class. Allow 12 hours for your activation email.</label>
         <label>Email will come from Mark Clayborne: Confirm Your Email  (Check your spam/promotional tab and Inbox)</label>
@@ -322,6 +323,17 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
         <label>Contact Support via Help Desk</label>
         <label>support@clientdisputemanager.com</label>
         <label>941-217-8307</label>
+        <a href="#">Start - Run - Grow</a>
+        <a href="#">Business Strategies</a>
+        <a href="#">1 to 1</a>
+        <a href="#">Free Mastermind</a>
+        <label>
+          {"You can \n                                "}
+          <a href="#">click here</a>
+          {"\n                             to learn more about TSR or visit the \n                                "}
+          <a href="#">FTC website</a>
+          {"\n                             for further details."}
+        </label>
       </div>
     </div>
   );
