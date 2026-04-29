@@ -203,7 +203,7 @@ export default function Page() {
       const name = clientName(c).toLowerCase();
       const q = search.toLowerCase();
       if (search && ![name, c.email, c.phone, c.city, c.state, c.service_plan, c.referral_source, c.assigned_agent, c.tags, c.status, c.payment_status, c.contract_status].some(v => v?.toLowerCase().includes(q))) return false;
-      if (statusTab !== "all" && c.status !== statusTab) return false;
+      if (!tabMatches(c, statusTab)) return false;
       return true;
     })
     .sort((a, b) => {
@@ -363,7 +363,27 @@ export default function Page() {
     );
   }
 
-  const STATUS_TABS = ["all", "active", "pending", "inactive", "cancelled"];
+  // Tab definitions: label shown → status filter logic
+  const STATUS_TABS = [
+    { label: "All",     key: "all" },
+    { label: "Current", key: "current" },
+    { label: "Leads",   key: "leads" },
+    { label: "Archive", key: "archive" },
+    { label: "active",  key: "active" },
+    { label: "pending", key: "pending" },
+    { label: "inactive",key: "inactive" },
+    { label: "cancelled",key:"cancelled" },
+  ];
+
+  function tabMatches(c: any, key: string) {
+    if (key === "all")      return true;
+    if (key === "current")  return c.status === "active";
+    if (key === "leads")    return c.status === "pending";
+    if (key === "archive")  return c.status === "inactive" || c.status === "cancelled";
+    return c.status === key;
+  }
+
+  const visibleTabs = ["All", "Current", "Leads", "Archive"];
 
   return (
     <CDMLayout>
@@ -371,52 +391,106 @@ export default function Page() {
 
         {/* ── Header ── */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Clients</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Customers</h1>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => setShowImport(true)} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>↑ Import CSV</button>
             <button onClick={exportCSV} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>↓ Export CSV</button>
             <button onClick={() => { setShowForm(true); setForm({ ...EMPTY_FORM }); }}
               style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
-              + Add Client
+              Add New Customer
             </button>
           </div>
         </div>
 
         {/* ── Stat Cards ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
-            { label: "Total", value: stats.total, color: "#1e3a5f" },
-            { label: "Active", value: stats.active, color: "#10b981" },
-            { label: "Pending", value: stats.pending, color: "#f59e0b" },
-            { label: "Inactive", value: stats.inactive, color: "#94a3b8" },
-            { label: "Cancelled", value: stats.cancelled, color: "#ef4444" },
+            { label: "Total",     value: stats.total,     color: "#1e3a5f", key: "all" },
+            { label: "Active",    value: stats.active,    color: "#10b981", key: "current" },
+            { label: "Pending",   value: stats.pending,   color: "#f59e0b", key: "leads" },
+            { label: "Inactive",  value: stats.inactive,  color: "#94a3b8", key: "archive" },
+            { label: "Cancelled", value: stats.cancelled, color: "#ef4444", key: "cancelled" },
           ].map(s => (
-            <div key={s.label} onClick={() => setStatusTab(s.label === "Total" ? "all" : s.label.toLowerCase())}
+            <div key={s.label} onClick={() => { setStatusTab(s.key); setPage(1); setSelected(new Set()); }}
               style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", borderTop: `3px solid ${s.color}`, cursor: "pointer" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.label}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{s.label}</div>
               <div style={{ fontSize: 26, fontWeight: 800, color: s.color, marginTop: 4 }}>{loading ? "—" : s.value}</div>
             </div>
           ))}
         </div>
 
+        {/* ── Customer Search ── */}
+        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #e2e8f0", padding: "16px 20px", marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#1e3a5f", marginBottom: 12 }}>Customer Search</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" as const, alignItems: "flex-end" }}>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>First Name</label>
+              <input
+                placeholder="First name…"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1); }}
+                style={{ width: "100%", padding: "7px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" as const }}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Last Name</label>
+              <input
+                placeholder="Last name…"
+                style={{ width: "100%", padding: "7px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" as const }}
+                readOnly
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Phone</label>
+              <input
+                placeholder="Phone…"
+                style={{ width: "100%", padding: "7px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" as const }}
+                readOnly
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Email</label>
+              <input
+                placeholder="Email…"
+                style={{ width: "100%", padding: "7px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" as const }}
+                readOnly
+              />
+            </div>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <button
+                onClick={() => setPage(1)}
+                style={{ padding: "7px 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontSize: 13 }}
+              >
+                Search
+              </button>
+              <button
+                onClick={() => { setSearch(""); setPage(1); }}
+                style={{ padding: "7px 14px", background: "#fff", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 13 }}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* ── Status Tabs ── */}
         <div style={{ display: "flex", gap: 2, borderBottom: "2px solid #f1f5f9", marginBottom: 0 }}>
-          {STATUS_TABS.map(t => {
-            const count = t === "all" ? clients.length : clients.filter(c => c.status === t).length;
+          {visibleTabs.map(label => {
+            const key = STATUS_TABS.find(t => t.label === label)!.key;
+            const count = clients.filter(c => tabMatches(c, key)).length;
+            const active = statusTab === key;
             return (
-              <button key={t} onClick={() => { setStatusTab(t); setPage(1); setSelected(new Set()); }}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: statusTab === t ? 700 : 500, color: statusTab === t ? "#1e3a5f" : "#64748b", borderBottom: statusTab === t ? "2px solid #1e3a5f" : "2px solid transparent", marginBottom: -2, whiteSpace: "nowrap" as const, textTransform: "capitalize" as const }}>
-                {t === "all" ? "All Clients" : t}
-                <span style={{ background: statusTab === t ? "#1e3a5f22" : "#f1f5f9", color: statusTab === t ? "#1e3a5f" : "#94a3b8", borderRadius: 20, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{count}</span>
+              <button key={label} onClick={() => { setStatusTab(key); setPage(1); setSelected(new Set()); }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 500, color: active ? "#1e3a5f" : "#64748b", borderBottom: active ? "2px solid #1e3a5f" : "2px solid transparent", marginBottom: -2, whiteSpace: "nowrap" as const }}>
+                {label}
+                <span style={{ background: active ? "#1e3a5f22" : "#f1f5f9", color: active ? "#1e3a5f" : "#94a3b8", borderRadius: 20, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{count}</span>
               </button>
             );
           })}
         </div>
 
-        {/* ── Filters / Sort / View ── */}
+        {/* ── Sort / View ── */}
         <div style={{ display: "flex", gap: 8, padding: "12px 0 10px", flexWrap: "wrap" as const, alignItems: "center" }}>
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search all fields…"
-            style={{ flex: 1, minWidth: 200, padding: "7px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, outline: "none" }} />
           <select value={sort} onChange={e => setSort(e.target.value)} style={sel}>
             <option value="date">Newest First</option>
             <option value="name">Name A–Z</option>
@@ -454,7 +528,7 @@ export default function Page() {
                   <th style={{ padding: "10px 12px", textAlign: "left" as const }}>
                     <input type="checkbox" checked={allPageSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: "#1e3a5f", cursor: "pointer" }} />
                   </th>
-                  {["Client", "Status", "Email", "Phone", "Score", "Plan / $", "Disputes", "Contract", "Payment", "Portal", "Tags", "Agent", "Source", "Last Activity", "Actions"].map(h => (
+                  {["Client", "Status", "Email", "Phone", "Score", "Plan / $", "Disputes", "Contract", "Payment", "Portal", "Tags", "Agent", "Source", "Last Activity", "Action"].map(h => (
                     <th key={h} style={{ textAlign: "left" as const, padding: "10px 8px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.04em", whiteSpace: "nowrap" as const }}>{h}</th>
                   ))}
                 </tr>
