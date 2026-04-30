@@ -181,7 +181,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
           </div>
           {/* Trial notice */}
           <div style={{ background:"#f59e0b22", borderRadius:6, padding:"6px 10px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <a href="/billing" style={{ color:"#f59e0b", fontSize:"11px", fontWeight:600, textDecoration:"none" }}>30 Days Left in The Trial</a>
+            <a href="/billing" style={{ color:"#f59e0b", fontSize:"11px", fontWeight:600, textDecoration:"none" }}>29 Days Left in The Trial</a>
             <button onClick={() => setActivateOpen(true)} style={{ background:"#f59e0b", color:"#fff", border:"none", borderRadius:4, padding:"2px 8px", fontSize:"11px", fontWeight:700, cursor:"pointer" }}>Activate</button>
           </div>
         </div>
