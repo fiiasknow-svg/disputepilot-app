@@ -197,6 +197,14 @@ export default function Page() {
 
   useEffect(() => { load(); }, []);
 
+  function tabMatches(c: any, key: string) {
+    if (key === "all")     return true;
+    if (key === "current") return c.status === "active";
+    if (key === "leads")   return c.status === "pending";
+    if (key === "archive") return c.status === "inactive" || c.status === "cancelled";
+    return c.status === key;
+  }
+
   // ── Derived ──
   const filtered = clients
     .filter(c => {
@@ -374,14 +382,6 @@ export default function Page() {
     { label: "inactive",key: "inactive" },
     { label: "cancelled",key:"cancelled" },
   ];
-
-  function tabMatches(c: any, key: string) {
-    if (key === "all")      return true;
-    if (key === "current")  return c.status === "active";
-    if (key === "leads")    return c.status === "pending";
-    if (key === "archive")  return c.status === "inactive" || c.status === "cancelled";
-    return c.status === key;
-  }
 
   const visibleTabs = ["All", "Current", "Leads", "Archive"];
 
