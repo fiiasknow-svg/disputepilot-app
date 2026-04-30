@@ -52,6 +52,11 @@ export default function Page() {
     <CDMLayout>
       <div style={{padding:24,maxWidth:1400}}>
 
+        {/* Trial banner */}
+        <div style={{background:"#fef3c7",border:"1px solid #fcd34d",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,fontWeight:600,color:"#92400e"}}>
+          29 Days Left in The Trial
+        </div>
+
         {/* Quick action buttons */}
         <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
           <button onClick={()=>router.push("/leads")} style={btn("#1e3a5f")}>Add Quick Lead</button>
