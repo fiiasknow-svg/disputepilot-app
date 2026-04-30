@@ -528,9 +528,10 @@ export default function Page() {
                   <th style={{ padding: "10px 12px", textAlign: "left" as const }}>
                     <input type="checkbox" checked={allPageSelected} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: "#1e3a5f", cursor: "pointer" }} />
                   </th>
-                  {["Client", "Status", "Email", "Phone", "Score", "Plan / $", "Disputes", "Contract", "Payment", "Portal", "Tags", "Agent", "Source", "Last Activity", "Action"].map(h => (
+                  {["Client", "Status", "Email", "Phone", "Score", "Plan / $", "Disputes", "Contract", "Payment", "Portal", "Tags", "Agent", "Source", "Last Activity"].map(h => (
                     <th key={h} style={{ textAlign: "left" as const, padding: "10px 8px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.04em", whiteSpace: "nowrap" as const }}>{h}</th>
                   ))}
+                  <th style={{ textAlign: "left" as const, padding: "10px 8px", fontSize: 11, fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" as const }}>Action</th>
                 </tr>
               </thead>
               <tbody>
