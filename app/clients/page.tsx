@@ -391,13 +391,20 @@ export default function Page() {
 
         {/* ── Header ── */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Customers</h1>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Clients</h1>
+            <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>Customers</p>
+          </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => setShowImport(true)} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>↑ Import CSV</button>
             <button onClick={exportCSV} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>↓ Export CSV</button>
             <button onClick={() => { setShowForm(true); setForm({ ...EMPTY_FORM }); }}
-              style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+              style={{ background: "#fff", color: "#1e3a5f", border: "1px solid #1e3a5f", borderRadius: 7, padding: "9px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
               Add New Customer
+            </button>
+            <button onClick={() => { setShowForm(true); setForm({ ...EMPTY_FORM }); }}
+              style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+              + Add Client
             </button>
           </div>
         </div>
