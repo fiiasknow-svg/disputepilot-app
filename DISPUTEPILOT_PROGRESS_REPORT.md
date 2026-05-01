@@ -177,3 +177,49 @@ Latest known full suite result: 54 passed.
 
 After you save it, tell me **SAVED**.
 ```
+## Cleanup Update
+
+Completed local cleanup so the repo status is clean.
+
+Latest cleanup commits:
+
+```text
+53def5a Ignore local test artifacts
+8c00df2 Ignore old local test leftoversAdd this near the bottom of the report:
+
+````md
+## Cleanup Update
+
+Completed local cleanup so the repo status is clean.
+
+Latest cleanup commits:
+
+```text
+53def5a Ignore local test artifacts
+8c00df2 Ignore old local test leftovers
+````
+
+Current repository status:
+
+```text
+working tree clean
+main is up to date with origin/main
+GitHub Actions: passed
+```
+
+Important note:
+
+```text
+Generated reports, Playwright output folders, local auth files, and old local test leftovers are now ignored by Git.
+```
+
+````
+
+Save and close.
+
+Then run:
+
+```powershell
+git add .\DISPUTEPILOT_PROGRESS_REPORT.md
+git commit -m "Update progress report with cleanup status"
+````
