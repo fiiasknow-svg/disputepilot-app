@@ -221,5 +221,63 @@ Then run:
 
 ```powershell
 git add .\DISPUTEPILOT_PROGRESS_REPORT.md
-git commit -m "Update progress report with cleanup status"
+git commit -m "Update progress report with cleanup status"## New Behavior Tests Added Today
+
+Additional behavior coverage was added after the cleanup checkpoint.
+
+New tests added:
+
+```text
+tests/leads-affiliates-behavior.spec.ts
+tests/bulk-print-behavior.spec.ts
+tests/employees-behavior.spec.ts
+tests/calendar-behavior.spec.ts
+tests/configuration-behavior.spec.tsStep 1 — add this section near the bottom of the report:
+
+````md
+## New Behavior Tests Added Today
+
+Additional behavior coverage was added after the cleanup checkpoint.
+
+New tests added:
+
+```text
+tests/leads-affiliates-behavior.spec.ts
+tests/bulk-print-behavior.spec.ts
+tests/employees-behavior.spec.ts
+tests/calendar-behavior.spec.ts
+tests/configuration-behavior.spec.ts
+````
+
+New areas covered:
+
+```text
+Leads / Affiliates
+Bulk Print
+Employees
+Calendar
+Configuration
+```
+
+Status:
+
+```text
+Focused tests passed
+Full suite passed
+GitHub Actions passed
+Repository pushed to main
+```
+
+````
+
+Step 2 — save and close Notepad.
+
+Step 3 — commit and push the report update:
+
+```powershell
+git add .\DISPUTEPILOT_PROGRESS_REPORT.md
+git commit -m "Update progress report with new behavior tests"
+git push
+````
+
 ````
