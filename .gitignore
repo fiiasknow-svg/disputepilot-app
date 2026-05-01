@@ -15,6 +15,7 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.local.example
 
 # Logs
 npm-debug.log*
@@ -35,18 +36,32 @@ original-letter-vault-export.json
 # Generated comparison reports
 missing-*.json
 
+# Local Vercel / TypeScript cache
+.vercel/
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Nested accidental project copy - do not edit
+disputepilot-app/
+
+# Old local test leftovers not used by tracked suite
+tests/behavior.spec.ts
+tests/clients.spec.ts
+tests/dashboard.spec.ts
+tests/debug-clone.spec.ts
+tests/edit-delete-behavior.spec.ts
+tests/example.spec.ts
+tests/export-letters.utility.ts
+tests/help-compare.spec.ts
+tests/letters-compare.spec.ts
+tests/mega.spec.ts
+tests/navigation.spec.ts
+tests/pages.spec.ts
+tests/routes-smoke.spec.ts
+tests/sidebar-compare.spec.ts
+
 # OS / editor files
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-# Local Vercel / TypeScript cache
-.vercel/
-tsconfig.tsbuildinfo
-
-# Local example/config files
-.env.local.example
-next-env.d.ts
-
-# Nested accidental project copy - do not edit
-disputepilot-app/
