@@ -35,6 +35,50 @@ Simpler next step:
 # DisputePilot Clone Progress Report
 
 ## Current Status
+Add this section near the top under **Current Status**:
+
+````md id="ih7yuq"
+## GitHub Actions
+
+GitHub Actions is now configured and passing.
+
+Workflow added:
+
+```text
+.github/workflows/playwright.yml
+````
+
+Latest workflow fix:
+
+```text
+b027368 Limit GitHub Actions to safe behavior tests
+```
+
+Reason:
+
+```text
+The full compare tests need local auth-original.json, which should not be committed.
+GitHub Actions now runs the safe committed behavior tests only.
+```
+
+Status:
+
+```text
+GitHub Actions: passed
+```
+
+````
+
+Save and close.
+
+Then run:
+
+```powershell id="a2g3xg"
+git add .\DISPUTEPILOT_PROGRESS_REPORT.md
+git commit -m "Update progress report with GitHub Actions status"
+````
+
+Paste the commit result.
 
 Root project:
 
