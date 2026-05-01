@@ -279,5 +279,49 @@ git add .\DISPUTEPILOT_PROGRESS_REPORT.md
 git commit -m "Update progress report with new behavior tests"
 git push
 ````
+Step 1 — add this near the bottom of the report:
+
+````md
+## Remaining Routes Coverage Update
+
+Added a broad route safety test for remaining sidebar sections.
+
+New test added:
+
+```text
+tests/remaining-sidebar-routes-behavior.spec.ts
+````
+
+Coverage includes:
+
+```text
+Company subpages
+Dispute status
+Letters
+Billing subpages
+Lead / affiliate subpages
+Academy pages
+Partner resources pages
+```
+
+Result:
+
+```text
+Remaining sidebar routes focused test: 39 passed
+Full suite: passed
+GitHub Actions: passed
+```
+
+````
+
+Step 2 — save and close Notepad.
+
+Step 3 — commit and push:
+
+```powershell
+git add .\DISPUTEPILOT_PROGRESS_REPORT.md
+git commit -m "Update progress report with remaining routes coverage"
+git push
+````
 
 ````
