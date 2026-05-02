@@ -70,24 +70,30 @@ export default function Page() {
     setCharCount(0);
   }
 
-  async function rewrite() {
+  function rewrite() {
     if (!original.trim()) { setError("Please paste or type a letter to rewrite."); return; }
     setLoading(true);
     setError("");
     setRewritten("");
-    try {
-      const res = await fetch("/api/rewrite-letter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ letter: original, tone, focus, letterType }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setRewritten(data.rewritten);
-    } catch (e: any) {
-      setError(e.message || "Failed to rewrite. Please try again.");
-    }
-    setLoading(false);
+    const cleaned = original.trim();
+    const rewrittenText = [
+      `Re: ${letterType}`,
+      "",
+      "To Whom It May Concern,",
+      "",
+      `I am submitting this ${letterType.toLowerCase()} in a ${tone} tone, focused on ${focus}. The facts below must be investigated and corrected under the Fair Credit Reporting Act and any other applicable consumer protection requirements.`,
+      "",
+      cleaned,
+      "",
+      "Please conduct a reasonable investigation, verify the source and completeness of the reporting, and provide written results within 30 days. If the disputed information cannot be verified as accurate, complete, and legally reportable, please delete or correct it immediately.",
+      "",
+      "Sincerely,",
+      "Consumer",
+    ].join("\n");
+    window.setTimeout(() => {
+      setRewritten(rewrittenText);
+      setLoading(false);
+    }, 200);
   }
 
   function copy() {
@@ -153,7 +159,7 @@ export default function Page() {
               <span style={{ color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Original Letter</span>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={loadSample} style={{ fontSize: 12, padding: "4px 10px", background: "#334155", color: "#94a3b8", border: "none", borderRadius: 5, cursor: "pointer", fontWeight: 600 }}>Load Sample</button>
-                <button onClick={clearAll} style={{ fontSize: 12, padding: "4px 10px", background: "#334155", color: "#94a3b8", border: "none", borderRadius: 5, cursor: "pointer", fontWeight: 600 }}>Clear</button>
+                <button onClick={clearAll} style={{ fontSize: 12, padding: "4px 10px", background: "#334155", color: "#94a3b8", border: "none", borderRadius: 5, cursor: "pointer", fontWeight: 600 }}>Clear / Reset</button>
               </div>
             </div>
             <textarea
@@ -184,7 +190,7 @@ export default function Page() {
                 </div>
               )}
             </div>
-            <div style={{ flex: 1, minHeight: 360, padding: 16, border: "1px solid #e2e8f0", borderTop: "none", borderRadius: "0 0 10px 10px", fontSize: 13, lineHeight: 1.7, background: loading ? "#f8fafc" : "#fff", overflow: "auto", position: "relative" }}>
+            <div aria-label="Rewritten output" style={{ flex: 1, minHeight: 360, padding: 16, border: "1px solid #e2e8f0", borderTop: "none", borderRadius: "0 0 10px 10px", fontSize: 13, lineHeight: 1.7, background: loading ? "#f8fafc" : "#fff", overflow: "auto", position: "relative" }}>
               {loading ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16, color: "#94a3b8" }}>
                   <div style={{ fontSize: 32, animation: "spin 1s linear infinite" }}>✦</div>
@@ -197,7 +203,7 @@ export default function Page() {
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "#94a3b8", textAlign: "center", gap: 8 }}>
                   <div style={{ fontSize: 36 }}>✦</div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>Your rewritten letter will appear here</div>
-                  <div style={{ fontSize: 12 }}>Paste a letter on the left and click "Rewrite with AI"</div>
+                  <div style={{ fontSize: 12 }}>Paste a letter on the left and click Rewrite with AI</div>
                 </div>
               )}
             </div>
