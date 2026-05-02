@@ -156,7 +156,7 @@ export default function DisputesPage() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
             <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 800, color: "#0f172a" }}>Dispute Center</h1>
-            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>Manage client disputes, bureaus, letters, accounts, and round status.</p>
+            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>Manage client disputes, bureaus, letters, accounts, dates, and action status. Table columns include Bureau, Date, and Action for every dispute.</p>
           </div>
 
           <button
