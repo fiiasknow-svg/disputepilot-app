@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3000';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
 test('billing overview loads useful summary information', async ({ page }) => {
   await page.goto(`${BASE_URL}/billing`);
