@@ -11,7 +11,12 @@ test.describe('save buttons do not throw app errors', () => {
     test(`${path} save button keeps page usable`, async ({ page }) => {
       await page.goto(`https://disputepilot-app.vercel.app${path}`);
 
-      const saveButton = page.getByRole('button', { name: /^Save$/i }).first();
+      const saveButton = page
+        .getByRole('button', {
+          name: /^Save$|^Save Company$|^Save Settings$|^Save Portal Settings$/i,
+        })
+        .first();
+
       await expect(saveButton).toBeVisible();
 
       await saveButton.click();
