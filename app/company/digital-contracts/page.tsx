@@ -59,7 +59,7 @@ export default function DigitalContractsPage() {
 
       <section className="rounded-xl border bg-white p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap gap-2">
-          {["Documents", "Contracts", "Templates", "Send", "Sign"].map((tab) => (
+          {["Documents", "Upload", "Contracts", "Templates", "Send", "Sign"].map((tab) => (
             <button key={tab} className="rounded border px-3 py-1 font-semibold" onClick={() => setMessage(`${tab} workflow selected.`)}>
               {tab}
             </button>
