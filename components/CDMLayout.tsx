@@ -140,6 +140,7 @@ const navGroups = [
       { label:"Merchant Accounts", href:"/partner-resources/merchant-accounts", icon:Icons.Building },
       { label:"Monitoring Commissions", href:"/partner-resources/monitoring-commissions", icon:Icons.BarChart },
       { label:"Dispute Outsourcing", href:"/partner-resources/dispute-outsourcing", icon:Icons.FileText },
+      { label:"Attorney Review", href:"/partner-resources", icon:Icons.FileText },
       { label:"Rebuild Credit Affiliate", href:"/partner-resources/rebuild-credit-affiliate", icon:Icons.Users },
       { label:"Partner & Earn", href:"/partner-resources/partner-and-earn", icon:Icons.UserPlus },
       { label:"Save & Annual Plan", href:"/partner-resources/save-and-annual-plan", icon:Icons.FileText },
