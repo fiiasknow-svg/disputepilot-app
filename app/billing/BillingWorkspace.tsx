@@ -163,12 +163,13 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
         <nav aria-label="Billing sections" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
           {[
             ["Overview", "/billing"],
-            ["Invoices", "/billing/invoices"],
-            ["Payments", "/billing/payments"],
-            ["Services/Products", "/billing/services-products"],
-            ["Payment History", "/billing/payment-history"],
+["Invoices", "/billing/invoices"],
+["Payments", "/billing/payments"],
+["Services/Products", "/billing/services-products"],
+["Subscription", "/billing"],
+["Payment History", "/billing/payment-history"],
           ].map(([label, href]) => (
-            <Link key={href} href={href} style={tabLink}>{label}</Link>
+            <Link key={label} href={href} style={tabLink}>{label}</Link>
           ))}
         </nav>
 
