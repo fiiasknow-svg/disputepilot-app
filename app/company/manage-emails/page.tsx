@@ -45,6 +45,8 @@ export default function Page() {
   const [showForm, setShowForm] = useState(false);
   const [preview, setPreview] = useState<Template | null>(null);
   const [form, setForm] = useState({ name: "", type: "Onboarding", subject: "", body: "" });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [message, setMessage] = useState("");
   const [filterType, setFilterType] = useState("All Types");
   const [search, setSearch] = useState("");
   const [smtp, setSmtp] = useState({ host: "smtp.gmail.com", port: "587", user: "", pass: "", from_name: "", from_email: "", encryption: "TLS", tested: false, success: false });
@@ -66,13 +68,35 @@ export default function Page() {
 
   function saveTemplate() {
     if (!form.name || !form.subject) return;
-    setTemplates(t => [{ id: Date.now(), name: form.name, type: form.type, subject: form.subject, modified: new Date().toISOString().slice(0, 10), active: true, sends: 0 }, ...t]);
+    if (editingId) {
+      setTemplates(t => t.map(template => template.id === editingId ? { ...template, name: form.name, type: form.type, subject: form.subject, modified: new Date().toISOString().slice(0, 10) } : template));
+      setMessage(`Email template saved: ${form.name}.`);
+    } else {
+      setTemplates(t => [{ id: Date.now(), name: form.name, type: form.type, subject: form.subject, modified: new Date().toISOString().slice(0, 10), active: true, sends: 0 }, ...t]);
+      setMessage(`Email template created: ${form.name}.`);
+    }
     setForm({ name: "", type: "Onboarding", subject: "", body: "" });
+    setEditingId(null);
     setShowForm(false);
   }
 
   function duplicate(t: Template) {
     setTemplates(ts => [{ ...t, id: Date.now(), name: t.name + " (Copy)", modified: new Date().toISOString().slice(0, 10), sends: 0 }, ...ts]);
+    setMessage(`Email template duplicated: ${t.name}.`);
+  }
+
+  function editTemplate(t: Template) {
+    setEditingId(t.id);
+    setForm({ name: t.name, type: t.type, subject: t.subject, body: `Hi {{client_name}},\n\n${t.subject}\n\nBest regards,\n{{company_name}}` });
+    setShowForm(true);
+    setMessage("");
+  }
+
+  function cancelTemplateForm() {
+    setShowForm(false);
+    setEditingId(null);
+    setForm({ name: "", type: "Onboarding", subject: "", body: "" });
+    setMessage("Email template changes were canceled.");
   }
 
   async function testSmtp() {
@@ -80,6 +104,11 @@ export default function Page() {
     await new Promise(r => setTimeout(r, 1800));
     setSmtp(s => ({ ...s, tested: true, success: true }));
     setTesting(false);
+  }
+
+  function saveSmtp() {
+    setSmtp(s => ({ ...s, tested: true, success: true }));
+    setMessage(`SMTP settings saved for ${smtp.host}:${smtp.port}.`);
   }
 
   const totalSends = templates.reduce((s, t) => s + t.sends, 0);
@@ -95,11 +124,17 @@ export default function Page() {
             <p style={{ margin: "4px 0 0", fontSize: 14, color: "#64748b" }}>Email templates, SMTP delivery settings, and send history.</p>
           </div>
           {tab === "Email Templates" && (
-            <button onClick={() => setShowForm(true)} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+            <button onClick={() => { setEditingId(null); setForm({ name: "", type: "Onboarding", subject: "", body: "" }); setShowForm(true); }} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
               + New Template
             </button>
           )}
         </div>
+
+        {message && (
+          <div style={{ background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 14, color: "#15803d", fontSize: 14, fontWeight: 600 }}>
+            {message}
+          </div>
+        )}
 
         {/* Stats */}
         {tab === "Email Templates" && (
@@ -168,7 +203,7 @@ export default function Page() {
                       <td style={{ padding: "12px 16px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button onClick={() => setPreview(t)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#1e3a5f" }}>Preview</button>
-                          <button style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#374151" }}>Edit</button>
+                          <button onClick={() => editTemplate(t)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#374151" }}>Edit</button>
                           <button onClick={() => duplicate(t)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#64748b" }}>Duplicate</button>
                           <button onClick={() => setTemplates(ts => ts.filter(x => x.id !== t.id))} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #fee2e2", borderRadius: 5, cursor: "pointer", background: "#fff", color: "#ef4444", fontWeight: 600 }}>Delete</button>
                         </div>
@@ -247,7 +282,7 @@ export default function Page() {
                   style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: testing ? "not-allowed" : "pointer", fontWeight: 600, fontSize: 14, color: "#374151" }}>
                   {testing ? "Testing…" : "Send Test Email"}
                 </button>
-                <button style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Save Settings</button>
+                <button onClick={saveSmtp} style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Save Settings</button>
               </div>
               {smtp.tested && (
                 <div style={{ marginTop: 14, padding: "10px 16px", background: smtp.success ? "#f0fdf4" : "#fef2f2", border: `1px solid ${smtp.success ? "#bbf7d0" : "#fecaca"}`, borderRadius: 7, color: smtp.success ? "#166534" : "#dc2626", fontSize: 13, fontWeight: 600 }}>
@@ -312,8 +347,8 @@ export default function Page() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
             <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 560, maxHeight: "90vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1e293b" }}>New Email Template</h2>
-                <button onClick={() => setShowForm(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8" }}>×</button>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{editingId ? "Edit Email Template" : "New Email Template"}</h2>
+                <button onClick={cancelTemplateForm} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8" }}>×</button>
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={lbl}>Template Name</label>
@@ -339,7 +374,7 @@ export default function Page() {
                 Variables: {"{{client_name}}"} {"{{company_name}}"} {"{{dispute_count}}"} {"{{balance}}"} {"{{due_date}}"} {"{{month}}"}
               </p>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setShowForm(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
+                <button onClick={cancelTemplateForm} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
                 <button onClick={saveTemplate} style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Save Template</button>
               </div>
             </div>
@@ -369,7 +404,7 @@ export default function Page() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
                 <span style={{ fontSize: 12, color: "#94a3b8" }}>{preview.sends} sent · Last modified {new Date(preview.modified).toLocaleDateString()}</span>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151", fontSize: 13 }}>Edit</button>
+                  <button onClick={() => { editTemplate(preview); setPreview(null); }} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151", fontSize: 13 }}>Edit</button>
                   <button onClick={() => setPreview(null)} style={{ padding: "8px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Close</button>
                 </div>
               </div>

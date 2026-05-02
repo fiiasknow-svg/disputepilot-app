@@ -1,22 +1,15 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://disputepilot-app.vercel.app';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
-test('configuration page actions are usable without app error', async ({ page }) => {
+test('configuration can edit and save practical settings', async ({ page }) => {
   await page.goto(`${BASE_URL}/settings/configuration`);
 
-  await expect(page.getByText(/Configuration|Settings|System|Default/i).first()).toBeVisible();
+  await page.getByPlaceholder('Your Company Name').fill(`Config Company ${Date.now()}`);
+  await page.getByPlaceholder('info@yourcompany.com').fill('config@example.com');
+  await page.getByPlaceholder('(555) 000-0000').fill('(212) 555-0144');
+  await page.locator('select').first().selectOption('America/Chicago');
 
-  const actionButton = page
-    .locator('main')
-    .getByRole('button')
-    .filter({ hasText: /Save|Update|Add|Create|Edit|Configure|Settings|Default/i })
-    .first();
-
-  if (await actionButton.count()) {
-    await actionButton.click();
-  }
-
-  await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
-  await expect(page.getByText(/Configuration|Settings|System|Default/i).first()).toBeVisible();
+  await page.getByRole('button', { name: /Save General Settings/i }).click();
+  await expect(page.getByRole('button', { name: /Saved/i })).toBeVisible();
 });

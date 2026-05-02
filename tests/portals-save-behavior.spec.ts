@@ -1,27 +1,22 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://disputepilot-app.vercel.app';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
-test('portals settings can save without app error', async ({ page }) => {
+test('portals and mobile app settings can be changed, saved, and reset', async ({ page }) => {
   await page.goto(`${BASE_URL}/company/portals`);
 
-  await expect(page.getByText(/Portals|Mobile App|Client Portal/i).first()).toBeVisible();
+  const portalUrl = `https://portal-test-${Date.now()}.example.com`;
+  await page.getByLabel('Portal URL').fill(portalUrl);
+  await page.getByLabel('Branding').fill('Playwright Credit Co');
+  await page.getByLabel('Welcome Message').fill('Welcome from an automated portal test.');
+  await page.getByLabel('Enable Push Notifications').check();
 
-  const editableInputs = page.locator(
-    'main input:not([type="checkbox"]):not([type="radio"]):not([readonly])'
-  );
+  await page.getByRole('button', { name: /Save Portal Settings/i }).click();
 
-  await expect(editableInputs.first()).toBeVisible();
+  await expect(page.getByText('Portal and mobile app settings saved for Playwright Credit Co.')).toBeVisible();
+  await expect(page.getByText(`Playwright Credit Co at ${portalUrl}`)).toBeVisible();
 
-  await editableInputs.first().fill(`https://portal-test-${Date.now()}.example.com`);
-
-  const checkbox = page.locator('main input[type="checkbox"]').first();
-  if (await checkbox.count()) {
-    await checkbox.check().catch(() => {});
-  }
-
-  await page.getByRole('button', { name: /Save/i }).first().click();
-
-  await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
-  await expect(page.getByText(/Portals|Mobile App|Client Portal/i).first()).toBeVisible();
+  await page.getByLabel('Branding').fill('Unsaved Portal Brand');
+  await page.getByRole('button', { name: /^Reset$/i }).click();
+  await expect(page.getByLabel('Branding')).toHaveValue('Playwright Credit Co');
 });

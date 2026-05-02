@@ -1,22 +1,24 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://disputepilot-app.vercel.app';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
-test('documents and contracts actions are usable without app error', async ({ page }) => {
+test('digital contracts workflow opens, saves, views, and sends', async ({ page }) => {
   await page.goto(`${BASE_URL}/company/digital-contracts`);
 
-  await expect(page.getByText(/Digital Contracts|Documents|Contracts|Templates/i).first()).toBeVisible();
+  const contractName = `Playwright Service Agreement ${Date.now()}`;
+  await page.getByRole('button', { name: /Create Contract/i }).click();
+  await expect(page.getByRole('heading', { name: /New Digital Contract/i })).toBeVisible();
 
-  const actionButton = page
-    .locator('main')
-    .getByRole('button')
-    .filter({ hasText: /Upload|Send|Sign|Template|Contract|Document|Create|Add|Save|View/i })
-    .first();
+  await page.getByLabel('Contract Name').fill(contractName);
+  await page.getByLabel('Recipient').fill('Automation Client');
+  await page.getByLabel('Contract Body').fill('Client agrees to automated test terms.');
+  await page.getByRole('button', { name: /Save Contract/i }).click();
 
-  if (await actionButton.count()) {
-    await actionButton.click();
-  }
+  await expect(page.getByText('Digital contract saved for Automation Client.')).toBeVisible();
+  await expect(page.getByText(contractName)).toBeVisible();
 
-  await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
-  await expect(page.getByText(/Digital Contracts|Documents|Contracts|Templates/i).first()).toBeVisible();
+  await page.getByRole('row', { name: new RegExp(contractName) }).getByRole('button', { name: /View/i }).click();
+  await expect(page.getByText('This contract is ready for review, sending, or signing.')).toBeVisible();
+  await page.getByRole('button', { name: /Send Contract/i }).click();
+  await expect(page.getByText(`${contractName} sent to Automation Client.`)).toBeVisible();
 });

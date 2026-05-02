@@ -39,6 +39,7 @@ export default function Page() {
   const [category, setCategory] = useState("All Categories");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [message, setMessage] = useState("");
 
   const visible = useMemo(() => files.filter(f => {
     const matchTab = fileTab === "All Files" || (fileTab === "Images" && f.type === "image") || (fileTab === "Documents" && f.type === "document");
@@ -57,11 +58,13 @@ export default function Page() {
     const isImg = n.endsWith(".png") || n.endsWith(".jpg");
     const kb = Math.floor(Math.random() * 400 + 50);
     setFiles(prev => [{ id: Date.now(), name: n, type: isImg ? "image" : "document", ext: n.split(".").pop()!.toUpperCase(), size: fmtKB(kb), sizeKB: kb, uploaded: new Date().toISOString().slice(0, 10), category: isImg ? "Branding" : "Templates" }, ...prev]);
+    setMessage(`${n} uploaded to Images & Documents.`);
   }
 
   function doRename() {
     if (!renameName.trim() || !renameId) return;
     setFiles(fs => fs.map(f => f.id === renameId ? { ...f, name: renameName.trim() } : f));
+    setMessage(`File renamed to ${renameName.trim()}.`);
     setRenameId(null);
     setRenameName("");
   }
@@ -69,6 +72,7 @@ export default function Page() {
   function copyLink(id: number) {
     navigator.clipboard.writeText(`https://app.disputepilot.com/files/${id}`);
     setCopiedId(id);
+    setMessage("Share link copied.");
     setTimeout(() => setCopiedId(null), 2000);
   }
 
@@ -85,6 +89,12 @@ export default function Page() {
             + Upload File
           </button>
         </div>
+
+        {message && (
+          <div style={{ background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 14, color: "#15803d", fontSize: 14, fontWeight: 600 }}>
+            {message}
+          </div>
+        )}
 
         {/* Stats */}
         <div style={{ display: "flex", gap: 14, marginBottom: 20, marginTop: 10 }}>
@@ -175,7 +185,7 @@ export default function Page() {
                       <td style={{ padding: "12px 16px", fontSize: 13, color: "#94a3b8" }}>{new Date(f.uploaded).toLocaleDateString()}</td>
                       <td style={{ padding: "12px 16px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#1e3a5f" }}>Download</button>
+                          <button onClick={() => setMessage(`${f.name} is ready to download.`)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#1e3a5f" }}>Download</button>
                           <button onClick={() => { setRenameId(f.id); setRenameName(f.name); }}
                             style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#374151" }}>Rename</button>
                           <button onClick={() => copyLink(f.id)}
@@ -244,7 +254,7 @@ export default function Page() {
               <p style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>This action cannot be undone and the file will be permanently removed.</p>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => setDeleteId(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
-                <button onClick={() => { setFiles(f => f.filter(x => x.id !== deleteId)); setDeleteId(null); }}
+                <button onClick={() => { const removed = files.find(x => x.id === deleteId); setFiles(f => f.filter(x => x.id !== deleteId)); setDeleteId(null); setMessage(`${removed?.name || "File"} deleted.`); }}
                   style={{ padding: "9px 20px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Delete</button>
               </div>
             </div>

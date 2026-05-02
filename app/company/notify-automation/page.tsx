@@ -87,6 +87,8 @@ export default function Page() {
     setRules(rs => [{ id: Date.now(), ...newRule, active: true }, ...rs]);
     setNewRule({ name: "", trigger: "", action: "", delay: "Immediately", channel: "Email" });
     setShowNewRule(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   }
 
   const filtered = useMemo(() => {
