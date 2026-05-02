@@ -16,11 +16,57 @@ const PAGE_SIZES = [25, 50, 100];
 
 const EMPTY_FORM = {
   first_name: "", last_name: "", email: "", phone: "", status: "active",
+  client_type: "Client", notes: "",
   address: "", city: "", state: "", zip: "", dob: "", ssn_last4: "",
   credit_score: "", service_plan: "", monthly_charge: "", referral_source: "",
   assigned_agent: "", tags: "", contract_status: "unsigned", payment_status: "current",
   portal_access: false as boolean,
 };
+
+const SAMPLE_CLIENTS = [
+  {
+    id: "sample-client-1",
+    first_name: "Alex",
+    last_name: "Morgan",
+    full_name: "Alex Morgan",
+    email: "alex.morgan@example.com",
+    phone: "555-0101",
+    status: "active",
+    client_type: "Client",
+    notes: "Wants monthly updates by email.",
+    service_plan: "Premium",
+    monthly_charge: "149",
+    contract_status: "signed",
+    payment_status: "current",
+    referral_source: "Referral",
+    assigned_agent: "Jordan Lee",
+    tags: "VIP",
+    created_at: "2026-05-01T14:00:00.000Z",
+    updated_at: "2026-05-01T14:00:00.000Z",
+  },
+  {
+    id: "sample-client-2",
+    first_name: "Taylor",
+    last_name: "Reed",
+    full_name: "Taylor Reed",
+    email: "taylor.reed@example.com",
+    phone: "555-0102",
+    status: "pending",
+    client_type: "Lead",
+    notes: "Asked for onboarding call.",
+    service_plan: "Standard",
+    monthly_charge: "99",
+    contract_status: "pending",
+    payment_status: "no_card",
+    referral_source: "Website",
+    assigned_agent: "Casey Smith",
+    tags: "New",
+    created_at: "2026-04-30T12:00:00.000Z",
+    updated_at: "2026-04-30T12:00:00.000Z",
+  },
+];
+
+const LOCAL_CLIENTS_KEY = "disputepilot.clients";
 
 // ── Helpers ────────────────────────────────────────────────
 function clientName(c: any) {
@@ -42,6 +88,20 @@ function avatarColor(name: string) {
 
 function tagList(tags: string): string[] {
   return (tags || "").split(",").map(t => t.trim()).filter(Boolean);
+}
+
+function readLocalClients() {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(window.localStorage.getItem(LOCAL_CLIENTS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalClients(clients: any[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_CLIENTS_KEY, JSON.stringify(clients));
 }
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 11px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" };
@@ -66,6 +126,12 @@ function FormFields({ form, setForm }: { form: typeof EMPTY_FORM; setForm: React
             <label style={lbl}>Status</label>
             <select value={form.status} onChange={set("status")} style={{ ...inp }}>
               {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Type / Category</label>
+            <select value={form.client_type} onChange={set("client_type")} style={{ ...inp }}>
+              {["Client", "Lead", "Prospect", "Past Client", "Partner Referral"].map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
@@ -138,6 +204,10 @@ function FormFields({ form, setForm }: { form: typeof EMPTY_FORM; setForm: React
             <input type="checkbox" id="portal" checked={form.portal_access} onChange={set("portal_access")} style={{ width: 15, height: 15, accentColor: "#1e3a5f" }} />
             <label htmlFor="portal" style={{ fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}>Portal Access Enabled</label>
           </div>
+          <div style={{ gridColumn: "span 2" }}>
+            <label style={lbl}>Notes</label>
+            <textarea value={form.notes} onChange={set("notes")} style={{ ...inp, minHeight: 76, resize: "vertical" as const }} placeholder="Useful client notes, preferences, or next steps" />
+          </div>
         </div>
       </div>
     </>
@@ -154,7 +224,7 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
 
   // Filters / sort / view
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState({ first_name: "", last_name: "", phone: "", email: "" });
   const [statusTab, setStatusTab] = useState("all");
   const [sort, setSort] = useState("date");
   const [view, setView] = useState<"table" | "card">("table");
@@ -167,6 +237,7 @@ export default function Page() {
   // Modals / editing
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [viewTarget, setViewTarget] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [bulkStatus, setBulkStatus] = useState("active");
@@ -180,18 +251,27 @@ export default function Page() {
   const [bulkEmailSubject, setBulkEmailSubject] = useState("");
   const [bulkEmailBody, setBulkEmailBody] = useState("");
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
+  const [notice, setNotice] = useState("");
 
   // ── Load ──
   async function load() {
     setLoading(true);
-    const [{ data: cl }, { data: disp }] = await Promise.all([
-      supabase.from("clients").select("*").order("created_at", { ascending: false }),
-      supabase.from("disputes").select("client_id"),
-    ]);
-    setClients(cl || []);
-    const counts: Record<string, number> = {};
-    for (const d of disp || []) counts[d.client_id] = (counts[d.client_id] || 0) + 1;
-    setDisputeCounts(counts);
+    const localClients = readLocalClients();
+    try {
+      const [{ data: cl }, { data: disp }] = await Promise.all([
+        supabase.from("clients").select("*").order("created_at", { ascending: false }),
+        supabase.from("disputes").select("client_id"),
+      ]);
+      const remoteClients = cl || [];
+      const remoteIds = new Set(remoteClients.map((c: any) => c.id));
+      setClients([...localClients.filter((c: any) => !remoteIds.has(c.id)), ...remoteClients, ...(!remoteClients.length && !localClients.length ? SAMPLE_CLIENTS : [])]);
+      const counts: Record<string, number> = {};
+      for (const d of disp || []) counts[d.client_id] = (counts[d.client_id] || 0) + 1;
+      setDisputeCounts(counts);
+    } catch {
+      setClients(localClients.length ? localClients : SAMPLE_CLIENTS);
+      setDisputeCounts({});
+    }
     setLoading(false);
   }
 
@@ -208,9 +288,12 @@ export default function Page() {
   // ── Derived ──
   const filtered = clients
     .filter(c => {
-      const name = clientName(c).toLowerCase();
-      const q = search.toLowerCase();
-      if (search && ![name, c.email, c.phone, c.city, c.state, c.service_plan, c.referral_source, c.assigned_agent, c.tags, c.status, c.payment_status, c.contract_status].some(v => v?.toLowerCase().includes(q))) return false;
+      const firstName = String(c.first_name || clientName(c).split(" ")[0] || "").toLowerCase();
+      const lastName = String(c.last_name || clientName(c).split(" ").slice(1).join(" ") || "").toLowerCase();
+      if (search.first_name && !firstName.includes(search.first_name.toLowerCase())) return false;
+      if (search.last_name && !lastName.includes(search.last_name.toLowerCase())) return false;
+      if (search.phone && !String(c.phone || c.mobile_phone || "").toLowerCase().includes(search.phone.toLowerCase())) return false;
+      if (search.email && !String(c.email || "").toLowerCase().includes(search.email.toLowerCase())) return false;
       if (!tabMatches(c, statusTab)) return false;
       return true;
     })
@@ -247,22 +330,35 @@ export default function Page() {
     if (!form.first_name && !form.last_name) return;
     setSaving(true);
     const full_name = `${form.first_name} ${form.last_name}`.trim();
-    await supabase.from("clients").insert([{ ...sanitizeClient(form), full_name }]);
+    const now = new Date().toISOString();
+    const newClient = { id: `local-${Date.now()}`, ...sanitizeClient(form), full_name, created_at: now, updated_at: now };
+    setClients(cs => {
+      const next = [newClient, ...cs.filter(c => !String(c.id).startsWith("sample-client-"))];
+      writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
+      return next;
+    });
+    try { await supabase.from("clients").insert([{ ...sanitizeClient(form), full_name }]); } catch {}
     setSaving(false);
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
-    load();
+    setNotice(`Saved client: ${full_name} (${form.email || form.phone || form.status})`);
   }
 
   async function saveEdit() {
     if (!editing) return;
     setSaving(true);
     const full_name = `${form.first_name} ${form.last_name}`.trim();
-    await supabase.from("clients").update({ ...sanitizeClient(form), full_name }).eq("id", editing.id);
+    const updatedClient = { ...editing, ...sanitizeClient(form), full_name, updated_at: new Date().toISOString() };
+    setClients(cs => {
+      const next = cs.map(c => c.id === editing.id ? updatedClient : c);
+      writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
+      return next;
+    });
+    try { await supabase.from("clients").update({ ...sanitizeClient(form), full_name }).eq("id", editing.id); } catch {}
     setSaving(false);
     setEditing(null);
     setForm({ ...EMPTY_FORM });
-    load();
+    setNotice(`Updated client: ${full_name}`);
   }
 
   function openEdit(c: any) {
@@ -272,6 +368,7 @@ export default function Page() {
       first_name: c.first_name || nameParts[0] || "",
       last_name: c.last_name || nameParts.slice(1).join(" ") || "",
       email: c.email || "", phone: c.phone || "", status: c.status || "active",
+      client_type: c.client_type || "Client", notes: c.notes || c.comments || "",
       address: c.address || "", city: c.city || "", state: c.state || "", zip: c.zip || "",
       dob: c.dob || "", ssn_last4: c.ssn_last4 || "", credit_score: c.credit_score || "",
       service_plan: c.service_plan || "", monthly_charge: c.monthly_charge || "",
@@ -284,29 +381,45 @@ export default function Page() {
   async function confirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    await supabase.from("clients").delete().eq("id", deleteTarget.id);
+    try { await supabase.from("clients").delete().eq("id", deleteTarget.id); } catch {}
     setDeleting(false);
     setDeleteTarget(null);
-    setClients(cs => cs.filter(c => c.id !== deleteTarget.id));
+    setClients(cs => {
+      const next = cs.filter(c => c.id !== deleteTarget.id);
+      writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
+      return next;
+    });
     setSelected(s => { const n = new Set(s); n.delete(deleteTarget.id); return n; });
   }
 
   async function updateStatus(id: string, status: string) {
-    await supabase.from("clients").update({ status }).eq("id", id);
-    setClients(cs => cs.map(c => c.id === id ? { ...c, status } : c));
+    try { await supabase.from("clients").update({ status }).eq("id", id); } catch {}
+    setClients(cs => {
+      const next = cs.map(c => c.id === id ? { ...c, status, updated_at: new Date().toISOString() } : c);
+      writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
+      return next;
+    });
   }
 
   async function bulkUpdateStatus() {
     const ids = Array.from(selected);
-    await supabase.from("clients").update({ status: bulkStatus }).in("id", ids);
-    setClients(cs => cs.map(c => selected.has(c.id) ? { ...c, status: bulkStatus } : c));
+    try { await supabase.from("clients").update({ status: bulkStatus }).in("id", ids); } catch {}
+    setClients(cs => {
+      const next = cs.map(c => selected.has(c.id) ? { ...c, status: bulkStatus, updated_at: new Date().toISOString() } : c);
+      writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
+      return next;
+    });
     setSelected(new Set()); setBulkStatusOpen(false);
   }
 
   async function bulkDelete() {
     const ids = Array.from(selected);
-    await supabase.from("clients").delete().in("id", ids);
-    setClients(cs => cs.filter(c => !selected.has(c.id)));
+    try { await supabase.from("clients").delete().in("id", ids); } catch {}
+    setClients(cs => {
+      const next = cs.filter(c => !selected.has(c.id));
+      writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
+      return next;
+    });
     setSelected(new Set());
   }
 
@@ -319,13 +432,13 @@ export default function Page() {
 
   // ── Export CSV ──
   function exportCSV() {
-    const headers = ["First Name", "Last Name", "Email", "Phone", "Status", "Credit Score", "Plan", "Monthly Charge", "Contract", "Payment", "Address", "City", "State", "ZIP", "DOB", "Source", "Agent", "Tags", "Portal", "Created"];
+    const headers = ["First Name", "Last Name", "Email", "Phone", "Status", "Type", "Notes", "Credit Score", "Plan", "Monthly Charge", "Contract", "Payment", "Address", "City", "State", "ZIP", "DOB", "Source", "Agent", "Tags", "Portal", "Created"];
     const rows = filtered.map(c => {
       const name = clientName(c);
       const parts = name.split(" ");
       return [
         c.first_name || parts[0] || "", c.last_name || parts.slice(1).join(" ") || "",
-        c.email || "", c.phone || "", c.status || "", c.credit_score || "",
+        c.email || "", c.phone || "", c.status || "", c.client_type || "", c.notes || "", c.credit_score || "",
         c.service_plan || "", c.monthly_charge || "", c.contract_status || "",
         c.payment_status || "", c.address || "", c.city || "", c.state || "", c.zip || "",
         c.dob || "", c.referral_source || "", c.assigned_agent || "", c.tags || "",
@@ -335,6 +448,7 @@ export default function Page() {
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: "clients.csv" });
     a.click();
+    setNotice(`Export ready: ${rows.length} client${rows.length === 1 ? "" : "s"} included in clients.csv`);
   }
 
   // ── Import CSV ──
@@ -350,15 +464,26 @@ export default function Page() {
         headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
         obj.full_name = obj.full_name || `${obj.first_name || ""} ${obj.last_name || ""}`.trim();
         obj.status = obj.status || "active";
+        obj.client_type = obj.client_type || obj.type || obj.category || "Client";
+        obj.id = `local-import-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        obj.created_at = new Date().toISOString();
+        obj.updated_at = obj.created_at;
         return obj;
       }).filter(r => r.full_name || r.first_name);
-      if (rows.length) await supabase.from("clients").insert(rows);
+      if (rows.length) {
+        setClients(cs => {
+          const next = [...rows, ...cs.filter(c => !String(c.id).startsWith("sample-client-"))];
+          writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
+          return next;
+        });
+        try { await supabase.from("clients").insert(rows.map(({ id, ...row }: any) => row)); } catch {}
+        setNotice(`Imported ${rows.length} client${rows.length === 1 ? "" : "s"} from CSV.`);
+      }
     } catch { }
     setSaving(false);
     setShowImport(false);
     setImportText("");
     setImportFile(null);
-    load();
   }
 
   // ── Avatar ──
@@ -409,6 +534,12 @@ export default function Page() {
           </div>
         </div>
 
+        {notice && (
+          <div style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#166534", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
+            {notice}
+          </div>
+        )}
+
         {/* ── Stat Cards ── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
@@ -434,8 +565,8 @@ export default function Page() {
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>First Name</label>
               <input
                 placeholder="First name…"
-                value={search}
-                onChange={e => { setSearch(e.target.value); setPage(1); }}
+                value={search.first_name}
+                onChange={e => { setSearch(s => ({ ...s, first_name: e.target.value })); setPage(1); }}
                 style={{ width: "100%", padding: "7px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" as const }}
               />
             </div>
@@ -443,24 +574,27 @@ export default function Page() {
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Last Name</label>
               <input
                 placeholder="Last name…"
+                value={search.last_name}
+                onChange={e => { setSearch(s => ({ ...s, last_name: e.target.value })); setPage(1); }}
                 style={{ width: "100%", padding: "7px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" as const }}
-                readOnly
               />
             </div>
             <div style={{ flex: 1, minWidth: 140 }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Phone</label>
               <input
                 placeholder="Phone…"
+                value={search.phone}
+                onChange={e => { setSearch(s => ({ ...s, phone: e.target.value })); setPage(1); }}
                 style={{ width: "100%", padding: "7px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" as const }}
-                readOnly
               />
             </div>
             <div style={{ flex: 1, minWidth: 140 }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Email</label>
               <input
                 placeholder="Email…"
+                value={search.email}
+                onChange={e => { setSearch(s => ({ ...s, email: e.target.value })); setPage(1); }}
                 style={{ width: "100%", padding: "7px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" as const }}
-                readOnly
               />
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -471,7 +605,7 @@ export default function Page() {
                 Search
               </button>
               <button
-                onClick={() => { setSearch(""); setPage(1); }}
+                onClick={() => { setSearch({ first_name: "", last_name: "", phone: "", email: "" }); setPage(1); }}
                 style={{ padding: "7px 14px", background: "#fff", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 13 }}
               >
                 Clear
@@ -628,7 +762,7 @@ export default function Page() {
                       {/* Actions */}
                       <td style={{ padding: "8px 8px" }}>
                         <div style={{ display: "flex", gap: 4 }}>
-                          <button onClick={() => router.push(`/clients/${c.id}`)} title="View"
+                          <button onClick={() => setViewTarget(c)} title="View"
                             style={{ fontSize: 11, padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 5, background: "#fff", cursor: "pointer", fontWeight: 600 }}>View</button>
                           <button onClick={() => openEdit(c)} title="Edit"
                             style={{ fontSize: 13, padding: "4px 7px", border: "1px solid #bfdbfe", borderRadius: 5, background: "#eff6ff", cursor: "pointer" }}>✎</button>
@@ -675,7 +809,7 @@ export default function Page() {
                     {tags.map((t, i) => <span key={i} style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] + "22", color: AVATAR_COLORS[i % AVATAR_COLORS.length], borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{t}</span>)}
                   </div>
                   <div style={{ padding: "10px 14px", borderTop: "1px solid #f1f5f9", display: "flex", gap: 6 }}>
-                    <button onClick={() => router.push(`/clients/${c.id}`)} style={{ fontSize: 11, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, background: "#fff", cursor: "pointer", fontWeight: 600 }}>View</button>
+                    <button onClick={() => setViewTarget(c)} style={{ fontSize: 11, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, background: "#fff", cursor: "pointer", fontWeight: 600 }}>View</button>
                     <button onClick={() => openEdit(c)} style={{ fontSize: 11, padding: "4px 10px", border: "1px solid #bfdbfe", borderRadius: 5, background: "#eff6ff", cursor: "pointer", color: "#1d4ed8", fontWeight: 600 }}>Edit</button>
                     <button onClick={() => setDeleteTarget(c)} style={{ fontSize: 11, padding: "4px 10px", border: "1px solid #fecaca", borderRadius: 5, background: "#fef2f2", cursor: "pointer", color: "#dc2626", fontWeight: 600, marginLeft: "auto" }}>🗑</button>
                   </div>
@@ -708,6 +842,48 @@ export default function Page() {
       </div>
 
       {/* ══ ADD CLIENT MODAL ══ */}
+      {viewTarget && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 560, maxWidth: "92vw", maxHeight: "88vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 18 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#1e293b" }}>{clientName(viewTarget)}</h2>
+                <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                  <span style={{ background: (STATUS_COLORS[viewTarget.status] || "#94a3b8") + "22", color: STATUS_COLORS[viewTarget.status] || "#64748b", borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: 700, textTransform: "capitalize" as const }}>{viewTarget.status || "active"}</span>
+                  <span style={{ background: "#f1f5f9", color: "#475569", borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: 700 }}>{viewTarget.client_type || "Client"}</span>
+                </div>
+              </div>
+              <button onClick={() => setViewTarget(null)} style={{ border: "none", background: "none", color: "#64748b", cursor: "pointer", fontSize: 22, lineHeight: 1 }}>x</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              {[
+                ["Email", viewTarget.email || "Not provided"],
+                ["Phone", viewTarget.phone || "Not provided"],
+                ["Plan", viewTarget.service_plan || "Not selected"],
+                ["Monthly Charge", viewTarget.monthly_charge ? `$${viewTarget.monthly_charge}` : "Not set"],
+                ["Contract", viewTarget.contract_status || "unsigned"],
+                ["Payment", (viewTarget.payment_status || "no_card").replace("_", " ")],
+                ["Agent", viewTarget.assigned_agent || "Unassigned"],
+                ["Source", viewTarget.referral_source || "Not provided"],
+              ].map(([label, value]) => (
+                <div key={label} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase" as const, marginBottom: 3 }}>{label}</div>
+                  <div style={{ fontSize: 14, color: "#1e293b", fontWeight: 600 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px", marginBottom: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase" as const, marginBottom: 5 }}>Notes</div>
+              <div style={{ fontSize: 14, color: "#334155", lineHeight: 1.5 }}>{viewTarget.notes || "No notes saved for this client."}</div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button onClick={() => setViewTarget(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Close</button>
+              <button onClick={() => { const c = viewTarget; setViewTarget(null); openEdit(c); }} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Edit Client</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 600, maxHeight: "92vh", overflowY: "auto" }}>

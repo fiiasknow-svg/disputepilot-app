@@ -15,6 +15,7 @@ const TABS = ["Overview","Disputes","Payments","Documents","Notes","Activity"];
 const STATUS_COLORS: Record<string, string> = { active:"#10b981", pending:"#f59e0b", inactive:"#94a3b8", cancelled:"#ef4444" };
 const DISPUTE_COLORS: Record<string, string> = { pending:"#f59e0b", sent:"#8b5cf6", responded:"#3b82f6", resolved:"#10b981" };
 const INV_COLORS: Record<string, string> = { paid:"#10b981", pending:"#f59e0b", overdue:"#ef4444", draft:"#94a3b8" };
+const LOCAL_CLIENTS_KEY = "disputepilot.clients";
 
 function scoreColor(s: number) { return s>=740?"#10b981":s>=670?"#3b82f6":s>=580?"#f59e0b":"#ef4444"; }
 function scoreLabel(s: number) { return s>=800?"Exceptional":s>=740?"Very Good":s>=670?"Good":s>=580?"Fair":"Poor"; }
@@ -24,6 +25,24 @@ function relTime(iso: string) {
   if(m<1)return"just now"; if(m<60)return`${m}m ago`;
   const h=Math.floor(m/60); if(h<24)return`${h}h ago`;
   return`${Math.floor(h/24)}d ago`;
+}
+
+function readLocalClients() {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(window.localStorage.getItem(LOCAL_CLIENTS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalClient(client: any) {
+  if (typeof window === "undefined") return;
+  const clients = readLocalClients();
+  const next = clients.some((c: any) => c.id === client.id)
+    ? clients.map((c: any) => c.id === client.id ? client : c)
+    : [client, ...clients];
+  window.localStorage.setItem(LOCAL_CLIENTS_KEY, JSON.stringify(next));
 }
 
 type Note = { id: number; text: string; date: string; author: string };
@@ -82,6 +101,14 @@ export default function Page() {
           ...(d.portal_access?[{icon:"🔑",label:"Portal access enabled",date:d.updated_at||d.created_at||new Date().toISOString()}]:[]),
         ]);
       }
+      if (!cr.data) {
+        const d = readLocalClients().find((c: any) => c.id === id);
+        if (d) {
+          const parts = (d.full_name||"").split(" ");
+          setForm(f => ({...f, ...d, first_name:d.first_name||parts[0]||"", middle_name:d.middle_name||"", last_name:d.last_name||parts.slice(1).join(" ")||"", mobile_phone:d.mobile_phone||d.phone||"", comments:d.comments||d.notes||""}));
+          setActivity([{icon:"Profile",label:"Client profile loaded from saved data",date:d.updated_at||d.created_at||new Date().toISOString()}]);
+        }
+      }
       setDisputes(dr.data||[]);
       setInvoices(ir.data||[]);
       setLoading(false);
@@ -94,7 +121,8 @@ export default function Page() {
   async function save() {
     setSaving(true);
     const full=[form.first_name,form.middle_name,form.last_name].filter(Boolean).join(" ");
-    await supabase.from("clients").update({...form,full_name:full}).eq("id",id);
+    writeLocalClient({...form,id,full_name:full,phone:form.mobile_phone,notes:form.comments,updated_at:new Date().toISOString()});
+    try { await supabase.from("clients").update({...form,full_name:full}).eq("id",id); } catch {}
     setSaving(false); setSaved(true); setTimeout(()=>setSaved(false),3000);
     setActivity(a=>[{icon:"✏️",label:"Profile updated",date:new Date().toISOString()},...a]);
   }
