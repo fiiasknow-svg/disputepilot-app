@@ -483,7 +483,7 @@ test("manual workflow audit", async ({ context }) => {
       const firstRow = page.locator("table tbody tr").first();
       await firstRow.click();
       await expect(page.getByRole("heading", { name: "Dispute Detail", exact: true })).toBeVisible();
-      await expect(page.getByText("Update Status", { exact: true })).toBeVisible();
+      await expect(page.getByRole("columnheader", { name: "Update Status", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "resolved", exact: true }).click();
       await expect(firstRow).toContainText(/resolved/i);
     });
