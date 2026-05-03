@@ -36,6 +36,13 @@ export default function Page() {
   const [editing, setEditing] = useState<Creditor | null>(null);
   const [message, setMessage] = useState("");
   const [form, setForm] = useState({ name: "", address: "", city: "", state: "", zip: "" });
+  const formIds = {
+    name: "furnisher-name",
+    address: "furnisher-address",
+    city: "furnisher-city",
+    state: "furnisher-state",
+    zip: "furnisher-zip",
+  } as const;
 
   useEffect(() => {
     try {
@@ -203,25 +210,25 @@ export default function Page() {
             <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 500 }}>
               <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 700 }}>Add New Creditor</h2>
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Company Name</label>
-                <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} style={inp} />
+                <label htmlFor={formIds.name} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Company Name</label>
+                <input id={formIds.name} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} style={inp} />
               </div>
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Address</label>
-                <input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} style={inp} />
+                <label htmlFor={formIds.address} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Address</label>
+                <input id={formIds.address} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} style={inp} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px", gap: 12, marginBottom: 22 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>City</label>
-                  <input value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} style={inp} />
+                  <label htmlFor={formIds.city} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>City</label>
+                  <input id={formIds.city} value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} style={inp} />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>State</label>
-                  <input value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))} maxLength={2} style={inp} />
+                  <label htmlFor={formIds.state} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>State</label>
+                  <input id={formIds.state} value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))} maxLength={2} style={inp} />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Zip</label>
-                  <input value={form.zip} onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))} maxLength={10} style={inp} />
+                  <label htmlFor={formIds.zip} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Zip</label>
+                  <input id={formIds.zip} value={form.zip} onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))} maxLength={10} style={inp} />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -241,25 +248,25 @@ export default function Page() {
             <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 500 }}>
               <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 700 }}>Edit Creditor</h2>
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Company Name</label>
-                <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} style={inp} />
+                <label htmlFor={formIds.name} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Company Name</label>
+                <input id={formIds.name} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} style={inp} />
               </div>
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Address</label>
-                <input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} style={inp} />
+                <label htmlFor={formIds.address} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Address</label>
+                <input id={formIds.address} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} style={inp} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px", gap: 12, marginBottom: 22 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>City</label>
-                  <input value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} style={inp} />
+                  <label htmlFor={formIds.city} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>City</label>
+                  <input id={formIds.city} value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} style={inp} />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>State</label>
-                  <input value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))} maxLength={2} style={inp} />
+                  <label htmlFor={formIds.state} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>State</label>
+                  <input id={formIds.state} value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))} maxLength={2} style={inp} />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Zip</label>
-                  <input value={form.zip} onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))} maxLength={10} style={inp} />
+                  <label htmlFor={formIds.zip} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Zip</label>
+                  <input id={formIds.zip} value={form.zip} onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))} maxLength={10} style={inp} />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>

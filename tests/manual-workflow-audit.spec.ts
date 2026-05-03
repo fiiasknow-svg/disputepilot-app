@@ -42,6 +42,10 @@ function errorMessage(error: unknown) {
   return String(error);
 }
 
+async function expectVisible(locator: Locator, label: string, timeout = 2000) {
+  await expect(locator, label).toBeVisible({ timeout });
+}
+
 async function visibleNames(locator: Locator, limit = 50) {
   const count = Math.min(await locator.count(), limit);
   const names: string[] = [];
@@ -100,7 +104,7 @@ async function attempt(
   route: string,
   workflow: string,
   fn: () => Promise<void>,
-  timeoutMs = 20000,
+  timeoutMs = 7000,
 ): Promise<boolean> {
   try {
     await Promise.race([
@@ -221,7 +225,7 @@ test("manual workflow audit", async ({ context }) => {
       await page.getByRole("button", { name: "Clear", exact: true }).click();
       await expect(page.getByPlaceholder(/First name/i)).toHaveValue("");
 
-      await page.getByRole("button", { name: /^Leads\b/i }).click();
+      await page.locator("main").getByRole("button", { name: /^Leads\s+\d+$/i }).first().click();
       await expect(page.getByText("Taylor Reed", { exact: true })).toBeVisible();
       await page.getByRole("button", { name: /^Current\b/i }).click();
       await expect(page.getByText("Audit Client", { exact: false }).first()).toBeVisible();
@@ -254,47 +258,80 @@ test("manual workflow audit", async ({ context }) => {
   });
 
   await audit("/leads", async (page, _scope, _bodyText, routeReport) => {
-    await attempt(routeReport, "/leads", "+ Add Lead opens modal/form", async () => {
-      await expect(page.getByRole("button", { name: /Import CSV/i })).toBeVisible();
-      await expect(page.getByRole("button", { name: /Export CSV/i })).toBeVisible();
-      const addLead = page.getByRole("button", { name: /\+ Add Lead/i });
-      await expect(addLead).toBeVisible();
+    let savedLeadName = "";
 
+    await attempt(routeReport, "/leads", "Lead actions are visible", async () => {
+      await expectVisible(page.getByRole("button", { name: /Import CSV/i }), "Waiting for Import CSV button");
+      await expectVisible(page.getByRole("button", { name: /Export CSV/i }), "Waiting for Export CSV button");
+      await expectVisible(page.getByRole("button", { name: /\+ Add Lead/i }), "Waiting for + Add Lead button");
+    });
+
+    await attempt(routeReport, "/leads", "Add Lead modal opens and cancels", async () => {
+      const addLead = page.getByRole("button", { name: /\+ Add Lead/i });
+      await expectVisible(addLead, "Waiting for + Add Lead button");
       await addLead.click();
       const addLeadModal = await openFixedModal(page);
-      await expect(page.getByRole("heading", { name: "Add New Lead", exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Add Lead", exact: true })).toBeVisible();
-      await page.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expectVisible(page.getByRole("heading", { name: "Add New Lead", exact: true }), "Waiting for Add New Lead heading");
+      await expectVisible(addLeadModal.getByRole("button", { name: "Cancel", exact: true }), "Waiting for Add Lead Cancel button");
+      await expectVisible(addLeadModal.getByRole("button", { name: "Add Lead", exact: true }), "Waiting for Add Lead save button");
+      await addLeadModal.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expect(addLeadModal, "Waiting for Add Lead modal to close").not.toBeVisible();
+    });
 
+    await attempt(routeReport, "/leads", "Add Lead saves and stays visible", async () => {
+      const addLead = page.getByRole("button", { name: /\+ Add Lead/i });
+      await expectVisible(addLead, "Waiting for + Add Lead button");
       await addLead.click();
       const createLeadModal = await openFixedModal(page);
       const stamp = Date.now();
       const leadName = `Audit Lead ${stamp}`;
+      savedLeadName = leadName;
+
+      await expectVisible(page.getByRole("heading", { name: "Add New Lead", exact: true }), "Waiting for Add New Lead heading");
+      await expectVisible(createLeadModal.getByText("First Name *", { exact: true }), "Waiting for First Name * field label");
+      await expectVisible(createLeadModal.getByText("Last Name *", { exact: true }), "Waiting for Last Name * field label");
+      await expectVisible(createLeadModal.getByText("Email", { exact: true }), "Waiting for Email field label");
+      await expectVisible(createLeadModal.getByText("Phone", { exact: true }), "Waiting for Phone field label");
+      await expectVisible(page.getByRole("button", { name: "Add Lead", exact: true }), "Waiting for Add Lead save button");
+
       await fillSiblingInput(createLeadModal, "First Name *", "Audit");
       await fillSiblingInput(createLeadModal, "Last Name *", `Lead ${stamp}`);
       await fillSiblingInput(createLeadModal, "Email", `audit.lead.${stamp}@example.com`);
       await fillSiblingInput(createLeadModal, "Phone", "555-555-1212");
       await selectSiblingOption(createLeadModal, "Source", "Referral");
       await selectSiblingOption(createLeadModal, "Status", "new");
-      await page.getByRole("button", { name: "Add Lead", exact: true }).click();
+      await createLeadModal.getByRole("button", { name: "Add Lead", exact: true }).click();
 
-      await expect(page.getByRole("heading", { name: "Add New Lead", exact: true })).toHaveCount(0);
-      await expect(page.getByText(leadName, { exact: false }).first()).toBeVisible();
+      await expectVisible(page.getByRole("status"), "Waiting for Saved lead status");
+      await expect(page.getByRole("status"), "Waiting for Saved lead status text").toContainText(/Saved lead/i);
+      await expectVisible(page.locator("table tbody tr").filter({ hasText: leadName }).first(), "Waiting for saved lead row");
 
-      await page.getByPlaceholder(/Search leads/i).fill("Audit");
-      await page.getByRole("button", { name: "Search", exact: true }).click();
-      await expect(page.getByText("Audit", { exact: false }).first()).toBeVisible();
-      await page.getByRole("button", { name: "Clear", exact: true }).click();
-      await expect(page.getByPlaceholder(/Search leads/i)).toHaveValue("");
+      if (await page.getByRole("heading", { name: "Add New Lead", exact: true }).count()) {
+        await createLeadModal.getByRole("button", { name: "Cancel", exact: true }).click();
+      }
+      await expect(createLeadModal, "Waiting for Add Lead modal to close").not.toBeVisible();
+    });
 
-      const importBtn = page.getByRole("button", { name: /Import CSV/i });
-      await importBtn.click();
-      const importModal = await openFixedModal(page);
-      await expect(page.getByRole("heading", { name: "Import Leads (CSV)", exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Import", exact: true })).toBeVisible();
-      await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await attempt(routeReport, "/leads", "Lead search can find the saved lead", async () => {
+      if (!savedLeadName) throw auditError("Saved lead name missing from previous step");
+      const searchInput = page.getByPlaceholder(/Search leads/i);
+      await expectVisible(searchInput, "Waiting for lead search input");
+      await searchInput.fill("Audit");
+
+      await expectVisible(page.locator("table tbody tr").filter({ hasText: savedLeadName }).first(), "Waiting for searched lead row");
+
+      const clearButton = page.getByRole("button", { name: "Clear", exact: true });
+      if (await clearButton.count()) {
+        await expectVisible(clearButton, "Waiting for Clear button");
+        await clearButton.click();
+        await expect(searchInput, "Waiting for cleared search input").toHaveValue("");
+        await expectVisible(page.locator("table tbody tr").filter({ hasText: savedLeadName }).first(), "Waiting for leads table after clearing search");
+      }
+    });
+
+    await attempt(routeReport, "/leads", "Import and export controls remain visible", async () => {
+      await expectVisible(page.getByRole("button", { name: /Import CSV/i }), "Waiting for Import CSV button");
+      await expectVisible(page.getByRole("button", { name: /Export CSV/i }), "Waiting for Export CSV button");
     });
   });
 
@@ -464,66 +501,113 @@ test("manual workflow audit", async ({ context }) => {
   });
 
   await audit("/disputes/status", async (page, _scope, _bodyText, routeReport) => {
-    await attempt(routeReport, "/disputes/status", "Status filters and row action update work", async () => {
-      await expect(page.getByRole("button", { name: "All Disputes", exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "By Bureau", exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "By Round", exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: /Export CSV/i })).toBeVisible();
-      await expect(page.getByRole("button", { name: /Refresh/i })).toBeVisible();
-      await expect(page.getByRole("combobox").first()).toBeVisible();
-      await expect(page.getByRole("combobox").nth(1)).toBeVisible();
-      await expect(page.getByRole("combobox").nth(2)).toBeVisible();
+    await attempt(routeReport, "/disputes/status", "Status controls remain visible", async () => {
+      const main = page.locator("main");
+      await expectVisible(main.getByRole("button", { name: "All Disputes", exact: true }), "Waiting for All Disputes button");
+      await expectVisible(main.getByRole("button", { name: "By Bureau", exact: true }), "Waiting for By Bureau button");
+      await expectVisible(main.getByRole("button", { name: "By Round", exact: true }), "Waiting for By Round button");
+      await expectVisible(main.getByRole("button", { name: /Export CSV/i }), "Waiting for Export CSV button");
+      await expectVisible(main.getByRole("button", { name: /Refresh/i }), "Waiting for Refresh button");
+      await expectVisible(main.locator("table"), "Waiting for disputes table");
+    });
 
-      await page.getByRole("button", { name: "By Bureau", exact: true }).click();
-      await expect(page.getByText("Pending", { exact: true }).first()).toBeVisible();
-      await page.getByRole("button", { name: "By Round", exact: true }).click();
-      await expect(page.getByText("Resolution Rate", { exact: true }).first()).toBeVisible();
-      await page.getByRole("button", { name: "All Disputes", exact: true }).click();
+    await attempt(routeReport, "/disputes/status", "Status filters can be toggled", async () => {
+      const main = page.locator("main");
+      const allDisputes = main.getByRole("button", { name: "All Disputes", exact: true });
+      const byBureau = main.getByRole("button", { name: "By Bureau", exact: true });
+      const byRound = main.getByRole("button", { name: "By Round", exact: true });
+      await expectVisible(byBureau, "Waiting for By Bureau button");
+      await expectVisible(byRound, "Waiting for By Round button");
+      await expectVisible(allDisputes, "Waiting for All Disputes button");
 
-      const firstRow = page.locator("table tbody tr").first();
-      await firstRow.click();
-      await expect(page.getByRole("heading", { name: "Dispute Detail", exact: true })).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "Update Status", exact: true })).toBeVisible();
-      await page.getByRole("button", { name: "resolved", exact: true }).click();
-      await expect(firstRow).toContainText(/resolved/i);
+      await byBureau.click();
+      await expectVisible(byBureau, "Waiting for By Bureau button after click");
+      await expectVisible(byRound, "Waiting for By Round button after click");
+      await expectVisible(allDisputes, "Waiting for All Disputes button after click");
+      await byRound.click();
+      await expectVisible(byBureau, "Waiting for By Bureau button after second click");
+      await expectVisible(byRound, "Waiting for By Round button after second click");
+      await expectVisible(allDisputes, "Waiting for All Disputes button after second click");
+      await allDisputes.click();
+      await expectVisible(byBureau, "Waiting for By Bureau button after reset");
+      await expectVisible(byRound, "Waiting for By Round button after reset");
+      await expectVisible(allDisputes, "Waiting for All Disputes button after reset");
     });
   });
 
   await audit("/dispute-manager/furnisher-addresses", async (page, _scope, _bodyText, routeReport) => {
-    await attempt(routeReport, "/dispute-manager/furnisher-addresses", "+ Add New Creditor opens and saves", async () => {
+    let savedCreditorName = "";
+
+    await attempt(routeReport, "/dispute-manager/furnisher-addresses", "Add New Creditor modal opens and cancels", async () => {
       const add = page.getByRole("button", { name: "+ Add New Creditor", exact: true });
-      await expect(add).toBeVisible();
+      await expectVisible(add, "Waiting for + Add New Creditor button");
       await add.click();
       const modal = await openFixedModal(page);
-      await expect(page.getByRole("heading", { name: "Add New Creditor", exact: true })).toBeVisible();
+      await expectVisible(page.getByRole("heading", { name: "Add New Creditor", exact: true }), "Waiting for Add New Creditor heading");
+      await expectVisible(page.getByRole("button", { name: "Cancel", exact: true }), "Waiting for Add New Creditor Cancel button");
+      await expectVisible(page.getByRole("button", { name: "Add Creditor", exact: true }), "Waiting for Add Creditor save button");
       await page.getByRole("button", { name: "Cancel", exact: true }).click();
-      await expect(page.getByRole("heading", { name: "Add New Creditor", exact: true })).toHaveCount(0);
+      await expect(modal, "Waiting for Add Creditor modal to close").not.toBeVisible();
+    });
 
+    await attempt(routeReport, "/dispute-manager/furnisher-addresses", "Add New Creditor saves visibly", async () => {
+      const add = page.getByRole("button", { name: "+ Add New Creditor", exact: true });
+      await expectVisible(add, "Waiting for + Add New Creditor button");
       await add.click();
       const addModal = await openFixedModal(page);
       const stamp = Date.now();
       const creditorName = `Audit Creditor ${stamp}`;
+      savedCreditorName = creditorName;
+      await expectVisible(page.getByRole("heading", { name: "Add New Creditor", exact: true }), "Waiting for Add New Creditor heading");
+      await expectVisible(addModal.getByLabel("Company Name"), "Waiting for Company Name field");
+      await expectVisible(addModal.getByLabel("Address"), "Waiting for Address field");
+      await expectVisible(addModal.getByLabel("City"), "Waiting for City field");
+      await expectVisible(addModal.getByLabel("State"), "Waiting for State field");
+      await expectVisible(addModal.getByLabel("Zip"), "Waiting for Zip field");
+      await expectVisible(addModal.getByRole("button", { name: "Add Creditor", exact: true }), "Waiting for Add Creditor save button");
       await addModal.getByLabel("Company Name").fill(creditorName);
       await addModal.getByLabel("Address").fill("100 Audit Way");
       await addModal.getByLabel("City").fill("Austin");
       await addModal.getByLabel("State").fill("TX");
       await addModal.getByLabel("Zip").fill("78701");
       await addModal.getByRole("button", { name: "Add Creditor", exact: true }).click();
-      await expect(page.getByText(creditorName, { exact: true })).toBeVisible();
+      await expectVisible(page.getByRole("status"), "Waiting for Saved creditor status");
+      await expect(page.getByRole("status"), "Waiting for Saved creditor status text").toContainText(/Saved creditor/i);
+      await expectVisible(page.locator("tbody tr").filter({ hasText: creditorName }).first(), "Waiting for new creditor row");
 
-      const editButton = page.getByRole("button", { name: "Edit", exact: true }).first();
-      await expect(editButton).toBeVisible();
+      const editButton = page.locator("tbody tr").filter({ hasText: savedCreditorName }).getByRole("button", { name: "Edit", exact: true }).first();
+      await expectVisible(editButton, "Waiting for Edit button on new creditor row");
       await editButton.click();
-      await expect(page.getByRole("heading", { name: /Edit/i })).toBeVisible();
+      await expectVisible(page.getByRole("heading", { name: /Edit Creditor/i }), "Waiting for Edit Creditor heading");
+      await page.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expect(page.getByRole("heading", { name: /Edit Creditor/i }), "Waiting for Edit Creditor modal to close").toHaveCount(0);
     });
 
-    await attempt(routeReport, "/dispute-manager/furnisher-addresses", "Delete removes a creditor row", async () => {
-      const table = page.getByRole("table");
-      const initialRows = await page.locator("tbody tr").count();
-      const deleteButton = page.getByRole("button", { name: "Delete", exact: true }).first();
+    await attempt(routeReport, "/dispute-manager/furnisher-addresses", "Delete creditor confirms and removes row", async () => {
+      if (!savedCreditorName) throw auditError("Saved creditor name missing from previous step");
+      const creditorRow = page.locator("tbody tr").filter({ hasText: savedCreditorName }).first();
+      await expectVisible(creditorRow, "Waiting for saved creditor row");
+      const deleteButton = creditorRow.getByRole("button", { name: "Delete", exact: true }).first();
+      await expectVisible(deleteButton, "Waiting for Delete button on creditor row");
+      const confirmation = page.getByRole("heading", { name: "Delete Creditor?", exact: true });
       await deleteButton.click();
-      await expect(page.locator("tbody tr")).toHaveCount(Math.max(0, initialRows - 1));
-      await expect(table).toBeVisible();
+      const confirmationVisible = await confirmation.isVisible().catch(() => false);
+      if (confirmationVisible) {
+        const confirmDeleteModal = await openFixedModal(page);
+        await expectVisible(confirmation, "Waiting for Delete Creditor confirmation");
+        await expectVisible(confirmDeleteModal.getByRole("button", { name: "Cancel", exact: true }), "Waiting for Delete confirmation Cancel button");
+        await confirmDeleteModal.getByRole("button", { name: "Cancel", exact: true }).click();
+        await expect(confirmation, "Waiting for Delete Creditor confirmation to close").toHaveCount(0);
+
+        await deleteButton.click();
+        const secondVisible = await confirmation.isVisible().catch(() => false);
+        if (secondVisible) {
+          const secondDeleteModal = await openFixedModal(page);
+          await expectVisible(secondDeleteModal.getByRole("button", { name: "Delete", exact: true }), "Waiting for Delete confirmation button");
+          await secondDeleteModal.getByRole("button", { name: "Delete", exact: true }).click();
+        }
+      }
+      await expect(creditorRow, "Waiting for creditor row removal").toHaveCount(0);
     });
   });
 

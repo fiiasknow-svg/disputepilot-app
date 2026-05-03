@@ -249,14 +249,22 @@ export default function Page() {
         writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
         return next;
       });
-      void supabase.from("leads").update(sanitizeLead(form)).eq("id", editing.id).catch(() => {});
+      try {
+        await supabase.from("leads").update(sanitizeLead(form)).eq("id", editing.id);
+      } catch {
+        // Keep local UI working even if the backend update fails.
+      }
     } else {
       setLeads(current => {
         const next = [{ ...payload }, ...current];
         writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
         return next;
       });
-      void supabase.from("leads").insert([sanitizeLead(form)]).catch(() => {});
+      try {
+        await supabase.from("leads").insert([sanitizeLead(form)]);
+      } catch {
+        // Keep local UI working even if the backend insert fails.
+      }
     }
     setSaving(false);
     setShowForm(false);
@@ -291,7 +299,11 @@ export default function Page() {
   }
 
   async function deleteLead(id: string) {
-    void supabase.from("leads").delete().eq("id", id).catch(() => {});
+    try {
+      await supabase.from("leads").delete().eq("id", id);
+    } catch {
+      // Keep local UI working even if the backend delete fails.
+    }
     setLeads(l => {
       const next = l.filter(x => x.id !== id);
       writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
@@ -302,7 +314,11 @@ export default function Page() {
 
   async function bulkDelete() {
     const ids = [...selected];
-    void supabase.from("leads").delete().in("id", ids).catch(() => {});
+    try {
+      await supabase.from("leads").delete().in("id", ids);
+    } catch {
+      // Keep local UI working even if the backend bulk delete fails.
+    }
     setLeads(l => {
       const next = l.filter(x => !ids.includes(x.id));
       writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
@@ -313,7 +329,11 @@ export default function Page() {
 
   async function bulkUpdateStatus(status: string) {
     const ids = [...selected];
-    void supabase.from("leads").update({ status }).in("id", ids).catch(() => {});
+    try {
+      await supabase.from("leads").update({ status }).in("id", ids);
+    } catch {
+      // Keep local UI working even if the backend update fails.
+    }
     setLeads(l => {
       const next = l.map(x => ids.includes(x.id) ? { ...x, status } : x);
       writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
@@ -324,7 +344,11 @@ export default function Page() {
   }
 
   async function updateStatus(id: string, status: string) {
-    void supabase.from("leads").update({ status }).eq("id", id).catch(() => {});
+    try {
+      await supabase.from("leads").update({ status }).eq("id", id);
+    } catch {
+      // Keep local UI working even if the backend update fails.
+    }
     setLeads(l => {
       const next = l.map(x => x.id === id ? { ...x, status } : x);
       writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
@@ -334,14 +358,22 @@ export default function Page() {
 
   async function convertToClient(lead: any) {
     setConverting(lead.id);
-    void supabase.from("clients").insert([{
-      first_name: lead.first_name, last_name: lead.last_name,
-      full_name: `${lead.first_name} ${lead.last_name}`,
-      email: lead.email, phone: lead.phone, status: "active",
-      address: lead.address, city: lead.city, state: lead.state, zip: lead.zip,
-      credit_score: lead.credit_score, assigned_agent: lead.assigned_agent,
-    }]).catch(() => {});
-    void supabase.from("leads").update({ status: "converted" }).eq("id", lead.id).catch(() => {});
+    try {
+      await supabase.from("clients").insert([{
+        first_name: lead.first_name, last_name: lead.last_name,
+        full_name: `${lead.first_name} ${lead.last_name}`,
+        email: lead.email, phone: lead.phone, status: "active",
+        address: lead.address, city: lead.city, state: lead.state, zip: lead.zip,
+        credit_score: lead.credit_score, assigned_agent: lead.assigned_agent,
+      }]);
+    } catch {
+      // Keep local UI working even if the client insert fails.
+    }
+    try {
+      await supabase.from("leads").update({ status: "converted" }).eq("id", lead.id);
+    } catch {
+      // Keep local UI working even if the lead conversion update fails.
+    }
     setLeads(current => current.map(item => item.id === lead.id ? { ...item, status: "converted" } : item));
     setConverting(null);
     router.push(`/clients`);

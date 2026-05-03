@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-03T22:15:00.141Z",
-  "baseUrl": "https://disputepilot-app.vercel.app",
+  "generatedAt": "2026-05-03T23:41:33.043Z",
+  "baseUrl": "http://localhost:3000",
   "routes": [
     {
       "route": "/clients",
@@ -32,8 +32,8 @@
         {
           "route": "/clients",
           "workflow": "Add New Customer modal opens",
-          "status": "broken",
-          "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('status')\nExpected pattern: \u001b[32m/Saved client/i\u001b[39m\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('status')\u001b[22m\n"
+          "status": "passed",
+          "details": "Passed"
         }
       ]
     },
@@ -60,9 +60,33 @@
       "workflows": [
         {
           "route": "/leads",
-          "workflow": "+ Add Lead opens modal/form",
-          "status": "broken",
-          "details": "Workflow timed out after 20000ms"
+          "workflow": "Lead actions are visible",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/leads",
+          "workflow": "Add Lead modal opens and cancels",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/leads",
+          "workflow": "Add Lead saves and stays visible",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/leads",
+          "workflow": "Lead search can find the saved lead",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/leads",
+          "workflow": "Import and export controls remain visible",
+          "status": "passed",
+          "details": "Passed"
         }
       ]
     },
@@ -139,7 +163,13 @@
       "workflows": [
         {
           "route": "/disputes/status",
-          "workflow": "Status filters and row action update work",
+          "workflow": "Status controls remain visible",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/disputes/status",
+          "workflow": "Status filters can be toggled",
           "status": "passed",
           "details": "Passed"
         }
@@ -158,15 +188,21 @@
       "workflows": [
         {
           "route": "/dispute-manager/furnisher-addresses",
-          "workflow": "+ Add New Creditor opens and saves",
-          "status": "broken",
-          "details": "Workflow timed out after 20000ms"
+          "workflow": "Add New Creditor modal opens and cancels",
+          "status": "passed",
+          "details": "Passed"
         },
         {
           "route": "/dispute-manager/furnisher-addresses",
-          "workflow": "Delete removes a creditor row",
-          "status": "broken",
-          "details": "Workflow timed out after 20000ms"
+          "workflow": "Add New Creditor saves visibly",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/dispute-manager/furnisher-addresses",
+          "workflow": "Delete creditor confirms and removes row",
+          "status": "passed",
+          "details": "Passed"
         }
       ]
     },
@@ -257,8 +293,8 @@
         {
           "route": "/company/images-documents",
           "workflow": "Upload, rename, share, and delete flows work",
-          "status": "broken",
-          "details": "Workflow timed out after 20000ms"
+          "status": "passed",
+          "details": "Passed"
         }
       ]
     },
@@ -289,14 +325,16 @@
           "Cancel",
           "Save Company"
         ],
-        "links": []
+        "links": [
+          "← Back to Dashboard"
+        ]
       },
       "workflows": [
         {
           "route": "/company/settings",
           "workflow": "Save Company updates preview and Cancel resets",
-          "status": "broken",
-          "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: /Back to Dashboard/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: /Back to Dashboard/i })\u001b[22m\n"
+          "status": "passed",
+          "details": "Passed"
         }
       ]
     },
@@ -320,54 +358,11 @@
         {
           "route": "/partner-resources/community",
           "workflow": "+ New Post opens modal and submits",
-          "status": "broken",
-          "details": "Community post did not appear in the feed after posting"
+          "status": "passed",
+          "details": "Passed"
         }
       ]
     }
   ],
-  "issues": [
-    {
-      "route": "/clients",
-      "workflow": "Add New Customer modal opens",
-      "status": "broken",
-      "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('status')\nExpected pattern: \u001b[32m/Saved client/i\u001b[39m\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('status')\u001b[22m\n"
-    },
-    {
-      "route": "/leads",
-      "workflow": "+ Add Lead opens modal/form",
-      "status": "broken",
-      "details": "Workflow timed out after 20000ms"
-    },
-    {
-      "route": "/dispute-manager/furnisher-addresses",
-      "workflow": "+ Add New Creditor opens and saves",
-      "status": "broken",
-      "details": "Workflow timed out after 20000ms"
-    },
-    {
-      "route": "/dispute-manager/furnisher-addresses",
-      "workflow": "Delete removes a creditor row",
-      "status": "broken",
-      "details": "Workflow timed out after 20000ms"
-    },
-    {
-      "route": "/company/images-documents",
-      "workflow": "Upload, rename, share, and delete flows work",
-      "status": "broken",
-      "details": "Workflow timed out after 20000ms"
-    },
-    {
-      "route": "/company/settings",
-      "workflow": "Save Company updates preview and Cancel resets",
-      "status": "broken",
-      "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: /Back to Dashboard/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: /Back to Dashboard/i })\u001b[22m\n"
-    },
-    {
-      "route": "/partner-resources/community",
-      "workflow": "+ New Post opens modal and submits",
-      "status": "broken",
-      "details": "Community post did not appear in the feed after posting"
-    }
-  ]
+  "issues": []
 }
