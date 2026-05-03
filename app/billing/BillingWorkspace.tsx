@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type React from "react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 type Invoice = {
@@ -47,6 +47,7 @@ const invoiceStatuses = ["Draft", "Sent", "Paid", "Overdue"];
 const paymentStatuses = ["Paid", "Pending", "Failed", "Refunded"];
 const serviceStatuses = ["Active", "Inactive"];
 const methods = ["Credit Card", "ACH", "Cash", "Check", "PayPal"];
+const LOCAL_BILLING_KEY = "disputepilot.billing";
 
 const initialInvoices: Invoice[] = [
   { id: 1, client: "Leslie Sabek", invoiceNumber: "INV-1042", service: "Credit Repair Monthly Plan", amount: 149, status: "Sent", dueDate: "2026-05-15", notes: "May service retainer." },
@@ -77,13 +78,29 @@ const pageTitles = {
 const money = (amount: number) => `$${amount.toFixed(2)}`;
 const displayDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString();
 
+function readLocalBilling() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(window.localStorage.getItem(LOCAL_BILLING_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalBilling(next: { invoices: Invoice[]; payments: Payment[]; services: Service[] }) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_BILLING_KEY, JSON.stringify(next));
+}
+
 export default function BillingWorkspace({ view = "overview" }: { view?: "overview" | "invoices" | "payments" | "history" | "services" }) {
   const [invoices, setInvoices] = useState(initialInvoices);
   const [payments, setPayments] = useState(initialPayments);
   const [services, setServices] = useState(initialServices);
   const [modal, setModal] = useState<"invoice" | "payment" | "service" | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [editTarget, setEditTarget] = useState<Detail | null>(null);
   const [confirmation, setConfirmation] = useState("");
+  const [hydrated, setHydrated] = useState(false);
 
   const summary = useMemo(() => {
     const openBalance = invoices.filter(i => i.status !== "Paid").reduce((sum, i) => sum + i.amount, 0);
@@ -91,6 +108,21 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
     const overdue = invoices.filter(i => i.status === "Overdue").length;
     return { openBalance, paidThisMonth, overdue, activeServices: services.filter(s => s.status === "Active").length };
   }, [invoices, payments, services]);
+
+  useEffect(() => {
+    const local = readLocalBilling();
+    if (local) {
+      if (Array.isArray(local.invoices)) setInvoices(local.invoices);
+      if (Array.isArray(local.payments)) setPayments(local.payments);
+      if (Array.isArray(local.services)) setServices(local.services);
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    writeLocalBilling({ invoices, payments, services });
+  }, [hydrated, invoices, payments, services]);
 
   function saveInvoice(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -145,6 +177,59 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
     setConfirmation(`Saved ${service.type.toLowerCase()} ${service.name} at ${money(service.amount)}.`);
   }
 
+  function saveEditedInvoice(event: FormEvent<HTMLFormElement>, current: Invoice) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const updated: Invoice = {
+      ...current,
+      client: String(data.get("client")),
+      invoiceNumber: String(data.get("invoiceNumber")),
+      service: String(data.get("service")),
+      amount: Number(data.get("amount")),
+      status: String(data.get("status")),
+      dueDate: String(data.get("dueDate")),
+      notes: String(data.get("notes")),
+    };
+    setInvoices(prev => prev.map(item => item.id === current.id ? updated : item));
+    setEditTarget(null);
+    setConfirmation(`Updated invoice ${updated.invoiceNumber} for ${updated.client}.`);
+  }
+
+  function saveEditedPayment(event: FormEvent<HTMLFormElement>, current: Payment) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const updated: Payment = {
+      ...current,
+      client: String(data.get("client")),
+      reference: String(data.get("reference")),
+      service: String(data.get("service")),
+      amount: Number(data.get("amount")),
+      status: String(data.get("status")),
+      paymentDate: String(data.get("paymentDate")),
+      method: String(data.get("method")),
+      notes: String(data.get("notes")),
+    };
+    setPayments(prev => prev.map(item => item.id === current.id ? updated : item));
+    setEditTarget(null);
+    setConfirmation(`Updated payment ${updated.reference} from ${updated.client}.`);
+  }
+
+  function saveEditedService(event: FormEvent<HTMLFormElement>, current: Service) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const updated: Service = {
+      ...current,
+      name: String(data.get("name")),
+      type: String(data.get("type")),
+      amount: Number(data.get("amount")),
+      status: String(data.get("status")),
+      notes: String(data.get("notes")),
+    };
+    setServices(prev => prev.map(item => item.id === current.id ? updated : item));
+    setEditTarget(null);
+    setConfirmation(`Updated ${updated.type.toLowerCase()} ${updated.name}.`);
+  }
+
   return (
     <CDMLayout>
       <div style={{ padding: 24, maxWidth: 1240 }}>
@@ -188,7 +273,14 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
         {modal === "invoice" && <Modal title="Create Invoice" onClose={() => setModal(null)}><InvoiceForm services={services} onSave={saveInvoice} onCancel={() => setModal(null)} /></Modal>}
         {modal === "payment" && <Modal title="Add Payment" onClose={() => setModal(null)}><PaymentForm services={services} onSave={savePayment} onCancel={() => setModal(null)} /></Modal>}
         {modal === "service" && <Modal title="Add Service/Product" onClose={() => setModal(null)}><ServiceForm onSave={saveService} onCancel={() => setModal(null)} /></Modal>}
-        {detail && <Modal title={`${detail.kind} Details`} onClose={() => setDetail(null)}><Details detail={detail} onClose={() => setDetail(null)} /></Modal>}
+        {detail && <Modal title={`${detail.kind} Details`} onClose={() => setDetail(null)}><Details detail={detail} onClose={() => setDetail(null)} onEdit={() => { setEditTarget(detail); setDetail(null); }} /></Modal>}
+        {editTarget && (
+          <Modal title={`Edit ${editTarget.kind}`} onClose={() => setEditTarget(null)}>
+            {editTarget.kind === "Invoice" && <InvoiceEditForm invoice={editTarget.item} services={services} onSave={(event) => saveEditedInvoice(event, editTarget.item)} onCancel={() => setEditTarget(null)} />}
+            {editTarget.kind === "Payment" && <PaymentEditForm payment={editTarget.item} services={services} onSave={(event) => saveEditedPayment(event, editTarget.item)} onCancel={() => setEditTarget(null)} />}
+            {editTarget.kind === "Service/Product" && <ServiceEditForm service={editTarget.item} onSave={(event) => saveEditedService(event, editTarget.item)} onCancel={() => setEditTarget(null)} />}
+          </Modal>
+        )}
       </div>
     </CDMLayout>
   );
@@ -244,6 +336,50 @@ function PaymentHistory({ payments, onView }: { payments: Payment[]; onView: (pa
       <p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 14 }}>Showing {payments.length} payment records with {money(totalPaid)} collected from paid payments.</p>
       <PaymentsTable payments={payments} onView={onView} />
     </section>
+  );
+}
+
+function InvoiceEditForm({ invoice, services, onSave, onCancel }: { invoice: Invoice; services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
+  return (
+    <form onSubmit={onSave} style={formGrid}>
+      <SelectField label="Client/Customer" name="client" options={clients} defaultValue={invoice.client} />
+      <Field label="Invoice Number" name="invoiceNumber" defaultValue={invoice.invoiceNumber} />
+      <SelectField label="Service/Product" name="service" options={services.map(s => s.name)} defaultValue={invoice.service} />
+      <Field label="Amount" name="amount" type="number" defaultValue={String(invoice.amount)} />
+      <SelectField label="Status" name="status" options={invoiceStatuses} defaultValue={invoice.status} />
+      <Field label="Due Date" name="dueDate" type="date" defaultValue={invoice.dueDate} />
+      <TextArea label="Notes" name="notes" defaultValue={invoice.notes} />
+      <FormActions onCancel={onCancel} submitLabel="Save Changes" />
+    </form>
+  );
+}
+
+function PaymentEditForm({ payment, services, onSave, onCancel }: { payment: Payment; services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
+  return (
+    <form onSubmit={onSave} style={formGrid}>
+      <SelectField label="Client/Customer" name="client" options={clients} defaultValue={payment.client} />
+      <Field label="Payment Reference" name="reference" defaultValue={payment.reference} />
+      <SelectField label="Service/Product" name="service" options={services.map(s => s.name)} defaultValue={payment.service} />
+      <Field label="Amount" name="amount" type="number" defaultValue={String(payment.amount)} />
+      <SelectField label="Status" name="status" options={paymentStatuses} defaultValue={payment.status} />
+      <Field label="Payment Date" name="paymentDate" type="date" defaultValue={payment.paymentDate} />
+      <SelectField label="Payment Method" name="method" options={methods} defaultValue={payment.method} />
+      <TextArea label="Notes" name="notes" defaultValue={payment.notes} />
+      <FormActions onCancel={onCancel} submitLabel="Save Changes" />
+    </form>
+  );
+}
+
+function ServiceEditForm({ service, onSave, onCancel }: { service: Service; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
+  return (
+    <form onSubmit={onSave} style={formGrid}>
+      <Field label="Service/Product" name="name" defaultValue={service.name} />
+      <SelectField label="Type" name="type" options={["Service", "Product"]} defaultValue={service.type} />
+      <Field label="Amount" name="amount" type="number" defaultValue={String(service.amount)} />
+      <SelectField label="Status" name="status" options={serviceStatuses} defaultValue={service.status} />
+      <TextArea label="Notes" name="notes" defaultValue={service.notes} />
+      <FormActions onCancel={onCancel} submitLabel="Save Changes" />
+    </form>
   );
 }
 
@@ -337,10 +473,10 @@ function Field({ label, name, type = "text", defaultValue = "" }: { label: strin
   );
 }
 
-function SelectField({ label, name, options }: { label: string; name: string; options: string[] }) {
+function SelectField({ label, name, options, defaultValue }: { label: string; name: string; options: string[]; defaultValue?: string }) {
   return (
     <label style={fieldLabel}>{label}
-      <select required name={name} style={inputStyle}>{options.map(option => <option key={option} value={option}>{option}</option>)}</select>
+      <select required name={name} defaultValue={defaultValue} style={inputStyle}>{options.map(option => <option key={option} value={option}>{option}</option>)}</select>
     </label>
   );
 }
@@ -353,16 +489,16 @@ function TextArea({ label, name, defaultValue }: { label: string; name: string; 
   );
 }
 
-function FormActions({ onCancel }: { onCancel: () => void }) {
+function FormActions({ onCancel, submitLabel = "Save" }: { onCancel: () => void; submitLabel?: string }) {
   return (
     <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 10 }}>
       <button type="button" onClick={onCancel} style={secondaryButton}>Cancel</button>
-      <button type="submit" style={primaryButton}>Save</button>
+      <button type="submit" style={primaryButton}>{submitLabel}</button>
     </div>
   );
 }
 
-function Details({ detail, onClose }: { detail: Detail; onClose: () => void }) {
+function Details({ detail, onClose, onEdit }: { detail: Detail; onClose: () => void; onEdit: () => void }) {
   const rows = detailRows(detail);
   return (
     <div>
@@ -375,8 +511,9 @@ function Details({ detail, onClose }: { detail: Detail; onClose: () => void }) {
           </div>
         ))}
       </dl>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 22 }}>
-        <button onClick={onClose} style={primaryButton}>Close Details</button>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
+        <button onClick={onClose} style={secondaryButton}>Close Details</button>
+        <button onClick={onEdit} style={primaryButton}>Edit</button>
       </div>
     </div>
   );
