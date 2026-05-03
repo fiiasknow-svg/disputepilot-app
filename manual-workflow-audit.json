@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T22:11:21.583Z",
+  "generatedAt": "2026-05-03T22:15:00.141Z",
   "baseUrl": "https://disputepilot-app.vercel.app",
   "routes": [
     {
@@ -140,8 +140,8 @@
         {
           "route": "/disputes/status",
           "workflow": "Status filters and row action update work",
-          "status": "broken",
-          "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Update Status', { exact: true })\nExpected: visible\nError: strict mode violation: getByText('Update Status', { exact: true }) resolved to 2 elements:\n    1) <th>Update Status</th> aka getByRole('columnheader', { name: 'Update Status' })\n    2) <p>Update Status</p> aka getByRole('paragraph').filter({ hasText: 'Update Status' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Update Status', { exact: true })\u001b[22m\n"
+          "status": "passed",
+          "details": "Passed"
         }
       ]
     },
@@ -338,12 +338,6 @@
       "workflow": "+ Add Lead opens modal/form",
       "status": "broken",
       "details": "Workflow timed out after 20000ms"
-    },
-    {
-      "route": "/disputes/status",
-      "workflow": "Status filters and row action update work",
-      "status": "broken",
-      "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Update Status', { exact: true })\nExpected: visible\nError: strict mode violation: getByText('Update Status', { exact: true }) resolved to 2 elements:\n    1) <th>Update Status</th> aka getByRole('columnheader', { name: 'Update Status' })\n    2) <p>Update Status</p> aka getByRole('paragraph').filter({ hasText: 'Update Status' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Update Status', { exact: true })\u001b[22m\n"
     },
     {
       "route": "/dispute-manager/furnisher-addresses",
