@@ -226,6 +226,7 @@ export default function Page() {
   // Filters / sort / view
   const [search, setSearch] = useState({ first_name: "", last_name: "", phone: "", email: "" });
   const [statusTab, setStatusTab] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [sort, setSort] = useState("date");
   const [view, setView] = useState<"table" | "card">("table");
   const [pageSize, setPageSize] = useState(25);
@@ -295,6 +296,7 @@ export default function Page() {
       if (search.phone && !String(c.phone || c.mobile_phone || "").toLowerCase().includes(search.phone.toLowerCase())) return false;
       if (search.email && !String(c.email || "").toLowerCase().includes(search.email.toLowerCase())) return false;
       if (!tabMatches(c, statusTab)) return false;
+      if (typeFilter !== "all" && String(c.client_type || "Client").toLowerCase() !== typeFilter) return false;
       return true;
     })
     .sort((a, b) => {
@@ -333,7 +335,7 @@ export default function Page() {
     const now = new Date().toISOString();
     const newClient = { id: `local-${Date.now()}`, ...sanitizeClient(form), full_name, created_at: now, updated_at: now };
     setClients(cs => {
-      const next = [newClient, ...cs.filter(c => !String(c.id).startsWith("sample-client-"))];
+      const next = [newClient, ...cs];
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
       return next;
     });
@@ -472,7 +474,7 @@ export default function Page() {
       }).filter(r => r.full_name || r.first_name);
       if (rows.length) {
         setClients(cs => {
-          const next = [...rows, ...cs.filter(c => !String(c.id).startsWith("sample-client-"))];
+          const next = [...rows, ...cs];
           writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
           return next;
         });
@@ -605,7 +607,7 @@ export default function Page() {
                 Search
               </button>
               <button
-                onClick={() => { setSearch({ first_name: "", last_name: "", phone: "", email: "" }); setPage(1); }}
+                onClick={() => { setSearch({ first_name: "", last_name: "", phone: "", email: "" }); setTypeFilter("all"); setPage(1); }}
                 style={{ padding: "7px 14px", background: "#fff", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 13 }}
               >
                 Clear
@@ -632,6 +634,14 @@ export default function Page() {
 
         {/* ── Sort / View ── */}
         <div style={{ display: "flex", gap: 8, padding: "12px 0 10px", flexWrap: "wrap" as const, alignItems: "center" }}>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={sel}>
+            <option value="all">All Types</option>
+            <option value="client">Client</option>
+            <option value="lead">Lead</option>
+            <option value="prospect">Prospect</option>
+            <option value="past client">Past Client</option>
+            <option value="partner referral">Partner Referral</option>
+          </select>
           <select value={sort} onChange={e => setSort(e.target.value)} style={sel}>
             <option value="date">Newest First</option>
             <option value="name">Name A–Z</option>
