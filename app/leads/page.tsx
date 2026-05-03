@@ -14,6 +14,7 @@ const AGENTS = ["Alice Johnson","Bob Smith","Carol Davis","David Lee","Eve Marti
 const SERVICE_PLANS = ["Basic ($99/mo)","Standard ($149/mo)","Premium ($199/mo)","Elite ($299/mo)"];
 const PAGE_SIZES = [25, 50, 100];
 const STATUSES = Object.keys(STATUS_COLORS);
+const LOCAL_LEADS_KEY = "disputepilot.leads";
 
 const EMPTY_FORM = {
   first_name: "", last_name: "", email: "", phone: "",
@@ -34,6 +35,20 @@ function avatarColor(name: string) {
 }
 function tagList(t: string) { return t ? t.split(",").map(s => s.trim()).filter(Boolean) : []; }
 function scoreColor(s: number) { return s >= 700 ? "#10b981" : s >= 620 ? "#f59e0b" : "#ef4444"; }
+
+function readLocalLeads() {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(window.localStorage.getItem(LOCAL_LEADS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalLeads(leads: any[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_LEADS_KEY, JSON.stringify(leads));
+}
 
 const inp: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 };
@@ -131,6 +146,7 @@ export default function Page() {
   const router = useRouter();
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -158,8 +174,15 @@ export default function Page() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
-    setLeads(data || []);
+    const localLeads = readLocalLeads();
+    try {
+      const { data } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+      const remoteLeads = data || [];
+      const remoteIds = new Set(remoteLeads.map((lead: any) => lead.id));
+      setLeads([...localLeads.filter((lead: any) => !remoteIds.has(lead.id)), ...remoteLeads]);
+    } catch {
+      setLeads(localLeads);
+    }
     setLoading(false);
   }
 
@@ -211,16 +234,35 @@ export default function Page() {
   async function save() {
     if (!form.first_name || !form.last_name) return;
     setSaving(true);
+    const full_name = `${form.first_name} ${form.last_name}`.trim();
+    const now = new Date().toISOString();
+    const payload = {
+      ...sanitizeLead(form),
+      full_name,
+      id: editing?.id || `local-lead-${Date.now()}`,
+      created_at: editing?.created_at || now,
+      updated_at: now,
+    };
     if (editing) {
-      await supabase.from("leads").update(sanitizeLead(form)).eq("id", editing.id);
+      setLeads(current => {
+        const next = current.map(lead => lead.id === editing.id ? { ...lead, ...payload } : lead);
+        writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
+        return next;
+      });
+      void supabase.from("leads").update(sanitizeLead(form)).eq("id", editing.id).catch(() => {});
     } else {
-      await supabase.from("leads").insert([sanitizeLead(form)]);
+      setLeads(current => {
+        const next = [{ ...payload }, ...current];
+        writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
+        return next;
+      });
+      void supabase.from("leads").insert([sanitizeLead(form)]).catch(() => {});
     }
     setSaving(false);
     setShowForm(false);
     setEditing(null);
     setForm({ ...EMPTY_FORM });
-    load();
+    setNotice(editing ? `Updated lead: ${full_name}` : `Saved lead: ${full_name}`);
   }
 
   function openEdit(lead: any) {
@@ -249,44 +291,60 @@ export default function Page() {
   }
 
   async function deleteLead(id: string) {
-    await supabase.from("leads").delete().eq("id", id);
-    setLeads(l => l.filter(x => x.id !== id));
+    void supabase.from("leads").delete().eq("id", id).catch(() => {});
+    setLeads(l => {
+      const next = l.filter(x => x.id !== id);
+      writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
+      return next;
+    });
     setDeleteTarget(null);
   }
 
   async function bulkDelete() {
     const ids = [...selected];
-    await supabase.from("leads").delete().in("id", ids);
-    setLeads(l => l.filter(x => !ids.includes(x.id)));
+    void supabase.from("leads").delete().in("id", ids).catch(() => {});
+    setLeads(l => {
+      const next = l.filter(x => !ids.includes(x.id));
+      writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
+      return next;
+    });
     setSelected(new Set());
   }
 
   async function bulkUpdateStatus(status: string) {
     const ids = [...selected];
-    await supabase.from("leads").update({ status }).in("id", ids);
-    setLeads(l => l.map(x => ids.includes(x.id) ? { ...x, status } : x));
+    void supabase.from("leads").update({ status }).in("id", ids).catch(() => {});
+    setLeads(l => {
+      const next = l.map(x => ids.includes(x.id) ? { ...x, status } : x);
+      writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
+      return next;
+    });
     setSelected(new Set());
     setBulkStatusOpen(false);
   }
 
   async function updateStatus(id: string, status: string) {
-    await supabase.from("leads").update({ status }).eq("id", id);
-    setLeads(l => l.map(x => x.id === id ? { ...x, status } : x));
+    void supabase.from("leads").update({ status }).eq("id", id).catch(() => {});
+    setLeads(l => {
+      const next = l.map(x => x.id === id ? { ...x, status } : x);
+      writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
+      return next;
+    });
   }
 
   async function convertToClient(lead: any) {
     setConverting(lead.id);
-    const { data } = await supabase.from("clients").insert([{
+    void supabase.from("clients").insert([{
       first_name: lead.first_name, last_name: lead.last_name,
       full_name: `${lead.first_name} ${lead.last_name}`,
       email: lead.email, phone: lead.phone, status: "active",
       address: lead.address, city: lead.city, state: lead.state, zip: lead.zip,
       credit_score: lead.credit_score, assigned_agent: lead.assigned_agent,
-    }]).select().single();
-    await supabase.from("leads").update({ status: "converted" }).eq("id", lead.id);
+    }]).catch(() => {});
+    void supabase.from("leads").update({ status: "converted" }).eq("id", lead.id).catch(() => {});
+    setLeads(current => current.map(item => item.id === lead.id ? { ...item, status: "converted" } : item));
     setConverting(null);
-    if (data) router.push(`/clients`);
-    else load();
+    router.push(`/clients`);
   }
 
   function exportCSV() {
@@ -371,6 +429,11 @@ export default function Page() {
   return (
     <CDMLayout>
       <div style={{ padding: 24, maxWidth: 1300 }}>
+        {notice && (
+          <div role="status" aria-live="polite" style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#166534", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
+            {notice}
+          </div>
+        )}
         {/* Page tabs: Leads / Affiliates */}
         <div style={{ display: "flex", borderBottom: "2px solid #f1f5f9", marginBottom: 24 }}>
           {["Leads", "Affiliates"].map(t => (

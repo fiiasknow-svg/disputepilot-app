@@ -150,7 +150,7 @@ const routes: RouteSpec[] = [
       'Previous',
       'Next',
     ],
-    buttonChecks: [/Get Started/i, /Next/i, /Previous/i],
+    buttonChecks: [/Get Started/i, /^Next$/, /Previous/i],
   },
   {
     route: '/company/client-auto-signup',

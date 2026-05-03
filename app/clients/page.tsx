@@ -339,7 +339,11 @@ export default function Page() {
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
       return next;
     });
-    try { await supabase.from("clients").insert([{ ...sanitizeClient(form), full_name }]); } catch {}
+    try {
+      await supabase.from("clients").insert([{ ...sanitizeClient(form), full_name }]);
+    } catch {
+      // Keep local UI working even if the remote insert fails.
+    }
     setSaving(false);
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
@@ -356,7 +360,11 @@ export default function Page() {
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
       return next;
     });
-    try { await supabase.from("clients").update({ ...sanitizeClient(form), full_name }).eq("id", editing.id); } catch {}
+    try {
+      await supabase.from("clients").update({ ...sanitizeClient(form), full_name }).eq("id", editing.id);
+    } catch {
+      // Keep local UI working even if the remote update fails.
+    }
     setSaving(false);
     setEditing(null);
     setForm({ ...EMPTY_FORM });
@@ -383,7 +391,11 @@ export default function Page() {
   async function confirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    try { await supabase.from("clients").delete().eq("id", deleteTarget.id); } catch {}
+    try {
+      await supabase.from("clients").delete().eq("id", deleteTarget.id);
+    } catch {
+      // Keep local UI working even if the remote delete fails.
+    }
     setDeleting(false);
     setDeleteTarget(null);
     setClients(cs => {
@@ -395,7 +407,11 @@ export default function Page() {
   }
 
   async function updateStatus(id: string, status: string) {
-    try { await supabase.from("clients").update({ status }).eq("id", id); } catch {}
+    try {
+      await supabase.from("clients").update({ status }).eq("id", id);
+    } catch {
+      // Keep local UI working even if the remote update fails.
+    }
     setClients(cs => {
       const next = cs.map(c => c.id === id ? { ...c, status, updated_at: new Date().toISOString() } : c);
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
@@ -405,7 +421,11 @@ export default function Page() {
 
   async function bulkUpdateStatus() {
     const ids = Array.from(selected);
-    try { await supabase.from("clients").update({ status: bulkStatus }).in("id", ids); } catch {}
+    try {
+      await supabase.from("clients").update({ status: bulkStatus }).in("id", ids);
+    } catch {
+      // Keep local UI working even if the remote update fails.
+    }
     setClients(cs => {
       const next = cs.map(c => selected.has(c.id) ? { ...c, status: bulkStatus, updated_at: new Date().toISOString() } : c);
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
@@ -416,7 +436,11 @@ export default function Page() {
 
   async function bulkDelete() {
     const ids = Array.from(selected);
-    try { await supabase.from("clients").delete().in("id", ids); } catch {}
+    try {
+      await supabase.from("clients").delete().in("id", ids);
+    } catch {
+      // Keep local UI working even if the remote delete fails.
+    }
     setClients(cs => {
       const next = cs.filter(c => !selected.has(c.id));
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
@@ -478,7 +502,11 @@ export default function Page() {
           writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
           return next;
         });
-        try { await supabase.from("clients").insert(rows.map(({ id, ...row }: any) => row)); } catch {}
+        try {
+          await supabase.from("clients").insert(rows.map(({ id, ...row }: any) => row));
+        } catch {
+          // Keep local UI working even if the remote import insert fails.
+        }
         setNotice(`Imported ${rows.length} client${rows.length === 1 ? "" : "s"} from CSV.`);
       }
     } catch { }
@@ -537,7 +565,7 @@ export default function Page() {
         </div>
 
         {notice && (
-          <div style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#166534", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
+          <div role="status" aria-live="polite" style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#166534", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
             {notice}
           </div>
         )}

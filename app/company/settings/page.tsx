@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 const defaultCompany = {
   companyName: "My Credit Repair Co.",
@@ -50,6 +51,17 @@ export default function CompanySettingsPage() {
   return (
     <main className="min-h-screen bg-slate-50/80 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <div>
+          <Link
+            href="/dashboard"
+            aria-label="Back to Dashboard"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:shadow focus:outline-none focus:ring-2 focus:ring-slate-400/40"
+          >
+            <span aria-hidden="true">←</span>
+            <span>Back to Dashboard</span>
+          </Link>
+        </div>
+
         <header className="rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
@@ -140,23 +152,23 @@ export default function CompanySettingsPage() {
             <div className="px-6 py-6 sm:px-8">
               <dl className="grid gap-3 text-sm">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Company</dt>
+                  <dt className="text-xs font-semibold tracking-normal text-slate-500">Company</dt>
                   <dd className="mt-1 text-base font-semibold text-slate-900">{saved.companyName}</dd>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Contact</dt>
+                  <dt className="text-xs font-semibold tracking-normal text-slate-500">Contact</dt>
                   <dd className="mt-1 text-base font-semibold text-slate-900">{saved.phone} / {saved.email}</dd>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Website</dt>
+                  <dt className="text-xs font-semibold tracking-normal text-slate-500">Website</dt>
                   <dd className="mt-1 break-all text-base font-semibold text-slate-900">{saved.website}</dd>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Address</dt>
+                  <dt className="text-xs font-semibold tracking-normal text-slate-500">Address</dt>
                   <dd className="mt-1 text-base font-semibold text-slate-900">{saved.address}, {saved.city}, {saved.state} {saved.zip}</dd>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
-                  <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Notes</dt>
+                  <dt className="text-xs font-semibold tracking-normal text-slate-500">Notes</dt>
                   <dd className="mt-1 text-base leading-6 text-slate-900">{saved.notes}</dd>
                 </div>
               </dl>

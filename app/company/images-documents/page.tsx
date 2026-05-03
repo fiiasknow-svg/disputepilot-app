@@ -69,8 +69,12 @@ export default function Page() {
     setRenameName("");
   }
 
-  function copyLink(id: number) {
-    navigator.clipboard.writeText(`https://app.disputepilot.com/files/${id}`);
+  async function copyLink(id: number) {
+    try {
+      await navigator.clipboard.writeText(`https://app.disputepilot.com/files/${id}`);
+    } catch {
+      // Clipboard may be blocked in some environments; still continue with visible feedback.
+    }
     setCopiedId(id);
     setMessage("Share link copied.");
     setTimeout(() => setCopiedId(null), 2000);
@@ -91,7 +95,7 @@ export default function Page() {
         </div>
 
         {message && (
-          <div style={{ background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 14, color: "#15803d", fontSize: 14, fontWeight: 600 }}>
+          <div role="status" aria-live="polite" style={{ background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 14, color: "#15803d", fontSize: 14, fontWeight: 600 }}>
             {message}
           </div>
         )}

@@ -1,0 +1,379 @@
+{
+  "generatedAt": "2026-05-03T22:08:45.108Z",
+  "baseUrl": "https://disputepilot-app.vercel.app",
+  "routes": [
+    {
+      "route": "/clients",
+      "controls": {
+        "buttons": [
+          "↑ Import CSV",
+          "↓ Export CSV",
+          "Add New Customer",
+          "+ Add Client",
+          "Search",
+          "Clear",
+          "All 0",
+          "Current 0",
+          "Leads 0",
+          "Archive 0",
+          "☰ Table",
+          "⊞ Cards",
+          "25",
+          "50",
+          "100",
+          "«",
+          "‹",
+          "›",
+          "»"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/clients",
+          "workflow": "Add New Customer modal opens",
+          "status": "broken",
+          "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('status')\nExpected pattern: \u001b[32m/Saved client/i\u001b[39m\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('status')\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "route": "/leads",
+      "controls": {
+        "buttons": [
+          "Leads",
+          "Affiliates",
+          "⬆ Import CSV",
+          "⬇ Export CSV",
+          "+ Add Lead",
+          "0 Total",
+          "0 New",
+          "0 Contacted",
+          "0 Qualified",
+          "0 Converted",
+          "0 Lost",
+          "☰ Table",
+          "⬛ Pipeline"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/leads",
+          "workflow": "+ Add Lead opens modal/form",
+          "status": "broken",
+          "details": "Workflow timed out after 20000ms"
+        }
+      ]
+    },
+    {
+      "route": "/billing",
+      "controls": {
+        "buttons": [
+          "Add Invoice",
+          "Add Payment",
+          "Add Service/Product",
+          "View",
+          "Manage"
+        ],
+        "links": [
+          "Overview",
+          "Invoices",
+          "Payments",
+          "Services/Products",
+          "Subscription",
+          "Payment History"
+        ]
+      },
+      "workflows": [
+        {
+          "route": "/billing",
+          "workflow": "Add Invoice modal opens and saves",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/billing",
+          "workflow": "Add Payment modal opens and saves",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/billing",
+          "workflow": "Add Service/Product modal opens and saves",
+          "status": "passed",
+          "details": "Passed"
+        }
+      ]
+    },
+    {
+      "route": "/disputes",
+      "controls": {
+        "buttons": [
+          "Create New Dispute",
+          "View"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/disputes",
+          "workflow": "Create New Dispute opens and saves",
+          "status": "passed",
+          "details": "Passed"
+        }
+      ]
+    },
+    {
+      "route": "/disputes/status",
+      "controls": {
+        "buttons": [
+          "↓ Export CSV",
+          "↻ Refresh",
+          "All Disputes",
+          "By Bureau",
+          "By Round"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/disputes/status",
+          "workflow": "Status filters and row action update work",
+          "status": "broken",
+          "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Update Status', { exact: true })\nExpected: visible\nError: strict mode violation: getByText('Update Status', { exact: true }) resolved to 2 elements:\n    1) <th>Update Status</th> aka getByRole('columnheader', { name: 'Update Status' })\n    2) <p>Update Status</p> aka getByRole('paragraph').filter({ hasText: 'Update Status' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Update Status', { exact: true })\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "route": "/dispute-manager/furnisher-addresses",
+      "controls": {
+        "buttons": [
+          "+ Add New Creditor",
+          "Edit",
+          "Delete"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/dispute-manager/furnisher-addresses",
+          "workflow": "+ Add New Creditor opens and saves",
+          "status": "broken",
+          "details": "Workflow timed out after 20000ms"
+        },
+        {
+          "route": "/dispute-manager/furnisher-addresses",
+          "workflow": "Delete removes a creditor row",
+          "status": "broken",
+          "details": "Workflow timed out after 20000ms"
+        }
+      ]
+    },
+    {
+      "route": "/letters",
+      "controls": {
+        "buttons": [
+          "Create Letter",
+          "Edit"
+        ],
+        "links": [
+          "Use Letter Vault",
+          "AI Rewriter"
+        ]
+      },
+      "workflows": [
+        {
+          "route": "/letters",
+          "workflow": "Create Letter opens editor and saves",
+          "status": "passed",
+          "details": "Passed"
+        }
+      ]
+    },
+    {
+      "route": "/letters/ai-rewriter",
+      "controls": {
+        "buttons": [
+          "Load Sample",
+          "Clear / Reset",
+          "✦ Rewrite with AI →"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/letters/ai-rewriter",
+          "workflow": "Load Sample, rewrite, and copy work",
+          "status": "passed",
+          "details": "Passed"
+        }
+      ]
+    },
+    {
+      "route": "/calendar",
+      "controls": {
+        "buttons": [
+          "📅 Export iCal",
+          "+ Add Event",
+          "Month",
+          "Week",
+          "Day",
+          "Agenda",
+          "Today",
+          "‹",
+          "›",
+          "+ Add"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/calendar",
+          "workflow": "+ Add Event creates a visible calendar event",
+          "status": "passed",
+          "details": "Passed"
+        }
+      ]
+    },
+    {
+      "route": "/company/images-documents",
+      "controls": {
+        "buttons": [
+          "+ Upload File",
+          "All Files",
+          "Images",
+          "Documents",
+          "☰",
+          "⊞",
+          "Download",
+          "Rename",
+          "Share",
+          "Delete"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/company/images-documents",
+          "workflow": "Upload, rename, share, and delete flows work",
+          "status": "broken",
+          "details": "Workflow timed out after 20000ms"
+        }
+      ]
+    },
+    {
+      "route": "/company/team-messages",
+      "controls": {
+        "buttons": [
+          "Mark All Read",
+          "+ Compose",
+          "Inbox2",
+          "Sent"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/company/team-messages",
+          "workflow": "+ Compose and Send Message work",
+          "status": "passed",
+          "details": "Passed"
+        }
+      ]
+    },
+    {
+      "route": "/company/settings",
+      "controls": {
+        "buttons": [
+          "Cancel",
+          "Save Company"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/company/settings",
+          "workflow": "Save Company updates preview and Cancel resets",
+          "status": "broken",
+          "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: /Back to Dashboard/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: /Back to Dashboard/i })\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "route": "/partner-resources/community",
+      "controls": {
+        "buttons": [
+          "← Back to Partner Resources",
+          "+ New Post",
+          "All",
+          "Success Story",
+          "Strategy",
+          "Tips & Tricks",
+          "Question",
+          "Legal / Compliance",
+          "General"
+        ],
+        "links": []
+      },
+      "workflows": [
+        {
+          "route": "/partner-resources/community",
+          "workflow": "+ New Post opens modal and submits",
+          "status": "broken",
+          "details": "Community post did not appear in the feed after posting"
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "route": "/clients",
+      "workflow": "Add New Customer modal opens",
+      "status": "broken",
+      "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('status')\nExpected pattern: \u001b[32m/Saved client/i\u001b[39m\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('status')\u001b[22m\n"
+    },
+    {
+      "route": "/leads",
+      "workflow": "+ Add Lead opens modal/form",
+      "status": "broken",
+      "details": "Workflow timed out after 20000ms"
+    },
+    {
+      "route": "/disputes/status",
+      "workflow": "Status filters and row action update work",
+      "status": "broken",
+      "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Update Status', { exact: true })\nExpected: visible\nError: strict mode violation: getByText('Update Status', { exact: true }) resolved to 2 elements:\n    1) <th>Update Status</th> aka getByRole('columnheader', { name: 'Update Status' })\n    2) <p>Update Status</p> aka getByRole('paragraph').filter({ hasText: 'Update Status' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Update Status', { exact: true })\u001b[22m\n"
+    },
+    {
+      "route": "/dispute-manager/furnisher-addresses",
+      "workflow": "+ Add New Creditor opens and saves",
+      "status": "broken",
+      "details": "Workflow timed out after 20000ms"
+    },
+    {
+      "route": "/dispute-manager/furnisher-addresses",
+      "workflow": "Delete removes a creditor row",
+      "status": "broken",
+      "details": "Workflow timed out after 20000ms"
+    },
+    {
+      "route": "/company/images-documents",
+      "workflow": "Upload, rename, share, and delete flows work",
+      "status": "broken",
+      "details": "Workflow timed out after 20000ms"
+    },
+    {
+      "route": "/company/settings",
+      "workflow": "Save Company updates preview and Cancel resets",
+      "status": "broken",
+      "details": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: /Back to Dashboard/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: /Back to Dashboard/i })\u001b[22m\n"
+    },
+    {
+      "route": "/partner-resources/community",
+      "workflow": "+ New Post opens modal and submits",
+      "status": "broken",
+      "details": "Community post did not appear in the feed after posting"
+    }
+  ]
+}

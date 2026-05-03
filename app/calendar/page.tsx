@@ -13,6 +13,7 @@ const RECURRENCE = ["none","daily","weekly","monthly","yearly"];
 const REMINDER_OPTS = ["none","15 min before","1 hour before","1 day before","1 week before"];
 const AGENTS = ["Alice Johnson","Bob Smith","Carol Davis","David Lee","Eve Martinez"];
 const HOURS = Array.from({length:24},(_,i)=>{ const h=i%12||12; return `${h}:00 ${i<12?"AM":"PM"}`; });
+const LOCAL_EVENTS_KEY = "disputepilot.calendar-events";
 
 type ViewType = "month"|"week"|"day"|"agenda";
 
@@ -21,6 +22,30 @@ function dateStr(y:number,m:number,d:number) { return `${y}-${pad(m+1)}-${pad(d)
 function fmtDate(iso: string) { return new Date(iso+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}); }
 function fmtTime(t: string) { if(!t) return ""; const [h,m]=t.split(":").map(Number); const ap=h<12?"AM":"PM"; return `${h%12||12}:${pad(m)} ${ap}`; }
 function isWeekend(dow: number) { return dow===0||dow===6; }
+function readLocalEvents() {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(window.localStorage.getItem(LOCAL_EVENTS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function writeLocalEvents(events: any[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_EVENTS_KEY, JSON.stringify(events));
+}
+function eventSignature(e: any) {
+  return [
+    e.title || "",
+    e.date || "",
+    e.start_time || "",
+    e.end_time || "",
+    e.type || "",
+    e.client_id || "",
+    e.assigned_agent || "",
+    e.location || "",
+  ].join("|");
+}
 
 export default function Page() {
   const today = new Date();
@@ -29,6 +54,7 @@ export default function Page() {
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string>(dateStr(today.getFullYear(),today.getMonth(),today.getDate()));
   const [events, setEvents] = useState<any[]>([]);
+  const [localEvents, setLocalEvents] = useState<any[]>([]);
   const [autoEvents, setAutoEvents] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -52,7 +78,14 @@ export default function Page() {
       supabase.from("invoices").select("id,amount,due_date,status,clients(first_name,last_name)").eq("status","pending").not("due_date","is",null),
       supabase.from("disputes").select("id,account_name,bureau,status").neq("status","resolved"),
     ]);
-    setEvents(evts.data||[]);
+    const local = readLocalEvents();
+    setLocalEvents(local);
+    const merged = [...(evts.data || []), ...local];
+    const deduped = merged.filter((event, index, list) => {
+      const sig = eventSignature(event);
+      return list.findIndex((candidate) => eventSignature(candidate) === sig) === index;
+    });
+    setEvents(deduped);
     setClients(cli.data||[]);
     // Build auto-events
     const auto: any[] = [];
@@ -120,15 +153,36 @@ export default function Page() {
     if(!form.title||!form.date) return;
     setSaving(true);
     const payload={...form, color:form.color||(EVENT_COLORS[form.type]||"#3b82f6"), client_id: form.client_id || null};
-    if(editingEvent) await supabase.from("calendar_events").update(payload).eq("id",editingEvent.id);
-    else await supabase.from("calendar_events").insert([payload]);
+    const nextEvent = editingEvent ? { ...editingEvent, ...payload } : { ...payload, id: `local-${Date.now()}`, auto: false };
+    if(editingEvent && !String(editingEvent.id).startsWith("local-")) {
+      try { await supabase.from("calendar_events").update(payload).eq("id",editingEvent.id); } catch {}
+    } else if (!editingEvent) {
+      try { await supabase.from("calendar_events").insert([payload]); } catch {}
+    }
+    setEvents(prev => {
+      const next = editingEvent
+        ? prev.map(e => e.id === editingEvent.id ? nextEvent : e)
+        : [nextEvent, ...prev];
+      const localOnly = next.filter(e => String(e.id).startsWith("local-") || (editingEvent && e.id === editingEvent.id && String(e.id).startsWith("local-")));
+      setLocalEvents(localOnly);
+      writeLocalEvents(localOnly);
+      return next;
+    });
     setSaving(false); setShowForm(false); setEditingEvent(null); setForm({...EMPTY_FORM});
-    load();
   }
 
   async function deleteEvent(id: string) {
-    await supabase.from("calendar_events").delete().eq("id",id);
-    setEvents(e=>e.filter(x=>x.id!==id));
+    const target = [...events, ...autoEvents].find(e => e.id === id);
+    if (target && !String(id).startsWith("local-")) {
+      try { await supabase.from("calendar_events").delete().eq("id",id); } catch {}
+    }
+    setEvents(e => {
+      const next = e.filter(x=>x.id!==id);
+      const localOnly = next.filter(x=>String(x.id).startsWith("local-"));
+      setLocalEvents(localOnly);
+      writeLocalEvents(localOnly);
+      return next;
+    });
   }
 
   function exportIcal() {
