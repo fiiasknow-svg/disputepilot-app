@@ -134,7 +134,9 @@ export default function Page() {
       <main style={{ padding: 24, maxWidth: 1380 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 18 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Letter Vault</h1><div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Letter Vault</h1>
+<div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+10 }}>
   <section aria-label="Training Videos" style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#fff" }}>
     <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 800 }}>Training Videos</h2>
     <button style={buttonStyle}>Letter Vault Training Video</button>
