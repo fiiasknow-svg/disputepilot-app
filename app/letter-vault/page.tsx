@@ -56,8 +56,7 @@ const buttonStyle = (variant: "primary" | "secondary" | "danger" = "secondary"):
   cursor: "pointer",
   fontSize: 13,
   fontWeight: 700,
-};
-
+});
 function draftFromTemplate(template: LetterTemplate): Draft {
   return {
     ...emptyDraft,
@@ -277,3 +276,4 @@ export default function Page() {
     </CDMLayout>
   );
 }
+
