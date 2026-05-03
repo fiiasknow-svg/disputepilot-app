@@ -134,7 +134,31 @@ export default function Page() {
       <main style={{ padding: 24, maxWidth: 1380 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 18 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Letter Vault</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Letter Vault</h1><div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+  <section aria-label="Training Videos" style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#fff" }}>
+    <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 800 }}>Training Videos</h2>
+    <button style={buttonStyle}>Letter Vault Training Video</button>
+    <button style={{ ...buttonStyle, marginLeft: 8 }}>Move Letters Training Video</button>
+  </section>
+
+  <section aria-label="Manual Letters" style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#fff" }}>
+    <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 800 }}>Manual Letters</h2>
+    <button style={buttonStyle}>Select All</button>
+    <button style={{ ...buttonStyle, marginLeft: 8 }}>Delete All</button>
+    <button style={{ ...buttonStyle, marginLeft: 8 }}>Move Letters</button>
+    <button style={{ ...buttonStyle, marginLeft: 8 }}>Letter Preview</button>
+    <button style={{ ...buttonStyle, marginLeft: 8 }}>Undo Deleted Letters</button>
+    <button style={{ ...buttonStyle, marginLeft: 8 }}>Move Manual Letters</button>
+    <button style={{ ...buttonStyle, marginLeft: 8 }}>Move to Letter Category</button>
+  </section>
+
+  <section aria-label="Response Letters" style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#fff" }}>
+    <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 800 }}>Response Letters</h2>
+    <button style={buttonStyle}>Respond Credit Bureau</button>
+    <button style={{ ...buttonStyle, marginLeft: 8 }}>Respond Creditor</button>
+    <button style={{ ...buttonStyle, marginLeft: 8 }}>Respond Collector</button>
+  </section>
+</div>
             <p style={{ margin: "4px 0 0", fontSize: 14, color: "#64748b" }}>View templates, create client-ready drafts, and edit saved letters.</p>
           </div>
           <button onClick={openManual} style={buttonStyle("primary")}>Add Manual Letter</button>
