@@ -760,10 +760,17 @@ export default function Page() {
                       <td style={{ padding: "8px 8px", whiteSpace: "nowrap" as const }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <Avatar name={name} size={30} />
-                          <button onClick={() => router.push(`/clients/${c.id}`)}
-                            style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#1e3a5f", padding: 0, textAlign: "left" as const }}>
-                            {name}
-                          </button>
+                          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                            <button onClick={() => router.push(`/clients/${c.id}`)}
+                              style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#1e3a5f", padding: 0, textAlign: "left" as const }}>
+                              {name}
+                            </button>
+                            {(c.savedStamp || String(c.id).startsWith("local-")) && (
+                              <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, whiteSpace: "nowrap" as const }}>
+                                {c.email || c.phone || ""}{c.savedStamp ? ` · ${c.savedStamp}` : ""}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                       {/* Status inline dropdown */}
@@ -861,6 +868,11 @@ export default function Page() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <button onClick={() => router.push(`/clients/${c.id}`)} style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#1e3a5f", padding: 0, textAlign: "left" as const, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, width: "100%" }}>{name}</button>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{c.email || "—"}</div>
+                      {(c.savedStamp || String(c.id).startsWith("local-")) && (
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                          {c.phone || "—"}{c.savedStamp ? ` · ${c.savedStamp}` : ""}
+                        </div>
+                      )}
                     </div>
                     <select value={c.status || "active"} onChange={e => updateStatus(c.id, e.target.value)}
                       style={{ padding: "3px 5px", borderRadius: 5, border: `1.5px solid ${STATUS_COLORS[c.status] || "#94a3b8"}`, fontSize: 10, fontWeight: 700, color: STATUS_COLORS[c.status] || "#64748b", background: (STATUS_COLORS[c.status] || "#94a3b8") + "18", cursor: "pointer", outline: "none", flexShrink: 0 }}>
