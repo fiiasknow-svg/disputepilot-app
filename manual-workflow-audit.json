@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-04T21:54:29.479Z",
-  "baseUrl": "http://localhost:3000",
+  "generatedAt": "2026-05-04T21:57:33.579Z",
+  "baseUrl": "https://disputepilot-app.vercel.app",
   "routes": [
     {
       "route": "/clients",
