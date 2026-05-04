@@ -366,7 +366,7 @@ export default function Page() {
     setSaving(false);
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
-    setNotice(`Saved client: ${full_name} (${form.email || form.phone || savedStamp})`);
+    setNotice(`Saved client: ${full_name} — ${form.email || "no-email"} — ${form.phone || "no-phone"} — ${savedStamp}`);
     setRecentSavedClient(newClient);
   }
 
@@ -585,16 +585,17 @@ export default function Page() {
           </div>
         </div>
 
-        {notice && (
+        {(notice || recentSavedClient) && (
           <div role="status" aria-live="polite" style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#166534", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
-            {notice}
-          </div>
-        )}
-        {recentSavedClient && (
-          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
-            Recently saved client: {clientName(recentSavedClient)}
-            {recentSavedClient.email ? ` · ${recentSavedClient.email}` : recentSavedClient.phone ? ` · ${recentSavedClient.phone}` : ""}
-            {recentSavedClient.savedStamp ? ` · ${recentSavedClient.savedStamp}` : ""}
+            {notice && <div>{notice}</div>}
+            {recentSavedClient && (
+              <div style={{ marginTop: notice ? 4 : 0 }}>
+                Recently saved client: {clientName(recentSavedClient)}
+                {recentSavedClient.email ? ` — ${recentSavedClient.email}` : ""}
+                {recentSavedClient.phone ? ` — ${recentSavedClient.phone}` : ""}
+                {recentSavedClient.savedStamp ? ` — ${recentSavedClient.savedStamp}` : ""}
+              </div>
+            )}
           </div>
         )}
 
@@ -969,7 +970,7 @@ export default function Page() {
             <FormFields form={form} setForm={setForm} />
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => setShowForm(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
-              <button onClick={saveNew} disabled={saving} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{saving ? "Saving…" : "Save Client"}</button>
+              <button type="button" onClick={saveNew} disabled={saving} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{saving ? "Saving…" : "Save Client"}</button>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-04T00:22:12.976Z",
-  "baseUrl": "https://disputepilot-app.vercel.app",
+  "generatedAt": "2026-05-04T00:45:13.684Z",
+  "baseUrl": "http://localhost:3000",
   "routes": [
     {
       "route": "/clients",
@@ -32,8 +32,8 @@
         {
           "route": "/clients",
           "workflow": "Add New Customer modal opens",
-          "status": "broken",
-          "details": "Saved client data was not visible after save"
+          "status": "passed",
+          "details": "Passed"
         }
       ]
     },
@@ -388,12 +388,5 @@
       ]
     }
   ],
-  "issues": [
-    {
-      "route": "/clients",
-      "workflow": "Add New Customer modal opens",
-      "status": "broken",
-      "details": "Saved client data was not visible after save"
-    }
-  ]
+  "issues": []
 }
