@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-04T18:11:34.367Z",
-  "baseUrl": "https://disputepilot-app.vercel.app",
+  "generatedAt": "2026-05-04T21:36:19.634Z",
+  "baseUrl": "http://localhost:3000",
   "routes": [
     {
       "route": "/clients",
@@ -31,7 +31,25 @@
       "workflows": [
         {
           "route": "/clients",
-          "workflow": "Add New Customer modal opens",
+          "workflow": "Add New Customer modal opens and cancels",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/clients",
+          "workflow": "Add New Customer saves visibly",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/clients",
+          "workflow": "Client tabs and filters remain usable",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/clients",
+          "workflow": "Saved client details can be viewed when available",
           "status": "passed",
           "details": "Passed"
         }
@@ -366,7 +384,7 @@
       "route": "/partner-resources/community",
       "controls": {
         "buttons": [
-          "← Back to Partner Resources",
+          "â† Back to Partner Resources",
           "+ New Post",
           "All",
           "Success Story",

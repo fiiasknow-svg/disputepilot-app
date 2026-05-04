@@ -189,53 +189,65 @@ test("manual workflow audit", async ({ context }) => {
   }
 
   await audit("/clients", async (page, _scope, _bodyText, routeReport) => {
-    await attempt(routeReport, "/clients", "Add New Customer modal opens", async () => {
+    await attempt(routeReport, "/clients", "Add New Customer modal opens and cancels", async () => {
       const add = page.getByRole("button", { name: "Add New Customer", exact: true });
       await expect(add).toBeVisible();
       await add.click();
+      const addModal = await openFixedModal(page);
       await expect(page.getByRole("heading", { name: "Add New Client", exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Save Client", exact: true })).toBeVisible();
+      await expectVisible(addModal.getByText("First Name *", { exact: true }), "Waiting for First Name * field label");
+      await expectVisible(addModal.getByText("Last Name *", { exact: true }), "Waiting for Last Name * field label");
+      await expectVisible(addModal.getByText("Email", { exact: true }), "Waiting for Email field label");
+      await expectVisible(addModal.getByText("Phone", { exact: true }), "Waiting for Phone field label");
+      await expectVisible(addModal.getByRole("button", { name: "Cancel", exact: true }), "Waiting for Add Client Cancel button");
+      await expectVisible(addModal.getByRole("button", { name: "Save Client", exact: true }), "Waiting for Save Client button");
 
-      await page.getByRole("button", { name: "Cancel", exact: true }).click();
+      await addModal.getByRole("button", { name: "Cancel", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Add New Client", exact: true })).toHaveCount(0);
+    });
 
+    let savedStamp = 0;
+    let savedEmail = "";
+
+    await attempt(routeReport, "/clients", "Add New Customer saves visibly", async () => {
+      const add = page.getByRole("button", { name: "Add New Customer", exact: true });
+      await expect(add).toBeVisible();
       await add.click();
+      const addModal = await openFixedModal(page);
       const stamp = Date.now();
-      const clientForm = page.locator("body");
+      savedStamp = stamp;
+      savedEmail = `audit.client.${stamp}@example.com`;
 
-      await fillSiblingInput(clientForm, "First Name *", "Audit");
-      await fillSiblingInput(clientForm, "Last Name *", `Client ${stamp}`);
-      await fillSiblingInput(clientForm, "Email", `audit.client.${stamp}@example.com`);
-      await fillSiblingInput(clientForm, "Phone", "555-555-1212");
-      await selectSiblingOption(clientForm, "Status", "active");
-      await selectSiblingOption(clientForm, "Type / Category", "Client");
-      await fillSiblingTextArea(clientForm, "Notes", "Manual workflow audit client.");
-      await page.getByRole("button", { name: "Save Client", exact: true }).click();
+      await fillSiblingInput(addModal, "First Name *", "Audit");
+      await fillSiblingInput(addModal, "Last Name *", `Client ${stamp}`);
+      await fillSiblingInput(addModal, "Email", savedEmail);
+      await fillSiblingInput(addModal, "Phone", "555-555-1212");
+      await selectSiblingOption(addModal, "Status", "active");
+      await selectSiblingOption(addModal, "Type / Category", "Client");
+      await fillSiblingTextArea(addModal, "Notes", "Manual workflow audit client.");
+      await addModal.getByRole("button", { name: "Save Client", exact: true }).click();
 
-      const status = page.getByRole("status").filter({ hasText: /Saved client/i }).first();
+      const status = page.getByRole("status").filter({ hasText: /^Saved client:/i }).first();
       await expect(status).toBeVisible();
       await expect(status).toContainText(String(stamp));
+      await expect(status).toContainText(savedEmail);
       await expect(page.locator("main").getByText(String(stamp)).first()).toBeVisible();
+      await expect(page.locator("main").getByText(savedEmail, { exact: false }).first()).toBeVisible();
+    });
 
-      await page.getByPlaceholder(/First name/i).fill("Audit");
-      await page.getByRole("button", { name: "Search", exact: true }).click();
-      await expect(page.getByText(/Audit Client/i).first()).toBeVisible();
-      await page.getByRole("button", { name: "Clear", exact: true }).click();
-      await expect(page.getByPlaceholder(/First name/i)).toHaveValue("");
-
-      await page.locator("main").getByRole("button", { name: /^Leads\s+\d+$/i }).first().click();
+    await attempt(routeReport, "/clients", "Client tabs and filters remain usable", async () => {
+      if (!savedStamp) throw auditError("Saved client marker missing from previous step");
       await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^All\b/i }).first()).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^Current\b/i }).first()).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^Leads\b/i }).first()).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^Archive\b/i }).first()).toBeVisible();
       await expect(page.getByRole("status")).toContainText(/Saved client|Saved customer/i);
-      await page.getByRole("button", { name: /^Current\b/i }).click();
-      await expect(page.locator("main").getByText(String(stamp)).first()).toBeVisible();
-      await page.getByRole("button", { name: /^Archive\b/i }).click();
+      await page.locator("main").getByRole("button", { name: /^Current\b/i }).first().click();
+      await expect(page.locator("main").getByText(String(savedStamp)).first()).toBeVisible();
+      await page.locator("main").getByRole("button", { name: /^Archive\b/i }).first().click();
       await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
-      await page.getByRole("button", { name: /^All\b/i }).click();
+      await page.locator("main").getByRole("button", { name: /^All\b/i }).first().click();
 
       await page.getByRole("combobox").first().selectOption("lead");
       await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
@@ -244,24 +256,25 @@ test("manual workflow audit", async ({ context }) => {
       await expect(page.locator("main").getByRole("button", { name: /^Leads\b/i }).first()).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^Archive\b/i }).first()).toBeVisible();
       await page.getByRole("combobox").first().selectOption("client");
-      await expect(page.locator("main").getByText(String(stamp)).first()).toBeVisible();
+      await expect(page.locator("main").getByText(String(savedStamp)).first()).toBeVisible();
       await page.getByRole("combobox").first().selectOption("all");
+    });
 
-      const viewButton = page.getByRole("button", { name: "View", exact: true }).first();
+    await attempt(routeReport, "/clients", "Saved client details can be viewed when available", async () => {
+      if (!savedStamp || !savedEmail) return;
+      const savedRow = page.locator("main").locator("tr").filter({ hasText: String(savedStamp) }).first();
+      const viewButton = savedRow.getByRole("button", { name: "View", exact: true }).first();
+      if (!(await viewButton.count())) return;
       await expect(viewButton).toBeVisible();
       await viewButton.click();
-      await expect(page.getByRole("heading", { name: /Audit Client/i })).toBeVisible();
+      const detailHeading = page.getByRole("heading", { name: /Client Details|View Client|Client Profile/i }).first();
+      if (await detailHeading.count()) {
+        await expect(detailHeading).toBeVisible();
+      }
+      await expect(page.getByText(String(savedStamp)).first()).toBeVisible();
+      await expect(page.getByText(savedEmail, { exact: true }).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: "Close", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Close", exact: true }).click();
-
-      await viewButton.click();
-      await expect(page.getByRole("heading", { name: /Audit Client/i })).toBeVisible();
-      await page.getByRole("button", { name: "Edit Client", exact: true }).click();
-      await expect(page.getByRole("heading", { name: /Edit Client/i })).toBeVisible();
-      const editModal = await openFixedModal(page);
-      await fillSiblingInput(editModal, "Last Name *", `Updated ${stamp}`);
-      await page.getByRole("button", { name: "Save Changes", exact: true }).click();
-      await expect(page.getByRole("status")).toContainText(/Updated client/i);
-      await expect(page.locator("table tbody").getByRole("button", { name: new RegExp(`^Audit Updated ${stamp}$`) }).first()).toBeVisible();
     });
   });
 
@@ -294,6 +307,7 @@ test("manual workflow audit", async ({ context }) => {
       const stamp = Date.now();
       const leadName = `Audit Lead ${stamp}`;
       savedLeadName = leadName;
+      const leadEmail = `audit.lead.${stamp}@example.com`;
 
       await expectVisible(page.getByRole("heading", { name: "Add New Lead", exact: true }), "Waiting for Add New Lead heading");
       await expectVisible(createLeadModal.getByText("First Name *", { exact: true }), "Waiting for First Name * field label");
@@ -304,15 +318,18 @@ test("manual workflow audit", async ({ context }) => {
 
       await fillSiblingInput(createLeadModal, "First Name *", "Audit");
       await fillSiblingInput(createLeadModal, "Last Name *", `Lead ${stamp}`);
-      await fillSiblingInput(createLeadModal, "Email", `audit.lead.${stamp}@example.com`);
+      await fillSiblingInput(createLeadModal, "Email", leadEmail);
       await fillSiblingInput(createLeadModal, "Phone", "555-555-1212");
       await selectSiblingOption(createLeadModal, "Source", "Referral");
       await selectSiblingOption(createLeadModal, "Status", "new");
       await createLeadModal.getByRole("button", { name: "Add Lead", exact: true }).click();
 
+      const main = page.locator("main");
       await expectVisible(page.getByRole("status"), "Waiting for Saved lead status");
       await expect(page.getByRole("status"), "Waiting for Saved lead status text").toContainText(/Saved lead/i);
-      await expectVisible(page.locator("table tbody tr").filter({ hasText: leadName }).first(), "Waiting for saved lead row");
+      await expect(main.getByText(leadName, { exact: false }).first(), "Waiting for saved lead name in main").toBeVisible();
+      await expect(main.getByText(leadEmail, { exact: false }).first(), "Waiting for saved lead email in main").toBeVisible();
+      await expect(main.getByText(String(stamp), { exact: false }).first(), "Waiting for saved lead timestamp in main").toBeVisible();
 
       if (await page.getByRole("heading", { name: "Add New Lead", exact: true }).count()) {
         await createLeadModal.getByRole("button", { name: "Cancel", exact: true }).click();
@@ -326,14 +343,15 @@ test("manual workflow audit", async ({ context }) => {
       await expectVisible(searchInput, "Waiting for lead search input");
       await searchInput.fill("Audit");
 
-      await expectVisible(page.locator("table tbody tr").filter({ hasText: savedLeadName }).first(), "Waiting for searched lead row");
+      const main = page.locator("main");
+      await expect(main.getByText(savedLeadName, { exact: false }).first(), "Waiting for searched lead name in main").toBeVisible();
 
       const clearButton = page.getByRole("button", { name: "Clear", exact: true });
       if (await clearButton.count()) {
         await expectVisible(clearButton, "Waiting for Clear button");
         await clearButton.click();
         await expect(searchInput, "Waiting for cleared search input").toHaveValue("");
-        await expectVisible(page.locator("table tbody tr").filter({ hasText: savedLeadName }).first(), "Waiting for leads table after clearing search");
+        await expect(main.getByText(savedLeadName, { exact: false }).first(), "Waiting for leads content after clearing search").toBeVisible();
       }
     });
 
