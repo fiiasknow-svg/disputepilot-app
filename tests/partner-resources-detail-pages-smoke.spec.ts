@@ -223,7 +223,7 @@ const ROUTES: RouteSpec[] = [
       await expect(page.getByRole("heading", { name: "New Community Post", exact: true })).toBeVisible();
       await expect(page.getByRole("combobox").first()).toBeVisible();
       await expect(page.getByPlaceholder("What's your post about?")).toBeVisible();
-      await expect(page.getByPlaceholder("Share your experience, ask a question, or post a tip…")).toBeVisible();
+      await expect(page.getByPlaceholder(/Share your experience, ask a question, or post a tip/i)).toBeVisible();
       await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "Post", exact: true })).toBeVisible();
     },

@@ -33,7 +33,7 @@ test('clients workflow is usable end to end', async ({ page }) => {
   await addModal.getByRole('button', { name: /Save Client/i }).click();
 
   await expect(page.getByRole('button', { name: `${firstName} ${lastName}` })).toBeVisible();
-  await expect(page.getByText(/Saved client:/i)).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: /^Saved client:/i }).first()).toBeVisible();
 
   const row = page.locator('tr', { hasText: `${firstName} ${lastName}` });
   await row.getByRole('button', { name: /^View$/i }).click();

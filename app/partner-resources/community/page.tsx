@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,12 +25,12 @@ const CAT_C: Record<string, string> = {
 };
 
 const CHANNELS = [
-  { icon: "💬", name: "General Discussion", members: 1240, desc: "Open conversation for all DisputePilot users" },
-  { icon: "🚀", name: "Getting Started", members: 860, desc: "New to credit repair? Start here" },
-  { icon: "📈", name: "Marketing & Growth", members: 742, desc: "Strategies for getting more clients" },
-  { icon: "⚖️", name: "Legal & Compliance", members: 534, desc: "CROA, FCRA, state laws, and more" },
-  { icon: "🤝", name: "Dispute Strategy", members: 688, desc: "Share dispute tactics and templates" },
-  { icon: "💰", name: "Revenue & Pricing", members: 421, desc: "Package pricing, upsells, and revenue" },
+  { icon: "ðŸ’¬", name: "General Discussion", members: 1240, desc: "Open conversation for all DisputePilot users" },
+  { icon: "ðŸš€", name: "Getting Started", members: 860, desc: "New to credit repair? Start here" },
+  { icon: "ðŸ“ˆ", name: "Marketing & Growth", members: 742, desc: "Strategies for getting more clients" },
+  { icon: "âš–ï¸", name: "Legal & Compliance", members: 534, desc: "CROA, FCRA, state laws, and more" },
+  { icon: "ðŸ¤", name: "Dispute Strategy", members: 688, desc: "Share dispute tactics and templates" },
+  { icon: "ðŸ’°", name: "Revenue & Pricing", members: 421, desc: "Package pricing, upsells, and revenue" },
 ];
 
 type Post = typeof INITIAL_POSTS[number] & { author: string; initials: string; color: string; time: string; cat: string; title: string; likes: number; replies: number; pinned: boolean };
@@ -95,7 +95,7 @@ export default function Page() {
           onClick={() => router.push("/partner-resources")}
           style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", fontSize: 14, marginBottom: 16 }}
         >
-          {"← Back to Partner Resources"}
+          {"â† Back to Partner Resources"}
         </button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
           <div>
@@ -137,10 +137,10 @@ export default function Page() {
                 Community Stats
               </div>
               {[
-                ["👥", "Total Members", "1,247"],
-                ["📝", "Posts This Week", "84"],
-                ["🟢", "Online Now", "43"],
-                ["🏆", "Top Contributors", "12"],
+                ["ðŸ‘¥", "Total Members", "1,247"],
+                ["ðŸ“", "Posts This Week", "84"],
+                ["ðŸŸ¢", "Online Now", "43"],
+                ["ðŸ†", "Top Contributors", "12"],
               ].map(([icon, label, val]) => (
                 <div key={String(label)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f8fafc" }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -177,7 +177,7 @@ export default function Page() {
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {filtered.map((post, index) => (
                 <div key={`${post.title}-${index}`} style={{ ...card, cursor: "pointer", border: post.pinned ? "2px solid #fde68a" : "none" }}>
-                  {post.pinned && <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", marginBottom: 6 }}>📌 Pinned</div>}
+                  {post.pinned && <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", marginBottom: 6 }}>ðŸ“Œ Pinned</div>}
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: post.color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
                       {post.initials}
@@ -201,8 +201,8 @@ export default function Page() {
                       </div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>{post.title}</div>
                       <div style={{ display: "flex", gap: 14 }}>
-                        <span style={{ fontSize: 12, color: "#94a3b8" }}>❤ {post.likes}</span>
-                        <span style={{ fontSize: 12, color: "#94a3b8" }}>💬 {post.replies} replies</span>
+                        <span style={{ fontSize: 12, color: "#94a3b8" }}>â¤ {post.likes}</span>
+                        <span style={{ fontSize: 12, color: "#94a3b8" }}>ðŸ’¬ {post.replies} replies</span>
                       </div>
                     </div>
                   </div>
@@ -244,7 +244,7 @@ export default function Page() {
                 value={draft.content}
                 onChange={(event) => setDraft((current) => ({ ...current, content: event.target.value }))}
                 rows={4}
-                placeholder="Share your experience, ask a question, or post a tip..."
+                placeholder={"Share your experience, ask a question, or post a tip\u2026"}
                 style={{ width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, resize: "vertical", boxSizing: "border-box" as const }}
               />
             </div>
@@ -262,3 +262,6 @@ export default function Page() {
     </CDMLayout>
   );
 }
+
+
+
