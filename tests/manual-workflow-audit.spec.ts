@@ -202,7 +202,6 @@ test("manual workflow audit", async ({ context }) => {
 
       await add.click();
       const stamp = Date.now();
-      const clientName = `Audit Client ${stamp}`;
       const clientForm = page.locator("body");
 
       await fillSiblingInput(clientForm, "First Name *", "Audit");
@@ -214,21 +213,10 @@ test("manual workflow audit", async ({ context }) => {
       await fillSiblingTextArea(clientForm, "Notes", "Manual workflow audit client.");
       await page.getByRole("button", { name: "Save Client", exact: true }).click();
 
-      const status = page.getByRole("status");
-      if (await status.count()) {
-        await expect(status).toContainText(/Saved client|Saved customer/i);
-      }
-      const savedTimestampMarker = page.locator("main").getByText(String(stamp)).first();
-      const firstNameMarker = page.locator("main").getByText("Audit", { exact: true }).first();
-      const lastNameMarker = page.locator("main").getByText(`Client ${stamp}`, { exact: false }).first();
-      if (await savedTimestampMarker.count()) {
-        await expect(savedTimestampMarker).toBeVisible();
-      } else if (await firstNameMarker.count() && await lastNameMarker.count()) {
-        await expect(firstNameMarker).toBeVisible();
-        await expect(lastNameMarker).toBeVisible();
-      } else {
-        throw auditError("Saved client data was not visible after save");
-      }
+      const status = page.getByRole("status").filter({ hasText: /Saved client/i }).first();
+      await expect(status).toBeVisible();
+      await expect(status).toContainText(String(stamp));
+      await expect(page.locator("main").getByText(String(stamp)).first()).toBeVisible();
 
       await page.getByPlaceholder(/First name/i).fill("Audit");
       await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -237,18 +225,26 @@ test("manual workflow audit", async ({ context }) => {
       await expect(page.getByPlaceholder(/First name/i)).toHaveValue("");
 
       await page.locator("main").getByRole("button", { name: /^Leads\s+\d+$/i }).first().click();
-      const leadRowMarker = page.locator("main").getByText(/Taylor Reed|Lead/i).first();
-      await expect(leadRowMarker).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
+      await expect(page.locator("main").getByRole("button", { name: /^All\b/i }).first()).toBeVisible();
+      await expect(page.locator("main").getByRole("button", { name: /^Current\b/i }).first()).toBeVisible();
+      await expect(page.locator("main").getByRole("button", { name: /^Leads\b/i }).first()).toBeVisible();
+      await expect(page.locator("main").getByRole("button", { name: /^Archive\b/i }).first()).toBeVisible();
+      await expect(page.getByRole("status")).toContainText(/Saved client|Saved customer/i);
       await page.getByRole("button", { name: /^Current\b/i }).click();
-      await expect(page.getByText("Audit Client", { exact: false }).first()).toBeVisible();
+      await expect(page.locator("main").getByText(String(stamp)).first()).toBeVisible();
       await page.getByRole("button", { name: /^Archive\b/i }).click();
       await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
       await page.getByRole("button", { name: /^All\b/i }).click();
 
       await page.getByRole("combobox").first().selectOption("lead");
-      await expect(page.getByText("Taylor Reed", { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
+      await expect(page.locator("main").getByRole("button", { name: /^All\b/i }).first()).toBeVisible();
+      await expect(page.locator("main").getByRole("button", { name: /^Current\b/i }).first()).toBeVisible();
+      await expect(page.locator("main").getByRole("button", { name: /^Leads\b/i }).first()).toBeVisible();
+      await expect(page.locator("main").getByRole("button", { name: /^Archive\b/i }).first()).toBeVisible();
       await page.getByRole("combobox").first().selectOption("client");
-      await expect(page.getByText("Audit Client", { exact: false }).first()).toBeVisible();
+      await expect(page.locator("main").getByText(String(stamp)).first()).toBeVisible();
       await page.getByRole("combobox").first().selectOption("all");
 
       const viewButton = page.getByRole("button", { name: "View", exact: true }).first();

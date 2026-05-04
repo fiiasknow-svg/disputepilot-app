@@ -358,16 +358,18 @@ export default function Page() {
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
       return next;
     });
-    try {
-      await supabase.from("clients").insert([{ ...sanitizeClient(form), full_name }]);
-    } catch {
-      // Keep local UI working even if the remote insert fails.
-    }
     setSaving(false);
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
-    setNotice(`Saved client: ${full_name} — ${form.email || "no-email"} — ${form.phone || "no-phone"} — ${savedStamp}`);
+    setNotice(`Saved client: ${full_name} - ${form.email || "no-email"} - ${form.phone || "no-phone"} - ${savedStamp}`);
     setRecentSavedClient(newClient);
+    void (async () => {
+      try {
+        await supabase.from("clients").insert([{ ...sanitizeClient(form), full_name }]);
+      } catch {
+        // Keep local UI working even if the remote insert fails.
+      }
+    })();
   }
 
   async function saveEdit() {
