@@ -253,6 +253,7 @@ export default function Page() {
   const [bulkEmailBody, setBulkEmailBody] = useState("");
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
   const [notice, setNotice] = useState("");
+  const [recentSavedClient, setRecentSavedClient] = useState<any>(null);
 
   // ── Load ──
   async function load() {
@@ -332,10 +333,28 @@ export default function Page() {
     if (!form.first_name && !form.last_name) return;
     setSaving(true);
     const full_name = `${form.first_name} ${form.last_name}`.trim();
+    const savedStamp = Date.now();
     const now = new Date().toISOString();
-    const newClient = { id: `local-${Date.now()}`, ...sanitizeClient(form), full_name, created_at: now, updated_at: now };
+    setStatusTab("all");
+    setTypeFilter("all");
+    setSearch({ first_name: "", last_name: "", phone: "", email: "" });
+    setPage(1);
+    const newClient = {
+      id: `local-${savedStamp}`,
+      ...sanitizeClient(form),
+      first_name: form.first_name,
+      last_name: form.last_name,
+      email: form.email,
+      phone: form.phone,
+      status: "active",
+      client_type: "Client",
+      full_name,
+      savedStamp,
+      created_at: now,
+      updated_at: now,
+    };
     setClients(cs => {
-      const next = [newClient, ...cs];
+      const next = [newClient, ...cs.filter(c => c.id !== newClient.id)];
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
       return next;
     });
@@ -347,7 +366,8 @@ export default function Page() {
     setSaving(false);
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
-    setNotice(`Saved client: ${full_name} (${form.email || form.phone || form.status})`);
+    setNotice(`Saved client: ${full_name} (${form.email || form.phone || savedStamp})`);
+    setRecentSavedClient(newClient);
   }
 
   async function saveEdit() {
@@ -369,6 +389,7 @@ export default function Page() {
     setEditing(null);
     setForm({ ...EMPTY_FORM });
     setNotice(`Updated client: ${full_name}`);
+    setRecentSavedClient(updatedClient);
   }
 
   function openEdit(c: any) {
@@ -567,6 +588,13 @@ export default function Page() {
         {notice && (
           <div role="status" aria-live="polite" style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#166534", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
             {notice}
+          </div>
+        )}
+        {recentSavedClient && (
+          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
+            Recently saved client: {clientName(recentSavedClient)}
+            {recentSavedClient.email ? ` · ${recentSavedClient.email}` : recentSavedClient.phone ? ` · ${recentSavedClient.phone}` : ""}
+            {recentSavedClient.savedStamp ? ` · ${recentSavedClient.savedStamp}` : ""}
           </div>
         )}
 

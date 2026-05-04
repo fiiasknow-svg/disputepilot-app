@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T23:41:33.043Z",
+  "generatedAt": "2026-05-04T00:06:50.547Z",
   "baseUrl": "http://localhost:3000",
   "routes": [
     {
@@ -292,7 +292,31 @@
       "workflows": [
         {
           "route": "/company/images-documents",
-          "workflow": "Upload, rename, share, and delete flows work",
+          "workflow": "Upload button is visible",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/company/images-documents",
+          "workflow": "Upload updates visible file state",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/company/images-documents",
+          "workflow": "Rename opens and saves on the uploaded row",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/company/images-documents",
+          "workflow": "Share shows visible confirmation",
+          "status": "passed",
+          "details": "Passed"
+        },
+        {
+          "route": "/company/images-documents",
+          "workflow": "Delete opens confirmation and can be cancelled",
           "status": "passed",
           "details": "Passed"
         }

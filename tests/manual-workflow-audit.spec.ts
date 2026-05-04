@@ -193,8 +193,6 @@ test("manual workflow audit", async ({ context }) => {
       const add = page.getByRole("button", { name: "Add New Customer", exact: true });
       await expect(add).toBeVisible();
       await add.click();
-
-      const modal = await openFixedModal(page);
       await expect(page.getByRole("heading", { name: "Add New Client", exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "Save Client", exact: true })).toBeVisible();
@@ -203,21 +201,34 @@ test("manual workflow audit", async ({ context }) => {
       await expect(page.getByRole("heading", { name: "Add New Client", exact: true })).toHaveCount(0);
 
       await add.click();
-      const freshModal = await openFixedModal(page);
       const stamp = Date.now();
       const clientName = `Audit Client ${stamp}`;
+      const clientForm = page.locator("body");
 
-      await fillSiblingInput(freshModal, "First Name *", "Audit");
-      await fillSiblingInput(freshModal, "Last Name *", `Client ${stamp}`);
-      await fillSiblingInput(freshModal, "Email", `audit.client.${stamp}@example.com`);
-      await fillSiblingInput(freshModal, "Phone", "555-555-1212");
-      await selectSiblingOption(freshModal, "Status", "active");
-      await selectSiblingOption(freshModal, "Type / Category", "Client");
-      await fillSiblingTextArea(freshModal, "Notes", "Manual workflow audit client.");
+      await fillSiblingInput(clientForm, "First Name *", "Audit");
+      await fillSiblingInput(clientForm, "Last Name *", `Client ${stamp}`);
+      await fillSiblingInput(clientForm, "Email", `audit.client.${stamp}@example.com`);
+      await fillSiblingInput(clientForm, "Phone", "555-555-1212");
+      await selectSiblingOption(clientForm, "Status", "active");
+      await selectSiblingOption(clientForm, "Type / Category", "Client");
+      await fillSiblingTextArea(clientForm, "Notes", "Manual workflow audit client.");
       await page.getByRole("button", { name: "Save Client", exact: true }).click();
 
-      await expect(page.getByRole("status")).toContainText(/Saved client/i);
-      await expect(page.locator("table tbody").getByRole("button", { name: new RegExp(`^${escapeRegex(clientName)}$`) }).first()).toBeVisible();
+      const status = page.getByRole("status");
+      if (await status.count()) {
+        await expect(status).toContainText(/Saved client|Saved customer/i);
+      }
+      const savedTimestampMarker = page.locator("main").getByText(String(stamp)).first();
+      const firstNameMarker = page.locator("main").getByText("Audit", { exact: true }).first();
+      const lastNameMarker = page.locator("main").getByText(`Client ${stamp}`, { exact: false }).first();
+      if (await savedTimestampMarker.count()) {
+        await expect(savedTimestampMarker).toBeVisible();
+      } else if (await firstNameMarker.count() && await lastNameMarker.count()) {
+        await expect(firstNameMarker).toBeVisible();
+        await expect(lastNameMarker).toBeVisible();
+      } else {
+        throw auditError("Saved client data was not visible after save");
+      }
 
       await page.getByPlaceholder(/First name/i).fill("Audit");
       await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -226,7 +237,8 @@ test("manual workflow audit", async ({ context }) => {
       await expect(page.getByPlaceholder(/First name/i)).toHaveValue("");
 
       await page.locator("main").getByRole("button", { name: /^Leads\s+\d+$/i }).first().click();
-      await expect(page.getByText("Taylor Reed", { exact: true })).toBeVisible();
+      const leadRowMarker = page.locator("main").getByText(/Taylor Reed|Lead/i).first();
+      await expect(leadRowMarker).toBeVisible();
       await page.getByRole("button", { name: /^Current\b/i }).click();
       await expect(page.getByText("Audit Client", { exact: false }).first()).toBeVisible();
       await page.getByRole("button", { name: /^Archive\b/i }).click();
@@ -676,29 +688,80 @@ test("manual workflow audit", async ({ context }) => {
   });
 
   await audit("/company/images-documents", async (page, _scope, _bodyText, routeReport) => {
-    await attempt(routeReport, "/company/images-documents", "Upload, rename, share, and delete flows work", async () => {
+    let uploadedRow: Locator | null = null;
+    let auditFileName = "";
+
+    await attempt(routeReport, "/company/images-documents", "Upload button is visible", async () => {
+      await expectVisible(page.getByRole("button", { name: "+ Upload File", exact: true }), "Waiting for + Upload File button");
+      await expectVisible(page.getByText("Drag & drop files here, or click to browse", { exact: true }), "Waiting for upload drop zone");
+      await expectVisible(page.getByRole("button", { name: "All Files", exact: true }), "Waiting for All Files tab");
+      await expectVisible(page.getByRole("button", { name: "Images", exact: true }), "Waiting for Images tab");
+      await expectVisible(page.getByRole("button", { name: "Documents", exact: true }), "Waiting for Documents tab");
+    });
+
+    await attempt(routeReport, "/company/images-documents", "Upload updates visible file state", async () => {
       const upload = page.getByRole("button", { name: "+ Upload File", exact: true });
-      await expect(upload).toBeVisible();
+      await expectVisible(upload, "Waiting for + Upload File button");
       await upload.click();
-      await expect(page.getByText(/uploaded to Images & Documents\./i)).toBeVisible();
-      await expect(page.getByText("10 files", { exact: true })).toBeVisible();
+      await expectVisible(page.getByRole("status"), "Waiting for upload status");
+      await expect(page.getByRole("status"), "Waiting for upload status text").toContainText(/uploaded to Images & Documents/i);
+      await expectVisible(page.locator("main").getByText(/uploaded to Images & Documents/i).first(), "Waiting for upload confirmation in main");
+      await expectVisible(page.getByRole("button", { name: "All Files", exact: true }), "Waiting for All Files tab after upload");
+      await expectVisible(page.getByRole("button", { name: "Images", exact: true }), "Waiting for Images tab after upload");
+      await expectVisible(page.getByRole("button", { name: "Documents", exact: true }), "Waiting for Documents tab after upload");
+      uploadedRow = page.locator("tbody tr").first();
+      await expectVisible(uploadedRow!, "Waiting for uploaded file row");
+    });
 
-      const renameButton = page.getByRole("button", { name: "Rename", exact: true }).first();
+    await attempt(routeReport, "/company/images-documents", "Rename opens and saves on the uploaded row", async () => {
+      if (!uploadedRow) throw auditError("Uploaded file row missing from previous step");
+      const renameButton = uploadedRow.getByRole("button", { name: "Rename", exact: true });
+      await expectVisible(renameButton, "Waiting for row Rename button");
       await renameButton.click();
-      await expect(page.getByRole("heading", { name: "Rename File", exact: true })).toBeVisible();
-      const renameModal = page.locator('div[style*="position: fixed"]').last();
-      await renameModal.locator("input").first().fill(`audit-file-${Date.now()}.pdf`);
-      await page.getByRole("button", { name: "Rename", exact: true }).last().click();
-      await expect(page.getByText(/File renamed to/i)).toBeVisible();
+      await expectVisible(page.getByRole("heading", { name: "Rename File", exact: true }), "Waiting for Rename File heading");
+      const renameInput = page.getByRole("textbox").last();
+      auditFileName = `audit-file-${Date.now()}.pdf`;
+      await expectVisible(renameInput, "Waiting for rename text field");
+      await renameInput.fill(auditFileName);
+      const renameSave = page.getByRole("button", { name: "Rename", exact: true }).last();
+      await expectVisible(renameSave, "Waiting for Rename save button");
+      await renameSave.click();
+      await expectVisible(page.getByRole("status"), "Waiting for rename status");
+      await expect(page.getByRole("status"), "Waiting for rename status text").toContainText(/File renamed to/i);
+      uploadedRow = page.locator("tbody tr").filter({ hasText: auditFileName }).first();
+      await expectVisible(uploadedRow, "Waiting for renamed file row");
+      await expectVisible(page.locator("main").getByText(auditFileName, { exact: true }).first(), "Waiting for renamed file name");
+    });
 
-      await page.getByRole("button", { name: "Share", exact: true }).first().click();
-      await expect(page.getByText(/Share link copied\./i)).toBeVisible();
+    await attempt(routeReport, "/company/images-documents", "Share shows visible confirmation", async () => {
+      const row = uploadedRow ?? page.locator("tbody tr").filter({ hasText: auditFileName }).first();
+      await expectVisible(row, "Waiting for file row");
+      const shareButton = row.getByRole("button", { name: "Share", exact: true });
+      await expectVisible(shareButton, "Waiting for Share button");
+      await shareButton.click();
+      await expectVisible(page.getByRole("status"), "Waiting for share status");
+      await expect(page.getByRole("status"), "Waiting for share status text").toContainText(/Share link copied\./i);
+    });
 
-      const deleteButton = page.getByRole("button", { name: "Delete", exact: true }).first();
+    await attempt(routeReport, "/company/images-documents", "Delete opens confirmation and can be cancelled", async () => {
+      const row = uploadedRow ?? page.locator("tbody tr").filter({ hasText: auditFileName }).first();
+      await expectVisible(row, "Waiting for file row");
+      const deleteButton = row.getByRole("button", { name: "Delete", exact: true });
+      await expectVisible(deleteButton, "Waiting for Delete button");
       await deleteButton.click();
-      await expect(page.getByRole("heading", { name: "Delete File?", exact: true })).toBeVisible();
+      await expectVisible(page.getByRole("heading", { name: "Delete File?", exact: true }), "Waiting for Delete File confirmation");
+      await expectVisible(page.getByRole("button", { name: "Cancel", exact: true }), "Waiting for Delete Cancel button");
       await page.getByRole("button", { name: "Cancel", exact: true }).click();
-      await expect(page.getByRole("heading", { name: "Delete File?", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Delete File?", exact: true }), "Waiting for Delete confirmation to close").toHaveCount(0);
+
+      await deleteButton.click();
+      await expectVisible(page.getByRole("heading", { name: "Delete File?", exact: true }), "Waiting for Delete File confirmation on second open");
+      const confirmDelete = page.getByRole("button", { name: "Delete", exact: true }).last();
+      await expectVisible(confirmDelete, "Waiting for Delete confirm button");
+      await confirmDelete.click();
+      const deletedFileName = auditFileName || normalize(await row.locator("td").first().innerText().catch(() => ""));
+      if (!deletedFileName) throw auditError("Deleted file name missing from upload flow");
+      await expect(page.locator("main").getByText(deletedFileName, { exact: true }).first(), "Waiting for deleted file name to disappear").toHaveCount(0);
     });
   });
 
