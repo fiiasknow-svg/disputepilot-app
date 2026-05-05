@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 const T13 = "\t\t\t\t\t\t\t\t\t\t\t\t\t";
 const T14 = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
@@ -154,6 +155,7 @@ const navGroups = [
 
 export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters","partner"]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
@@ -165,6 +167,22 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const toggleExpand = (key: string) => {
     setExpanded(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  };
+  const clearAuthStorage = () => {
+    const clearMatching = (storage: Storage) => {
+      Object.keys(storage).forEach((key) => {
+        if (key.includes("supabase") || key.includes("auth") || key.startsWith("sb-")) {
+          storage.removeItem(key);
+        }
+      });
+    };
+    clearMatching(window.localStorage);
+    clearMatching(window.sessionStorage);
+  };
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    clearAuthStorage();
+    router.push("/login");
   };
 
   return (
@@ -195,7 +213,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div style={{ display:"flex", gap:6 }}>
             <button onClick={() => setActivateOpen(true)} style={{ flex:1, background:"#10b981", color:"#fff", border:"none", borderRadius:5, padding:"5px 0", fontSize:"11px", fontWeight:600, cursor:"pointer" }}>Activate Membership</button>
-            <button style={{ flex:1, background:"#334155", color:"#94a3b8", border:"none", borderRadius:5, padding:"5px 0", fontSize:"11px", fontWeight:600, cursor:"pointer" }}>Sign out</button>
+            <button onClick={handleSignOut} style={{ flex:1, background:"#334155", color:"#94a3b8", border:"none", borderRadius:5, padding:"5px 0", fontSize:"11px", fontWeight:600, cursor:"pointer" }}>Sign out</button>
           </div>
         </div>
 

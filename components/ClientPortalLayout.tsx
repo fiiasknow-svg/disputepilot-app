@@ -1,8 +1,9 @@
 ﻿"use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 const Icons = {
   Dashboard: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -22,7 +23,24 @@ const portalNav = [
 
 export default function ClientPortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const clearAuthStorage = () => {
+    const clearMatching = (storage: Storage) => {
+      Object.keys(storage).forEach((key) => {
+        if (key.includes("supabase") || key.includes("auth") || key.startsWith("sb-")) {
+          storage.removeItem(key);
+        }
+      });
+    };
+    clearMatching(window.localStorage);
+    clearMatching(window.sessionStorage);
+  };
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    clearAuthStorage();
+    router.push("/login");
+  };
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#f8fafc" }}>
@@ -52,7 +70,7 @@ export default function ClientPortalLayout({ children }: { children: React.React
         </nav>
 
         <div style={{ padding: "16px", borderTop: "1px solid #e2e8f0" }}>
-          <button style={{ width: "100%", padding: "10px", backgroundColor: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}>
+          <button onClick={handleSignOut} style={{ width: "100%", padding: "10px", backgroundColor: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}>
             Sign Out
           </button>
         </div>

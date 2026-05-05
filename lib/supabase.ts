@@ -43,4 +43,14 @@ function createNoopQuery(): NoopQuery {
 
 export const supabase = url && anonKey
   ? createClient(url, anonKey)
-  : ({ from: () => createNoopQuery() } as unknown as ReturnType<typeof createClient>);
+  : ({
+      from: () => createNoopQuery(),
+      auth: {
+        signInWithPassword: () => Promise.resolve({
+          data: { user: null, session: null },
+          error: { message: "Supabase is not configured for this environment." },
+        }),
+        signOut: () => Promise.resolve({ error: null }),
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      },
+    } as unknown as ReturnType<typeof createClient>);
