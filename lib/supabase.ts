@@ -50,6 +50,14 @@ export const supabase = url && anonKey
           data: { user: null, session: null },
           error: { message: "Supabase is not configured for this environment." },
         }),
+        resetPasswordForEmail: () => Promise.resolve({
+          data: null,
+          error: { message: "Supabase is not configured for this environment." },
+        }),
+        updateUser: () => Promise.resolve({
+          data: { user: null },
+          error: { message: "Supabase is not configured for this environment." },
+        }),
         signOut: () => Promise.resolve({ error: null }),
         getSession: () => Promise.resolve({ data: { session: null }, error: null }),
       },

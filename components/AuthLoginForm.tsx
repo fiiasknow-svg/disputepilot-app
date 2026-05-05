@@ -28,6 +28,7 @@ export default function AuthLoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [isResetting, setIsResetting] = useState(false);
   const [message, setMessage] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -49,6 +50,34 @@ export default function AuthLoginForm({
     if (redirectTo) {
       router.push(redirectTo);
     }
+  }
+
+  async function handleForgotPassword() {
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      setStatus("error");
+      setMessage("Enter your email address before requesting a password reset.");
+      return;
+    }
+
+    setIsResetting(true);
+    setStatus("submitting");
+    setMessage("");
+
+    const redirectTo = `${window.location.origin}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo });
+
+    if (error) {
+      setStatus("error");
+      setMessage(error.message || "Unable to send password reset instructions.");
+      setIsResetting(false);
+      return;
+    }
+
+    setStatus("success");
+    setMessage("Password reset instructions have been sent to that email address.");
+    setIsResetting(false);
   }
 
   return (
@@ -98,7 +127,7 @@ export default function AuthLoginForm({
             disabled={status === "submitting"}
             style={{ marginTop: 4, background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, padding: "11px 14px", fontSize: 14, fontWeight: 700, cursor: status === "submitting" ? "wait" : "pointer" }}
           >
-            {status === "submitting" ? "Signing in..." : submitLabel}
+            {status === "submitting" && !isResetting ? "Signing in..." : submitLabel}
           </button>
         </form>
 
@@ -107,9 +136,14 @@ export default function AuthLoginForm({
             {alternateLabel}
           </Link>
           {showForgotPassword && (
-            <Link href="/login" aria-disabled="true" style={{ color: "#64748b", textDecoration: "none" }}>
-              Forgot password
-            </Link>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={isResetting}
+              style={{ color: "#64748b", background: "none", border: "none", padding: 0, font: "inherit", cursor: isResetting ? "wait" : "pointer" }}
+            >
+              {isResetting ? "Sending reset..." : "Forgot password"}
+            </button>
           )}
         </div>
       </section>

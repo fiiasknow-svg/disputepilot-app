@@ -10,7 +10,7 @@ test('business login page renders', async ({ page }) => {
   await expect(page.getByLabel('Password')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Customer Portal Login' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Forgot password' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Forgot password' })).toBeVisible();
 });
 
 test('customer login page renders', async ({ page }) => {
@@ -38,4 +38,22 @@ test('authenticated business shell exposes logout', async ({ page }) => {
   await page.goto(`${BASE_URL}/dashboard`);
 
   await expect(page.getByRole('button', { name: /sign out/i })).toBeVisible();
+});
+
+test('forgot password requires an email before sending reset', async ({ page }) => {
+  await page.goto(`${BASE_URL}/login`);
+
+  await page.getByRole('button', { name: 'Forgot password' }).click();
+
+  await expect(page.getByRole('status')).toContainText('Enter your email address before requesting a password reset.');
+});
+
+test('reset password page renders', async ({ page }) => {
+  await page.goto(`${BASE_URL}/reset-password`);
+
+  await expect(page.getByRole('heading', { name: 'Reset Password' })).toBeVisible();
+  await expect(page.getByLabel('New password')).toBeVisible();
+  await expect(page.getByLabel('Confirm password')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Update Password' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Business Login' })).toBeVisible();
 });
