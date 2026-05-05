@@ -15,6 +15,13 @@ type AuthLoginFormProps = {
   showForgotPassword?: boolean;
 };
 
+const AUTH_COOKIE = "dp_auth";
+
+function setAuthCookie() {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${AUTH_COOKIE}=1; Path=/; Max-Age=604800; SameSite=Lax${secure}`;
+}
+
 export default function AuthLoginForm({
   title,
   description,
@@ -46,9 +53,14 @@ export default function AuthLoginForm({
 
     setStatus("success");
     setMessage("Signed in successfully.");
+    setAuthCookie();
 
-    if (redirectTo) {
-      router.push(redirectTo);
+    const nextPath = new URLSearchParams(window.location.search).get("next");
+    const safeNextPath = nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : null;
+    const destination = safeNextPath || redirectTo;
+
+    if (destination) {
+      router.push(destination);
     }
   }
 

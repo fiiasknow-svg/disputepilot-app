@@ -9,6 +9,7 @@ const T13 = "\t\t\t\t\t\t\t\t\t\t\t\t\t";
 const T14 = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 // CDM trial end: derived from observed countdown (35h at ~12:45 UTC Apr 29, 2026)
 const CDM_TRIAL_END = 1777594500000;
+const AUTH_COOKIE = "dp_auth";
 
 const Icons = {
   Dashboard: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -181,6 +182,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   };
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    document.cookie = `${AUTH_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
     clearAuthStorage();
     router.push("/login");
   };

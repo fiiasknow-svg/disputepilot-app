@@ -2,6 +2,22 @@ import { expect, test } from '@playwright/test';
 
 const BASE_URL = 'http://127.0.0.1:3201';
 
+test('logged-out dashboard redirects to login', async ({ browser }) => {
+  const context = await browser.newContext({
+    extraHTTPHeaders: {
+      'x-disputepilot-test-auth': '0',
+    },
+  });
+  const page = await context.newPage();
+
+  await page.goto(`${BASE_URL}/dashboard`);
+
+  await expect(page).toHaveURL(new RegExp(`${BASE_URL}/login\\?next=%2Fdashboard`));
+  await expect(page.getByRole('heading', { name: 'Business Login' })).toBeVisible();
+
+  await context.close();
+});
+
 test('business login page renders', async ({ page }) => {
   await page.goto(`${BASE_URL}/login`);
 
@@ -34,9 +50,10 @@ test('login pages link to each other', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Business Login' })).toBeVisible();
 });
 
-test('authenticated business shell exposes logout', async ({ page }) => {
+test('authenticated test session can access dashboard and exposes logout', async ({ page }) => {
   await page.goto(`${BASE_URL}/dashboard`);
 
+  await expect(page).toHaveURL(`${BASE_URL}/dashboard`);
   await expect(page.getByRole('button', { name: /sign out/i })).toBeVisible();
 });
 
