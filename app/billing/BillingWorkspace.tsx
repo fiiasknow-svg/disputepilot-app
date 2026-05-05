@@ -4,6 +4,7 @@ import Link from "next/link";
 import type React from "react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
+import { supabase } from "@/lib/supabase";
 
 type Invoice = {
   id: number;
@@ -42,12 +43,13 @@ type Detail =
   | { kind: "Payment"; item: Payment }
   | { kind: "Service/Product"; item: Service };
 
-const clients = ["Leslie Sabek", "Morgan Credit", "Taylor Johnson", "Avery Brooks"];
+const demoClients = ["Leslie Sabek", "Morgan Credit", "Taylor Johnson", "Avery Brooks"];
 const invoiceStatuses = ["Draft", "Sent", "Paid", "Overdue"];
 const paymentStatuses = ["Paid", "Pending", "Failed", "Refunded"];
 const serviceStatuses = ["Active", "Inactive"];
 const methods = ["Credit Card", "ACH", "Cash", "Check", "PayPal"];
 const LOCAL_BILLING_KEY = "disputepilot.billing";
+const LOCAL_CLIENTS_KEY = "disputepilot.clients";
 
 const initialInvoices: Invoice[] = [
   { id: 1, client: "Leslie Sabek", invoiceNumber: "INV-1042", service: "Credit Repair Monthly Plan", amount: 149, status: "Sent", dueDate: "2026-05-15", notes: "May service retainer." },
@@ -92,10 +94,48 @@ function writeLocalBilling(next: { invoices: Invoice[]; payments: Payment[]; ser
   window.localStorage.setItem(LOCAL_BILLING_KEY, JSON.stringify(next));
 }
 
+function readLocalClients() {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_CLIENTS_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function clientDisplayName(client: any) {
+  return String(
+    client.full_name ||
+    `${client.first_name || ""} ${client.last_name || ""}`.trim() ||
+    client.name ||
+    client.email ||
+    "",
+  ).trim();
+}
+
+function mergeClientOptions(...sources: string[][]) {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+
+  for (const source of sources) {
+    for (const option of source) {
+      const trimmed = option.trim();
+      const key = trimmed.toLowerCase();
+      if (!trimmed || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(trimmed);
+    }
+  }
+
+  return merged;
+}
+
 export default function BillingWorkspace({ view = "overview" }: { view?: "overview" | "invoices" | "payments" | "history" | "services" }) {
   const [invoices, setInvoices] = useState(initialInvoices);
   const [payments, setPayments] = useState(initialPayments);
   const [services, setServices] = useState(initialServices);
+  const [clientOptions, setClientOptions] = useState(demoClients);
   const [modal, setModal] = useState<"invoice" | "payment" | "service" | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [editTarget, setEditTarget] = useState<Detail | null>(null);
@@ -117,6 +157,39 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
       if (Array.isArray(local.services)) setServices(local.services);
     }
     setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadClientOptions() {
+      const localClientNames = readLocalClients().map(clientDisplayName).filter(Boolean);
+
+      try {
+        const { data } = await supabase
+          .from("clients")
+          .select("id, first_name, last_name, full_name, email")
+          .order("created_at", { ascending: false });
+
+        if (cancelled) return;
+        const remoteClientNames = Array.isArray(data) ? data.map(clientDisplayName).filter(Boolean) : [];
+        setClientOptions(mergeClientOptions(localClientNames, remoteClientNames, demoClients));
+      } catch {
+        if (!cancelled) setClientOptions(mergeClientOptions(localClientNames, demoClients));
+      }
+    }
+
+    loadClientOptions();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === LOCAL_CLIENTS_KEY) void loadClientOptions();
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   useEffect(() => {
@@ -270,14 +343,14 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
         {(view === "overview" || view === "services") && <ServicesTable services={services} onView={item => setDetail({ kind: "Service/Product", item })} />}
         {view === "history" && <PaymentHistory payments={payments} onView={item => setDetail({ kind: "Payment", item })} />}
 
-        {modal === "invoice" && <Modal title="Create Invoice" onClose={() => setModal(null)}><InvoiceForm services={services} onSave={saveInvoice} onCancel={() => setModal(null)} /></Modal>}
-        {modal === "payment" && <Modal title="Add Payment" onClose={() => setModal(null)}><PaymentForm services={services} onSave={savePayment} onCancel={() => setModal(null)} /></Modal>}
+        {modal === "invoice" && <Modal title="Create Invoice" onClose={() => setModal(null)}><InvoiceForm clients={clientOptions} services={services} onSave={saveInvoice} onCancel={() => setModal(null)} /></Modal>}
+        {modal === "payment" && <Modal title="Add Payment" onClose={() => setModal(null)}><PaymentForm clients={clientOptions} services={services} onSave={savePayment} onCancel={() => setModal(null)} /></Modal>}
         {modal === "service" && <Modal title="Add Service/Product" onClose={() => setModal(null)}><ServiceForm onSave={saveService} onCancel={() => setModal(null)} /></Modal>}
         {detail && <Modal title={`${detail.kind} Details`} onClose={() => setDetail(null)}><Details detail={detail} onClose={() => setDetail(null)} onEdit={() => { setEditTarget(detail); setDetail(null); }} /></Modal>}
         {editTarget && (
           <Modal title={`Edit ${editTarget.kind}`} onClose={() => setEditTarget(null)}>
-            {editTarget.kind === "Invoice" && <InvoiceEditForm invoice={editTarget.item} services={services} onSave={(event) => saveEditedInvoice(event, editTarget.item)} onCancel={() => setEditTarget(null)} />}
-            {editTarget.kind === "Payment" && <PaymentEditForm payment={editTarget.item} services={services} onSave={(event) => saveEditedPayment(event, editTarget.item)} onCancel={() => setEditTarget(null)} />}
+            {editTarget.kind === "Invoice" && <InvoiceEditForm invoice={editTarget.item} clients={clientOptions} services={services} onSave={(event) => saveEditedInvoice(event, editTarget.item)} onCancel={() => setEditTarget(null)} />}
+            {editTarget.kind === "Payment" && <PaymentEditForm payment={editTarget.item} clients={clientOptions} services={services} onSave={(event) => saveEditedPayment(event, editTarget.item)} onCancel={() => setEditTarget(null)} />}
             {editTarget.kind === "Service/Product" && <ServiceEditForm service={editTarget.item} onSave={(event) => saveEditedService(event, editTarget.item)} onCancel={() => setEditTarget(null)} />}
           </Modal>
         )}
@@ -339,10 +412,10 @@ function PaymentHistory({ payments, onView }: { payments: Payment[]; onView: (pa
   );
 }
 
-function InvoiceEditForm({ invoice, services, onSave, onCancel }: { invoice: Invoice; services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
+function InvoiceEditForm({ invoice, clients, services, onSave, onCancel }: { invoice: Invoice; clients: string[]; services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
   return (
     <form onSubmit={onSave} style={formGrid}>
-      <SelectField label="Client/Customer" name="client" options={clients} defaultValue={invoice.client} />
+      <SelectField label="Client/Customer" name="client" options={mergeClientOptions([invoice.client], clients)} defaultValue={invoice.client} />
       <Field label="Invoice Number" name="invoiceNumber" defaultValue={invoice.invoiceNumber} />
       <SelectField label="Service/Product" name="service" options={services.map(s => s.name)} defaultValue={invoice.service} />
       <Field label="Amount" name="amount" type="number" defaultValue={String(invoice.amount)} />
@@ -354,10 +427,10 @@ function InvoiceEditForm({ invoice, services, onSave, onCancel }: { invoice: Inv
   );
 }
 
-function PaymentEditForm({ payment, services, onSave, onCancel }: { payment: Payment; services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
+function PaymentEditForm({ payment, clients, services, onSave, onCancel }: { payment: Payment; clients: string[]; services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
   return (
     <form onSubmit={onSave} style={formGrid}>
-      <SelectField label="Client/Customer" name="client" options={clients} defaultValue={payment.client} />
+      <SelectField label="Client/Customer" name="client" options={mergeClientOptions([payment.client], clients)} defaultValue={payment.client} />
       <Field label="Payment Reference" name="reference" defaultValue={payment.reference} />
       <SelectField label="Service/Product" name="service" options={services.map(s => s.name)} defaultValue={payment.service} />
       <Field label="Amount" name="amount" type="number" defaultValue={String(payment.amount)} />
@@ -421,7 +494,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   );
 }
 
-function InvoiceForm({ services, onSave, onCancel }: { services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
+function InvoiceForm({ clients, services, onSave, onCancel }: { clients: string[]; services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
   return (
     <form onSubmit={onSave} style={formGrid}>
       <SelectField label="Client/Customer" name="client" options={clients} />
@@ -436,7 +509,7 @@ function InvoiceForm({ services, onSave, onCancel }: { services: Service[]; onSa
   );
 }
 
-function PaymentForm({ services, onSave, onCancel }: { services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
+function PaymentForm({ clients, services, onSave, onCancel }: { clients: string[]; services: Service[]; onSave: (event: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
   return (
     <form onSubmit={onSave} style={formGrid}>
       <SelectField label="Client/Customer" name="client" options={clients} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 type Dispute = {
@@ -87,6 +87,8 @@ const LETTERS = [
   "Metro 2 Compliance Letter",
 ];
 
+const LOCAL_CLIENTS_KEY = "disputepilot.clients";
+
 const inputStyle: React.CSSProperties = {
   width: "100%",
   border: "1px solid #cbd5e1",
@@ -117,13 +119,54 @@ export default function DisputesPage() {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<Dispute | null>(null);
   const [saved, setSaved] = useState<Dispute | null>(null);
+  const [clientSuggestions, setClientSuggestions] = useState<string[]>([]);
+  const [saveHint, setSaveHint] = useState("");
+
+  const canSave = useMemo(() => Boolean(form.client.trim() && form.account.trim()), [form.client, form.account]);
+
+  useEffect(() => {
+    function loadClientSuggestions() {
+      try {
+        const raw = window.localStorage.getItem(LOCAL_CLIENTS_KEY);
+        if (!raw) {
+          setClientSuggestions(["John Smith", "Maria Johnson", "David Lee"]);
+          return;
+        }
+
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+          setClientSuggestions(["John Smith", "Maria Johnson", "David Lee"]);
+          return;
+        }
+
+        const suggestions = parsed
+          .map((item: any) => (item.full_name || `${item.first_name || ""} ${item.last_name || ""}`.trim() || item.email || "").trim())
+          .filter(Boolean);
+
+        setClientSuggestions(Array.from(new Set([...suggestions, "John Smith", "Maria Johnson", "David Lee"])));
+      } catch {
+        setClientSuggestions(["John Smith", "Maria Johnson", "David Lee"]);
+      }
+    }
+
+    loadClientSuggestions();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === LOCAL_CLIENTS_KEY) loadClientSuggestions();
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   function updateField(name: keyof typeof EMPTY_FORM, value: string) {
     setForm(current => ({ ...current, [name]: value }));
+    if (name === "client" || name === "account") setSaveHint("");
   }
 
   function openCreate() {
     setSaved(null);
+    setSaveHint("");
     setForm({ ...EMPTY_FORM });
     setShowForm(true);
   }
@@ -131,10 +174,17 @@ export default function DisputesPage() {
   function cancelCreate() {
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
+    setSaveHint("");
   }
 
   function saveDispute() {
-    if (!form.client.trim() || !form.account.trim()) return;
+    if (!form.client.trim() || !form.account.trim()) {
+      const missing: string[] = [];
+      if (!form.client.trim()) missing.push("client");
+      if (!form.account.trim()) missing.push("account");
+      setSaveHint(`To save, fill ${missing.join(" and ")}.`);
+      return;
+    }
 
     const next: Dispute = {
       ...form,
@@ -146,6 +196,7 @@ export default function DisputesPage() {
 
     setDisputes(current => [next, ...current]);
     setSaved(next);
+    setSaveHint("");
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
   }
@@ -233,7 +284,13 @@ export default function DisputesPage() {
             <div style={{ padding: 24, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
               <div>
                 <label htmlFor="client" style={labelStyle}>Client / Customer *</label>
-                <input id="client" value={form.client} onChange={event => updateField("client", event.target.value)} style={inputStyle} placeholder="Jane Carter" />
+                <input id="client" list="client-options" value={form.client} onChange={event => updateField("client", event.target.value)} style={inputStyle} placeholder="Select client" aria-describedby="client-helper" />
+                <datalist id="client-options">
+                  {clientSuggestions.map(client => <option key={client} value={client} />)}
+                </datalist>
+                <p id="client-helper" style={{ margin: "6px 0 0", color: "#64748b", fontSize: 12 }}>
+                  Select a client or type a name. Saved clients from the Clients page are available here.
+                </p>
               </div>
               <div>
                 <label htmlFor="status" style={labelStyle}>Status</label>
@@ -261,7 +318,10 @@ export default function DisputesPage() {
               </div>
               <div>
                 <label htmlFor="account" style={labelStyle}>Account / Creditor *</label>
-                <input id="account" value={form.account} onChange={event => updateField("account", event.target.value)} style={inputStyle} placeholder="Creditor or account name" />
+                <input id="account" value={form.account} onChange={event => updateField("account", event.target.value)} style={inputStyle} placeholder="First National Bank" aria-describedby="account-helper" />
+                <p id="account-helper" style={{ margin: "6px 0 0", color: "#64748b", fontSize: 12 }}>
+                  Enter the creditor or account name to enable Save Dispute.
+                </p>
               </div>
               <div>
                 <label htmlFor="letter" style={labelStyle}>Letter / Template</label>
@@ -280,12 +340,17 @@ export default function DisputesPage() {
             </div>
 
             <div style={{ padding: "16px 24px 24px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              {saveHint && (
+                <p role="status" aria-live="polite" style={{ margin: "0 auto 0 0", color: "#b45309", fontSize: 12, fontWeight: 700 }}>
+                  {saveHint}
+                </p>
+              )}
               <button type="button" onClick={cancelCreate} style={{ border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", padding: "9px 18px", fontWeight: 700, color: "#334155", cursor: "pointer" }}>Cancel</button>
               <button
                 type="button"
                 onClick={saveDispute}
-                disabled={!form.client.trim() || !form.account.trim()}
-                style={{ border: "none", borderRadius: 7, background: form.client.trim() && form.account.trim() ? "#1e3a5f" : "#94a3b8", padding: "9px 20px", fontWeight: 800, color: "#fff", cursor: form.client.trim() && form.account.trim() ? "pointer" : "not-allowed" }}
+                disabled={!canSave}
+                style={{ border: "none", borderRadius: 7, background: canSave ? "#1e3a5f" : "#94a3b8", padding: "9px 20px", fontWeight: 800, color: "#fff", cursor: canSave ? "pointer" : "not-allowed" }}
               >
                 Save Dispute
               </button>
