@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 import CDMLayout from "@/components/CDMLayout";
 
 // ── constants ─────────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ export default function Page() {
 
   useEffect(()=>{
     supabase.from("statuses").select("*").order("name")
-      .then(({data})=>{setStatuses(data||[]); setLoadingSt(false);});
+      .then(({data}: { data: Status[] | null })=>{setStatuses(data||[]); setLoadingSt(false);});
   },[]);
 
   async function addStatus(){

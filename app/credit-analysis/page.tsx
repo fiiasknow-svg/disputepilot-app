@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 import CDMLayout from "@/components/CDMLayout";
 
 // ── score helpers ─────────────────────────────────────────────────────────────
@@ -181,7 +181,7 @@ export default function Page() {
 
   useEffect(() => {
     supabase.from("clients").select("id, full_name").order("full_name")
-      .then(({ data }) => setClients(data || []));
+      .then(({ data }: { data: any[] | null }) => setClients(data || []));
   }, []);
 
   const d = MOCK[bureau];

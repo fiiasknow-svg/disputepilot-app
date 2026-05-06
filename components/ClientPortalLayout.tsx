@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
 const AUTH_COOKIE = "dp_auth";
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
 const T13 = "\t\t\t\t\t\t\t\t\t\t\t\t\t";
 const T14 = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import CDMLayout from "@/components/CDMLayout";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
 const ROLES = ["Admin","Manager","Dispute Specialist","Sales Rep","Support Agent","Accountant"];
 const ROLE_C: Record<string,string> = { Admin:"#1e3a5f", Manager:"#8b5cf6", "Dispute Specialist":"#3b82f6", "Sales Rep":"#10b981", "Support Agent":"#f59e0b", Accountant:"#64748b" };

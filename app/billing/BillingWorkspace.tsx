@@ -4,7 +4,7 @@ import Link from "next/link";
 import type React from "react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
 type Invoice = {
   id: number;

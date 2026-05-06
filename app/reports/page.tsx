@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import CDMLayout from "@/components/CDMLayout";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const BUREAU_C: Record<string, string> = { equifax: "#e53e3e", experian: "#2b6cb0", transunion: "#276749" };
@@ -55,7 +55,7 @@ export default function Page() {
         supabase.from("leads").select("id"),
       ]);
 
-      const aC = clients.data || [], aD = disputes.data || [], aI = invoices.data || [];
+      const aC: any[] = clients.data || [], aD: any[] = disputes.data || [], aI: any[] = invoices.data || [];
       const totalRevenue = aI.filter(i => i.status === "paid").reduce((s, i) => s + (i.amount || 0), 0);
       setStats({ clients: aC.length, disputes: aD.length, resolved: aD.filter(d => d.status === "resolved").length, revenue: totalRevenue, leads: (leads.data || []).length });
 

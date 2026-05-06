@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
 const STATUS_COLORS: Record<string, string> = {
   new: "#3b82f6", contacted: "#f59e0b", qualified: "#8b5cf6",

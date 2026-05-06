@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import CDMLayout from "@/components/CDMLayout";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
 const STATUS_C: Record<string, string> = { pending: "#f59e0b", sent: "#3b82f6", responded: "#8b5cf6", resolved: "#10b981", deleted: "#ef4444" };
 const BUREAU_C: Record<string, string> = { equifax: "#ef4444", experian: "#3b82f6", transunion: "#10b981" };

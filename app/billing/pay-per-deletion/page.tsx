@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import CDMLayout from "@/components/CDMLayout";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
 const REPORT_TYPES = ["Standard Report", "3-Bureau Report", "Single Bureau"];
 const CHECKS = ["Credit Analysis", "Personal Information", "Return Item"];
@@ -16,7 +16,7 @@ export default function Page() {
   const [estimates, setEstimates] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("clients").select("id, full_name").order("full_name").then(({ data }) => setClients(data || []));
+    supabase.from("clients").select("id, full_name").order("full_name").then(({ data }: { data: any[] | null }) => setClients(data || []));
   }, []);
 
   function toggle(k: string) { setChecked(p => ({ ...p, [k]: !p[k] })); }

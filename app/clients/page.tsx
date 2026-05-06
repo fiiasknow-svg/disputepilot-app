@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
-import { supabase } from "@/lib/supabase";
+import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
 // ── Constants ──────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = { active: "#10b981", inactive: "#94a3b8", pending: "#f59e0b", cancelled: "#ef4444" };
