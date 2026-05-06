@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const BASE_URL = process.env.BASE_URL || "https://disputepilot-app.vercel.app";
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 const REPORT_PATH = path.resolve(process.cwd(), "manual-workflow-audit.json");
 
 type WorkflowStatus = "passed" | "missing" | "broken";

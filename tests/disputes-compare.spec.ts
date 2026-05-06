@@ -1,8 +1,10 @@
 import { test, expect, chromium } from '@playwright/test';
 import fs from 'fs';
 
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
+
 const ORIGINAL_DISPUTES = 'https://www.clientdisputemanager.com/User/DisputeCenter';
-const CLONE_DISPUTES = 'https://disputepilot-app.vercel.app/disputes';
+const CLONE_DISPUTES = `${BASE_URL}/disputes`;
 
 const expectedDisputeItems = [
   'Disputes',

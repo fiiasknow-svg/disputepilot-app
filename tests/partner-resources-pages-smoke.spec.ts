@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://disputepilot-app.vercel.app';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
 const partnerPages = [
   { path: '/partner-resources', expected: ['Partner Resources'] },

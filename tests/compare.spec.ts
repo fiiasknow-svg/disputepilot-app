@@ -2,7 +2,7 @@ import { test, expect, chromium } from '@playwright/test';
 import fs from 'fs';
 
 const ORIGINAL = 'https://www.clientdisputemanager.com';
-const CLONE = 'https://disputepilot-app.vercel.app';
+const CLONE = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
 function cleanText(item: string) {
   return item

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://disputepilot-app.vercel.app';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
 type RouteSpec = {
   route: string;

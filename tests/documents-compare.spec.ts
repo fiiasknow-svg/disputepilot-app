@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
+
 import fs from 'fs';
 
-const CLONE_DOCUMENTS = 'https://disputepilot-app.vercel.app/company/digital-contracts';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
+
+const CLONE_DOCUMENTS = `${BASE_URL}/company/digital-contracts`;
 
 const expectedDocumentItems = [
   'Digital Contracts',

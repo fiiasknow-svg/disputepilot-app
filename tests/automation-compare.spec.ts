@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
+
 import fs from 'fs';
 
-const CLONE_AUTOMATION = 'https://disputepilot-app.vercel.app/automation';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
+
+const CLONE_AUTOMATION = `${BASE_URL}/automation`;
 
 const expectedAutomationItems = [
   'Automation',

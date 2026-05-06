@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
+
 import fs from 'fs';
 
-const CLONE_COMPANY = 'https://disputepilot-app.vercel.app/company/settings';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
+
+const CLONE_COMPANY = `${BASE_URL}/company/settings`;
 
 const expectedCompanyItems = [
   'Company Settings',

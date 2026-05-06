@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://disputepilot-app.vercel.app';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
 test('credit analysis analyzer page is usable without app error', async ({ page }) => {
   await page.goto(`${BASE_URL}/credit-analysis`);

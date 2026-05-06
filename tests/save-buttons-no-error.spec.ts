@@ -9,7 +9,7 @@ const pages = [
 test.describe('save buttons do not throw app errors', () => {
   for (const path of pages) {
     test(`${path} save button keeps page usable`, async ({ page }) => {
-      await page.goto(`https://disputepilot-app.vercel.app${path}`);
+      await page.goto(`http://127.0.0.1:3201${path}`);
 
       const saveButton = page
         .getByRole('button', {

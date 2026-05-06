@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
+
 import fs from 'fs';
 
-const CLONE_BILLING = 'https://disputepilot-app.vercel.app/billing';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
+
+const CLONE_BILLING = `${BASE_URL}/billing`;
 
 const expectedBillingItems = [
   'Billing',

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const BASE_URL = 'http://127.0.0.1:3201';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
 test('logged-out dashboard redirects to login', async ({ browser }) => {
   const context = await browser.newContext({
