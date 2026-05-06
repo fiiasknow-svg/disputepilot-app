@@ -132,7 +132,7 @@ async function attempt(
 
 async function loadRoute(page: Page, route: string, routeReport: RouteReport) {
   try {
-    await page.goto(new URL(route, BASE_URL).toString(), { waitUntil: "domcontentloaded" });
+    await page.goto(new URL(route, BASE_URL).toString(), { waitUntil: "load" });
     await expect(page.locator("main, body").first()).toBeAttached();
 
     const bodyText = normalize(await page.locator("body").innerText());

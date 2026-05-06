@@ -5,6 +5,7 @@ const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 test('add client form has usable customer fields', async ({ page }) => {
   await page.goto(`${BASE_URL}/clients`);
 
+  await expect(page.getByText(/Loading/i)).toHaveCount(0);
   await page.getByRole('button', { name: /\+ Add Client|Add New Customer/i }).first().click();
 
   const form = page

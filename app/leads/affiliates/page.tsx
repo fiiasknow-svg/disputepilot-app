@@ -1,12 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
 import CDMLayout from "@/components/CDMLayout";
-
-const supabase = createClient(
-  "https://wrjgjxltgpksjgifqszt.supabase.co",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "@/lib/supabase";
 
 const MAIN_TABS = ["Manage Affiliate", "Documents & Commissions"];
 const FILTER_TABS = ["Active", "Lead", "Inactive", "Pending Messages", "Pending Referrals"];

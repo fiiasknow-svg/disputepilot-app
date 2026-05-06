@@ -6,6 +6,7 @@ test('add client form can save without app error', async ({ page }) => {
   await page.goto(`${BASE_URL}/clients`);
 
   await expect(page.getByRole('heading', { name: /Clients/i })).toBeVisible();
+  await expect(page.getByText(/Loading/i)).toHaveCount(0);
 
   await page.getByRole('button', { name: /Add New Customer|\+ Add Client|Add Client/i }).first().click();
 

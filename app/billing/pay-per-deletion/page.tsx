@@ -1,12 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
 import CDMLayout from "@/components/CDMLayout";
-
-const supabase = createClient(
-  "https://wrjgjxltgpksjgifqszt.supabase.co",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "@/lib/supabase";
 
 const REPORT_TYPES = ["Standard Report", "3-Bureau Report", "Single Bureau"];
 const CHECKS = ["Credit Analysis", "Personal Information", "Return Item"];
