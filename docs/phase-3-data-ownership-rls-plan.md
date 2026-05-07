@@ -120,6 +120,18 @@ Statuses pilot added after the account foundation:
 - Custom status deletes include both `id` and `account_id` when an account membership can be safely resolved. If no account is available, the UI preserves the previous fallback delete behavior until RLS policies can become authoritative.
 - The visible settings workflow has Playwright coverage for page load, custom client status creation, custom client status deletion, and no app/runtime error without requiring real Supabase credentials. These tests exercise the no-credentials fallback path through the browser Supabase no-op client. Direct cross-account database isolation still needs Supabase-backed test data before RLS is enabled.
 - `supabase/tests/statuses-two-account-rls-readiness.sql` documents the required two-account Supabase readiness check. It seeds two auth users, two accounts, memberships, and account-owned statuses in a disposable database; verifies the current pre-RLS scoped read, insert, and delete query shapes; documents expected future RLS behavior; and includes cleanup SQL.
+- `supabase/policies/drafts/statuses-rls-policy-draft.sql` contains draft-only statuses RLS policies for review. It is not an active migration and does not enable RLS.
+
+Statuses policy draft summary:
+
+- SELECT allows authenticated users to read rows where `statuses.account_id` is in their `account_memberships`.
+- INSERT allows authenticated users to create rows only for account ids in their `account_memberships`.
+- UPDATE requires the existing row account and the updated row account to stay within the user's `account_memberships`.
+- DELETE allows deleting only rows whose `account_id` is in the user's `account_memberships`.
+- Anonymous users and authenticated users without membership should receive no access once RLS is enabled.
+- Null `account_id` legacy rows are intentionally hidden by the draft policies and must be manually assigned or explicitly archived before apply if they should remain visible.
+- Current default statuses are app-defined, not persisted database rows. If defaults become database rows, prefer account-owned copies rather than global null-account rows.
+- `account_memberships` currently has `role` but no membership `status` column. The draft treats any membership as active and notes where to add `status = 'active'` if that column is introduced.
 
 Current automated statuses coverage:
 
@@ -151,6 +163,14 @@ Before enabling `statuses` RLS:
 - Confirm delete/update paths include account ownership constraints or are protected by RLS policies before trusting client-provided status ids.
 - Run Supabase-backed manual verification or seeded integration tests with at least two accounts before enabling policies, because the current Playwright tests intentionally avoid real Supabase credentials.
 - Convert the readiness SQL into an automated Supabase-backed integration test when CI has disposable Supabase service credentials and seeded auth users.
+- Review `supabase/policies/drafts/statuses-rls-policy-draft.sql` and decide whether write policies should allow every member or only owner/admin/manager roles.
+- Confirm whether `account_memberships` needs a `status` column before policies are applied, then include active-membership checks if it exists.
+
+Rollback notes for future statuses RLS apply:
+
+- Keep the apply migration reversible by dropping the four statuses policies before disabling RLS.
+- Use the rollback SQL already documented in `supabase/policies/drafts/statuses-rls-policy-draft.sql`.
+- Do not roll back by deleting statuses rows or removing `statuses.account_id`; rollback should only remove policies and disable RLS if the migration must be reverted.
 
 Exact criteria to enable `statuses` RLS safely:
 
