@@ -100,6 +100,14 @@ For child records with both `account_id` and a parent foreign key, policies shou
 
 ## Migration Sequence Before Enabling RLS
 
+Foundation added after this plan:
+
+- `supabase/migrations/20260507010000_add_account_ownership_foundation.sql` creates only `accounts` and `account_memberships`.
+- `lib/account-context.ts` can resolve the current verified user's first account membership on the server.
+- No RLS policies were enabled.
+- No `account_id` columns were added to existing app tables.
+- No runtime data reads or writes were changed to use account scoping yet.
+
 1. Add tenant tables: `accounts`, `account_memberships`, and later `client_portal_users`.
 2. Add nullable `account_id` columns to persisted business tables: `clients`, `leads`, `affiliates`, `disputes`, `dispute_letters`, `invoices`, `calendar_events`, `employees`, `statuses`.
 3. Backfill one default account for existing data, then derive child ownership from parent records where possible:
