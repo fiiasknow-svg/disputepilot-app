@@ -144,6 +144,27 @@ Employees pilot added after the statuses pilot:
 - New employee inserts include `account_id` only when an account membership can be safely resolved.
 - Employee updates, deletes, bulk deletes, and status updates include `account_id` constraints when an account membership can be safely resolved.
 - `tests/employees-behavior.spec.ts` verifies the employees page loads, the add employee flow remains usable, optional edit/delete/status controls remain usable when rows exist, and no page exception or visible app/runtime error occurs without requiring real Supabase credentials.
+- `supabase/tests/employees-two-account-rls-readiness.sql` documents the required two-account Supabase readiness check. It seeds two auth users, two accounts, memberships, and account-owned employees in a disposable database; verifies the current pre-RLS scoped read, insert, update, and delete query shapes; documents expected future RLS behavior; and includes cleanup SQL.
+- `supabase/policies/drafts/employees-rls-policy-draft.sql` contains draft-only employees RLS policies for review. It is not an active migration and does not enable RLS.
+
+Employees policy draft summary:
+
+- SELECT allows authenticated users to read rows where `employees.account_id` is in their `account_memberships`.
+- INSERT allows authenticated users to create rows only for account ids in their `account_memberships`.
+- UPDATE requires the existing row account and the updated row account to stay within the user's `account_memberships`.
+- DELETE allows deleting only rows whose `account_id` is in the user's `account_memberships`.
+- Anonymous users and authenticated users without membership should receive no access once RLS is enabled.
+- Null `account_id` legacy rows are intentionally hidden by the draft policies and must be manually assigned or explicitly archived before apply if they should remain visible.
+- Employee row roles such as Admin and Manager are not database membership roles. Write policy role semantics must be finalized against `account_memberships.role` or a future permission table before applying RLS.
+- `account_memberships` currently has `role` but no membership `status` column. The draft treats any membership as active and notes where to add `status = 'active'` if that column is introduced.
+
+Manual employees coverage before RLS:
+
+- Run `supabase/tests/employees-two-account-rls-readiness.sql` against a disposable Supabase database after applying the account foundation and employees migrations.
+- Confirm Account A-scoped reads return only Account A readiness employees and Account B-scoped reads return only Account B readiness employees.
+- Confirm an Account A insert includes Account A ownership.
+- Confirm an Account A-scoped update cannot update Account B's employee and can update Account A's inserted employee.
+- Confirm an Account A-scoped delete cannot delete Account B's employee and can delete Account A's inserted employee.
 
 Before making `employees.account_id` `NOT NULL`:
 
@@ -161,6 +182,25 @@ Before enabling `employees` RLS:
 - Confirm anon users and authenticated users without membership cannot read or mutate employees.
 - Add Supabase-backed two-account tests or manual SQL verification for scoped read, insert, update, delete, bulk delete, bulk status update, and cross-account denial.
 - Confirm all update/delete paths are protected by RLS policies before trusting client-provided employee ids.
+- Run the future post-RLS block in `supabase/tests/employees-two-account-rls-readiness.sql` in a disposable database after applying draft policies.
+- Review `supabase/policies/drafts/employees-rls-policy-draft.sql` and decide whether write policies should allow every member or only owner/admin/manager roles.
+- Confirm whether `account_memberships` needs a `status` column before policies are applied, then include active-membership checks if it exists.
+
+Rollback notes for future employees RLS apply:
+
+- Keep the apply migration reversible by dropping the four employees policies before disabling RLS.
+- Use the rollback SQL already documented in `supabase/policies/drafts/employees-rls-policy-draft.sql`.
+- Do not roll back by deleting employees rows or removing `employees.account_id`; rollback should only remove policies and disable RLS if the migration must be reverted.
+
+Exact criteria to enable `employees` RLS safely:
+
+- All production `employees` rows have the correct `account_id`, or any remaining null rows are explicitly documented and intentionally excluded from account-scoped reads.
+- Employees page membership resolution works for real business users in a production-like Supabase environment.
+- The two-account readiness SQL passes before RLS, proving the app query shape is scoped by `account_id`.
+- Draft RLS policies are reviewed for select, insert, update, and delete using active account membership.
+- Employee write role semantics are decided using account membership roles or a future permissions table, not `employees.role` labels.
+- The future post-RLS block in `supabase/tests/employees-two-account-rls-readiness.sql` passes after policies are applied: Account A sees only Account A employees, can insert Account A employees, cannot insert Account B employees, cannot update Account B employees, and cannot delete Account B employees.
+- No `employees.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
 Current automated statuses coverage:
 
