@@ -33,6 +33,7 @@ test('configuration custom client status can be created and deleted', async ({ p
   await expect(page.getByRole('heading', { name: 'Configuration', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Client Statuses' }).click();
   await expect(page.getByText('Default Client Statuses')).toBeVisible();
+  await expect(page.getByText(/Loading/)).toBeHidden();
 
   const statusName = `Playwright Status ${Date.now()}`;
   await page.getByRole('button', { name: '+ Add Status' }).click();

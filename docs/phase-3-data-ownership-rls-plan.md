@@ -119,6 +119,19 @@ Statuses pilot added after the account foundation:
 - New custom status inserts include `account_id` only when an account membership can be safely resolved.
 - Custom status deletes include both `id` and `account_id` when an account membership can be safely resolved. If no account is available, the UI preserves the previous fallback delete behavior until RLS policies can become authoritative.
 - The visible settings workflow has Playwright coverage for page load, custom client status creation, custom client status deletion, and no app/runtime error without requiring real Supabase credentials. These tests exercise the no-credentials fallback path through the browser Supabase no-op client. Direct cross-account database isolation still needs Supabase-backed test data before RLS is enabled.
+- `supabase/tests/statuses-two-account-rls-readiness.sql` documents the required two-account Supabase readiness check. It seeds two auth users, two accounts, memberships, and account-owned statuses in a disposable database; verifies the current pre-RLS scoped read, insert, and delete query shapes; documents expected future RLS behavior; and includes cleanup SQL.
+
+Current automated statuses coverage:
+
+- `tests/configuration-behavior.spec.ts` verifies the settings/configuration page loads and that custom client status creation and deletion stay usable without page exceptions or visible app/runtime errors.
+- The automated Playwright coverage intentionally does not require real Supabase credentials. It cannot prove database-enforced cross-account isolation because the no-credentials path uses the browser Supabase no-op client and there is no seeded two-user Supabase auth context.
+
+Manual statuses coverage before RLS:
+
+- Run `supabase/tests/statuses-two-account-rls-readiness.sql` against a disposable Supabase database after applying the account foundation and statuses migrations.
+- Confirm Account A-scoped reads return only Account A readiness statuses and Account B-scoped reads return only Account B readiness statuses.
+- Confirm an Account A insert includes Account A ownership.
+- Confirm an Account A-scoped delete cannot delete Account B's status and can delete Account A's inserted status.
 
 Before making `statuses.account_id` `NOT NULL`:
 
@@ -137,6 +150,16 @@ Before enabling `statuses` RLS:
 - Add regression coverage for scoped read, scoped insert, scoped delete, and cross-account denial.
 - Confirm delete/update paths include account ownership constraints or are protected by RLS policies before trusting client-provided status ids.
 - Run Supabase-backed manual verification or seeded integration tests with at least two accounts before enabling policies, because the current Playwright tests intentionally avoid real Supabase credentials.
+- Convert the readiness SQL into an automated Supabase-backed integration test when CI has disposable Supabase service credentials and seeded auth users.
+
+Exact criteria to enable `statuses` RLS safely:
+
+- All production `statuses` rows have the correct `account_id`, or any remaining null rows are explicitly documented and intentionally excluded from account-scoped reads.
+- Settings/configuration still resolves account membership for real business users in a production-like Supabase environment.
+- The two-account readiness SQL passes in a disposable database before RLS, proving the app query shape is scoped by `account_id`.
+- Draft RLS policies are reviewed for select, insert, update, and delete using active account membership.
+- The future post-RLS block in `supabase/tests/statuses-two-account-rls-readiness.sql` passes after policies are applied: Account A sees only Account A statuses, can insert Account A statuses, cannot insert Account B statuses, and cannot delete Account B statuses.
+- No `statuses.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
 1. Add tenant tables: `accounts`, `account_memberships`, and later `client_portal_users`.
 2. Add nullable `account_id` columns to persisted business tables: `clients`, `leads`, `affiliates`, `disputes`, `dispute_letters`, `invoices`, `calendar_events`, `employees`, `statuses`.
