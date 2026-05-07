@@ -407,19 +407,23 @@ export default function Page() {
 
   async function convertToClient(lead: any) {
     setConverting(lead.id);
+    let accountId = null;
     try {
-      await supabase.from("clients").insert([{
+      accountId = await getAccountId();
+    } catch {}
+    try {
+      const clientPayload = {
         first_name: lead.first_name, last_name: lead.last_name,
         full_name: `${lead.first_name} ${lead.last_name}`,
         email: lead.email, phone: lead.phone, status: "active",
         address: lead.address, city: lead.city, state: lead.state, zip: lead.zip,
         credit_score: lead.credit_score, assigned_agent: lead.assigned_agent,
-      }]);
+      };
+      await supabase.from("clients").insert([accountId ? { ...clientPayload, account_id: accountId } : clientPayload]);
     } catch {
       // Keep local UI working even if the client insert fails.
     }
     try {
-      const accountId = await getAccountId();
       const updateQuery = supabase.from("leads").update({ status: "converted" }).eq("id", lead.id);
       if (accountId) await updateQuery.eq("account_id", accountId);
       else await updateQuery;

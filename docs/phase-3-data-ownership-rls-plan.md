@@ -280,6 +280,43 @@ Exact criteria to enable `leads` RLS safely:
 - Converted client isolation is documented as dependent on a later clients ownership pilot.
 - No `leads.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
+Clients pilot added after the leads pilot:
+
+- `supabase/migrations/20260507050000_add_clients_account_id.sql` adds nullable `clients.account_id` with an index and an `accounts(id)` foreign key.
+- `supabase/migrations/20260507053000_backfill_clients_account_id_single_account.sql` backfills unowned client rows only when the database has exactly one account. If there are zero accounts or multiple accounts, it updates no rows and leaves ambiguous client rows null for manual review.
+- RLS remains disabled for `clients`.
+- `clients.account_id` remains nullable until existing rows are backfilled and runtime scoping is verified.
+- `app/clients/page.tsx` now attempts to resolve the current user's account membership in the browser and reads account-scoped clients when rows exist.
+- If no Supabase session, no account membership, no account-scoped client rows, missing Supabase config, local saved clients, or demo data exists, the clients UI keeps the previous unscoped/local fallback behavior.
+- New client inserts, CSV imports, client updates, status updates, deletes, bulk status updates, and bulk deletes include `account_id` or `account_id` constraints only when an account membership can be safely resolved.
+- `app/clients/[id]/page.tsx` now prefers the account-scoped client detail row when account membership resolves, then falls back to the previous unscoped/local saved behavior. Detail page client updates include `account_id` and constrain by `id` plus `account_id` when available.
+- Lead conversion now passes the resolved lead account context into the created `clients` row when available. If account context cannot be resolved, conversion preserves the previous client creation behavior.
+- Client selector/list reads in `app/billing/BillingWorkspace.tsx`, `app/billing/pay-per-deletion/page.tsx`, `app/calendar/page.tsx`, `app/credit-analysis/page.tsx`, and `app/reports/page.tsx` prefer account-scoped client rows when account membership resolves and preserve unscoped fallback behavior.
+- Dependent tables remain intentionally unchanged: `invoices`, `payments`, `services`, `disputes`, `calendar_events`, `dispute_letters`, letters/documents, and `client_portal_users` still need their own ownership pilots before RLS can protect their rows.
+- `app/calendar/page.tsx` still reads unowned leads, invoices, disputes, and calendar events for auto-events. Only the direct client list and birthday source are scoped in this clients pilot.
+- Billing workspace records remain browser-local and keyed by client display name, not durable `client_id`; persisted billing ownership is deferred.
+
+Before making `clients.account_id` `NOT NULL`:
+
+- Every existing client row must be assigned to the correct account.
+- Any rows left null after the guarded single-account backfill must be manually assigned or intentionally archived in a later audited migration.
+- New client inserts, CSV imports, detail updates, and lead conversion client creation must reliably include `account_id` for authenticated business users.
+- Production must have at least one `account_memberships` row for every active business user who manages clients.
+- Supabase-backed tests or manual verification must confirm account membership resolution succeeds in production-like environments.
+- Child tables that reference clients must either be backfilled from `clients.account_id` or explicitly documented as still unprotected before client portal or child-table RLS is applied.
+
+Before enabling `clients` RLS:
+
+- Draft policies allowing account members to read client rows in their account.
+- Decide write-role semantics before policy apply. Client management may need owner/admin/manager roles rather than every account member.
+- Add write policies limited to confirmed account membership roles after role semantics are finalized.
+- Confirm anon users and authenticated users without membership cannot read or mutate clients.
+- Add Supabase-backed two-account tests or manual SQL verification for scoped read, insert, update, delete, bulk delete, bulk status update, CSV import ownership, detail update, lead conversion client ownership, and cross-account denial.
+- Confirm all update/delete paths are protected by RLS policies before trusting client-provided client ids.
+- Keep child tables out of the clients RLS apply unless their own ownership pilots have added and verified `account_id`.
+- Confirm client portal data access separately after `client_portal_users` and portal-specific policies exist.
+- No `clients.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
+
 Current automated statuses coverage:
 
 - `tests/configuration-behavior.spec.ts` verifies the settings/configuration page loads and that custom client status creation and deletion stay usable without page exceptions or visible app/runtime errors.

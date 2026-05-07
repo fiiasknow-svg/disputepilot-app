@@ -85,10 +85,39 @@ export default function Page() {
   const [emailStatus,  setEmailStatus]  = useState<"idle"|"ok"|"err">("idle");
   const [emailError,   setEmailError]   = useState("");
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   useEffect(() => {
     async function load() {
-      const [cr, dr, ir] = await Promise.all([
-        supabase.from("clients").select("*").eq("id", id).single(),
+      let accountId = null;
+      try {
+        accountId = await getAccountId();
+      } catch {}
+      let cr: any = null;
+
+      if (accountId) {
+        cr = await supabase.from("clients").select("*").eq("id", id).eq("account_id", accountId).single();
+      }
+
+      if (!cr?.data) {
+        cr = await supabase.from("clients").select("*").eq("id", id).single();
+      }
+
+      const [dr, ir] = await Promise.all([
         supabase.from("disputes").select("id,account_name,bureau,status,round,created_at").eq("client_id", id).order("created_at",{ascending:false}),
         supabase.from("invoices").select("id,invoice_number,amount,status,created_at,due_date").eq("client_id", id).order("created_at",{ascending:false}),
       ]);
@@ -122,7 +151,13 @@ export default function Page() {
     setSaving(true);
     const full=[form.first_name,form.middle_name,form.last_name].filter(Boolean).join(" ");
     writeLocalClient({...form,id,full_name:full,phone:form.mobile_phone,notes:form.comments,updated_at:new Date().toISOString()});
-    try { await supabase.from("clients").update({...form,full_name:full}).eq("id",id); } catch {}
+    try {
+      const accountId = await getAccountId();
+      const payload = accountId ? {...form,full_name:full,account_id:accountId} : {...form,full_name:full};
+      const updateQuery = supabase.from("clients").update(payload).eq("id",id);
+      if (accountId) await updateQuery.eq("account_id", accountId);
+      else await updateQuery;
+    } catch {}
     setSaving(false); setSaved(true); setTimeout(()=>setSaved(false),3000);
     setActivity(a=>[{icon:"✏️",label:"Profile updated",date:new Date().toISOString()},...a]);
   }

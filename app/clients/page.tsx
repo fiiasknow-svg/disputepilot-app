@@ -255,16 +255,41 @@ export default function Page() {
   const [notice, setNotice] = useState("");
   const [recentSavedClient, setRecentSavedClient] = useState<any>(null);
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   // ── Load ──
   async function load() {
     setLoading(true);
     const localClients = readLocalClients();
     try {
-      const [{ data: cl }, { data: disp }] = await Promise.all([
-        supabase.from("clients").select("*").order("created_at", { ascending: false }),
-        supabase.from("disputes").select("client_id"),
-      ]);
-      const remoteClients = cl || [];
+      const accountId = await getAccountId();
+      let remoteClients: any[] = [];
+
+      if (accountId) {
+        const { data } = await supabase.from("clients").select("*").eq("account_id", accountId).order("created_at", { ascending: false });
+        remoteClients = data || [];
+      }
+
+      if (!remoteClients.length) {
+        const { data } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
+        remoteClients = data || [];
+      }
+
+      const { data: disp } = await supabase.from("disputes").select("client_id");
       const remoteIds = new Set(remoteClients.map((c: any) => c.id));
       setClients([...localClients.filter((c: any) => !remoteIds.has(c.id)), ...remoteClients, ...(!remoteClients.length && !localClients.length ? SAMPLE_CLIENTS : [])]);
       const counts: Record<string, number> = {};
@@ -365,7 +390,9 @@ export default function Page() {
     setRecentSavedClient(newClient);
     void (async () => {
       try {
-        await supabase.from("clients").insert([{ ...sanitizeClient(form), full_name }]);
+        const accountId = await getAccountId();
+        const payload = accountId ? { ...sanitizeClient(form), full_name, account_id: accountId } : { ...sanitizeClient(form), full_name };
+        await supabase.from("clients").insert([payload]);
       } catch {
         // Keep local UI working even if the remote insert fails.
       }
@@ -383,7 +410,11 @@ export default function Page() {
       return next;
     });
     try {
-      await supabase.from("clients").update({ ...sanitizeClient(form), full_name }).eq("id", editing.id);
+      const accountId = await getAccountId();
+      const payload = accountId ? { ...sanitizeClient(form), full_name, account_id: accountId } : { ...sanitizeClient(form), full_name };
+      const updateQuery = supabase.from("clients").update(payload).eq("id", editing.id);
+      if (accountId) await updateQuery.eq("account_id", accountId);
+      else await updateQuery;
     } catch {
       // Keep local UI working even if the remote update fails.
     }
@@ -415,7 +446,10 @@ export default function Page() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await supabase.from("clients").delete().eq("id", deleteTarget.id);
+      const accountId = await getAccountId();
+      const deleteQuery = supabase.from("clients").delete().eq("id", deleteTarget.id);
+      if (accountId) await deleteQuery.eq("account_id", accountId);
+      else await deleteQuery;
     } catch {
       // Keep local UI working even if the remote delete fails.
     }
@@ -431,7 +465,10 @@ export default function Page() {
 
   async function updateStatus(id: string, status: string) {
     try {
-      await supabase.from("clients").update({ status }).eq("id", id);
+      const accountId = await getAccountId();
+      const updateQuery = supabase.from("clients").update({ status }).eq("id", id);
+      if (accountId) await updateQuery.eq("account_id", accountId);
+      else await updateQuery;
     } catch {
       // Keep local UI working even if the remote update fails.
     }
@@ -445,7 +482,10 @@ export default function Page() {
   async function bulkUpdateStatus() {
     const ids = Array.from(selected);
     try {
-      await supabase.from("clients").update({ status: bulkStatus }).in("id", ids);
+      const accountId = await getAccountId();
+      const updateQuery = supabase.from("clients").update({ status: bulkStatus }).in("id", ids);
+      if (accountId) await updateQuery.eq("account_id", accountId);
+      else await updateQuery;
     } catch {
       // Keep local UI working even if the remote update fails.
     }
@@ -460,7 +500,10 @@ export default function Page() {
   async function bulkDelete() {
     const ids = Array.from(selected);
     try {
-      await supabase.from("clients").delete().in("id", ids);
+      const accountId = await getAccountId();
+      const deleteQuery = supabase.from("clients").delete().in("id", ids);
+      if (accountId) await deleteQuery.eq("account_id", accountId);
+      else await deleteQuery;
     } catch {
       // Keep local UI working even if the remote delete fails.
     }
@@ -526,7 +569,9 @@ export default function Page() {
           return next;
         });
         try {
-          await supabase.from("clients").insert(rows.map(({ id, ...row }: any) => row));
+          const accountId = await getAccountId();
+          const payload = rows.map(({ id, ...row }: any) => accountId ? { ...row, account_id: accountId } : row);
+          await supabase.from("clients").insert(payload);
         } catch {
           // Keep local UI working even if the remote import insert fails.
         }
