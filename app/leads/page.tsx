@@ -172,10 +172,40 @@ export default function Page() {
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   async function load() {
     setLoading(true);
     const localLeads = readLocalLeads();
     try {
+      const accountId = await getAccountId();
+
+      if (accountId) {
+        const { data } = await supabase.from("leads").select("*").eq("account_id", accountId).order("created_at", { ascending: false });
+        const scopedLeads = data || [];
+
+        if (scopedLeads.length) {
+          const scopedIds = new Set(scopedLeads.map((lead: any) => lead.id));
+          setLeads([...localLeads.filter((lead: any) => !scopedIds.has(lead.id)), ...scopedLeads]);
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
       const remoteLeads = data || [];
       const remoteIds = new Set(remoteLeads.map((lead: any) => lead.id));
@@ -243,6 +273,11 @@ export default function Page() {
       created_at: editing?.created_at || now,
       updated_at: now,
     };
+    let accountId = null;
+    try {
+      accountId = await getAccountId();
+    } catch {}
+    const remotePayload = accountId ? { ...sanitizeLead(form), account_id: accountId } : sanitizeLead(form);
     if (editing) {
       setLeads(current => {
         const next = current.map(lead => lead.id === editing.id ? { ...lead, ...payload } : lead);
@@ -250,7 +285,9 @@ export default function Page() {
         return next;
       });
       try {
-        await supabase.from("leads").update(sanitizeLead(form)).eq("id", editing.id);
+        const updateQuery = supabase.from("leads").update(remotePayload).eq("id", editing.id);
+        if (accountId) await updateQuery.eq("account_id", accountId);
+        else await updateQuery;
       } catch {
         // Keep local UI working even if the backend update fails.
       }
@@ -261,7 +298,7 @@ export default function Page() {
         return next;
       });
       try {
-        await supabase.from("leads").insert([sanitizeLead(form)]);
+        await supabase.from("leads").insert([remotePayload]);
       } catch {
         // Keep local UI working even if the backend insert fails.
       }
@@ -300,7 +337,10 @@ export default function Page() {
 
   async function deleteLead(id: string) {
     try {
-      await supabase.from("leads").delete().eq("id", id);
+      const accountId = await getAccountId();
+      const deleteQuery = supabase.from("leads").delete().eq("id", id);
+      if (accountId) await deleteQuery.eq("account_id", accountId);
+      else await deleteQuery;
     } catch {
       // Keep local UI working even if the backend delete fails.
     }
@@ -315,7 +355,10 @@ export default function Page() {
   async function bulkDelete() {
     const ids = [...selected];
     try {
-      await supabase.from("leads").delete().in("id", ids);
+      const accountId = await getAccountId();
+      const deleteQuery = supabase.from("leads").delete().in("id", ids);
+      if (accountId) await deleteQuery.eq("account_id", accountId);
+      else await deleteQuery;
     } catch {
       // Keep local UI working even if the backend bulk delete fails.
     }
@@ -330,7 +373,10 @@ export default function Page() {
   async function bulkUpdateStatus(status: string) {
     const ids = [...selected];
     try {
-      await supabase.from("leads").update({ status }).in("id", ids);
+      const accountId = await getAccountId();
+      const updateQuery = supabase.from("leads").update({ status }).in("id", ids);
+      if (accountId) await updateQuery.eq("account_id", accountId);
+      else await updateQuery;
     } catch {
       // Keep local UI working even if the backend update fails.
     }
@@ -345,7 +391,10 @@ export default function Page() {
 
   async function updateStatus(id: string, status: string) {
     try {
-      await supabase.from("leads").update({ status }).eq("id", id);
+      const accountId = await getAccountId();
+      const updateQuery = supabase.from("leads").update({ status }).eq("id", id);
+      if (accountId) await updateQuery.eq("account_id", accountId);
+      else await updateQuery;
     } catch {
       // Keep local UI working even if the backend update fails.
     }
@@ -370,7 +419,10 @@ export default function Page() {
       // Keep local UI working even if the client insert fails.
     }
     try {
-      await supabase.from("leads").update({ status: "converted" }).eq("id", lead.id);
+      const accountId = await getAccountId();
+      const updateQuery = supabase.from("leads").update({ status: "converted" }).eq("id", lead.id);
+      if (accountId) await updateQuery.eq("account_id", accountId);
+      else await updateQuery;
     } catch {
       // Keep local UI working even if the lead conversion update fails.
     }
@@ -401,7 +453,12 @@ export default function Page() {
       headers.forEach((h, i) => { obj[h] = (vals[i] || "").replace(/^"|"$/g, "").trim(); });
       return { first_name: obj.first_name || obj.name || "", last_name: obj.last_name || "", email: obj.email || "", phone: obj.phone || "", source: obj.source || "Other", status: obj.status || "new" };
     }).filter(r => r.first_name);
-    supabase.from("leads").insert(rows).then(() => { setShowImport(false); setImportText(""); load(); });
+    getAccountId()
+      .then(accountId => {
+        const payload = accountId ? rows.map(row => ({ ...row, account_id: accountId })) : rows;
+        return supabase.from("leads").insert(payload);
+      })
+      .then(() => { setShowImport(false); setImportText(""); load(); });
   }
 
   const TAG_COLORS = ["#3b82f6","#8b5cf6","#10b981","#f59e0b","#ef4444","#06b6d4","#ec4899"];

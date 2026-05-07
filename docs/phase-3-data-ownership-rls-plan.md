@@ -202,6 +202,39 @@ Exact criteria to enable `employees` RLS safely:
 - The future post-RLS block in `supabase/tests/employees-two-account-rls-readiness.sql` passes after policies are applied: Account A sees only Account A employees, can insert Account A employees, cannot insert Account B employees, cannot update Account B employees, and cannot delete Account B employees.
 - No `employees.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
+Leads pilot added after the employees pilot:
+
+- `supabase/migrations/20260507040000_add_leads_account_id.sql` adds nullable `leads.account_id` with an index and an `accounts(id)` foreign key.
+- `supabase/migrations/20260507043000_backfill_leads_account_id_single_account.sql` backfills unowned lead rows only when the database has exactly one account. If there are zero accounts or multiple accounts, it updates no rows and leaves ambiguous lead rows null for manual review.
+- RLS remains disabled for `leads`.
+- `leads.account_id` remains nullable until existing rows are backfilled and runtime scoping is verified.
+- `app/leads/page.tsx` now attempts to resolve the current user's account membership in the browser and reads account-scoped leads when rows exist.
+- If no Supabase session, no account membership, no account-scoped lead rows, missing Supabase config, or local demo leads exist, the leads UI keeps the previous unscoped/local fallback behavior.
+- New lead inserts and CSV imports include `account_id` only when an account membership can be safely resolved.
+- Lead updates, deletes, bulk deletes, status updates, and conversion status updates include `account_id` constraints when an account membership can be safely resolved.
+- Lead conversion still writes a `clients` row without adding ownership to `clients`; client ownership is intentionally left for a later clients pilot.
+- Affiliates remain a separate table and are not changed in this leads pilot. `app/leads/affiliates/page.tsx` still reads/writes the `affiliates` table directly, so affiliates need their own later ownership pilot before affiliate RLS.
+- `tests/leads-affiliates-behavior.spec.ts` verifies the leads page loads, the add lead flow remains usable, edit/status/delete behavior remains usable, and no page exception or visible app/runtime error occurs without requiring real Supabase credentials.
+
+Before making `leads.account_id` `NOT NULL`:
+
+- Every existing lead row must be assigned to the correct account.
+- Any rows left null after the guarded single-account backfill must be manually assigned or intentionally archived in a later audited migration.
+- New lead inserts and CSV imports must reliably include `account_id` for authenticated business users.
+- Production must have at least one `account_memberships` row for every active business user who manages leads.
+- Supabase-backed tests or manual verification must confirm account membership resolution succeeds in production-like environments.
+- Confirm lead conversion behavior once `clients.account_id` exists, so converted client ownership and source lead ownership stay consistent.
+
+Before enabling `leads` RLS:
+
+- Draft policies allowing account members to read lead rows in their account.
+- Decide write-role semantics before policy apply. Lead management may need owner/admin/manager/sales roles rather than every account member.
+- Add write policies limited to confirmed account membership roles after role semantics are finalized.
+- Confirm anon users and authenticated users without membership cannot read or mutate leads.
+- Add Supabase-backed two-account tests or manual SQL verification for scoped read, insert, update, delete, bulk delete, status update, CSV import ownership, conversion status update, and cross-account denial.
+- Confirm all update/delete paths are protected by RLS policies before trusting client-provided lead ids.
+- Keep affiliates out of the leads RLS apply unless an affiliates ownership pilot has added and verified `affiliates.account_id`.
+
 Current automated statuses coverage:
 
 - `tests/configuration-behavior.spec.ts` verifies the settings/configuration page loads and that custom client status creation and deletion stay usable without page exceptions or visible app/runtime errors.
