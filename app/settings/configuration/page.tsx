@@ -137,14 +137,35 @@ export default function Page() {
   async function addStatus(){
     if(!sfForm.name)return;
     setSavingSt(true);
-    const accountId = await getAccountId();
+    let accountId = null;
+    try {
+      accountId = await getAccountId();
+    } catch {}
     const payload = accountId ? {...sfForm, account_id: accountId} : sfForm;
-    const {data}=await supabase.from("statuses").insert([payload]).select().single();
-    if(data)setStatuses(s=>[...s,data]);
+    const fallbackStatus: Status = {...payload,id:`local-status-${Date.now()}`};
+
+    try {
+      const {data}=await supabase.from("statuses").insert([payload]).select().single();
+      setStatuses(s=>[...s,(data&&!Array.isArray(data)?data as Status:fallbackStatus)]);
+    } catch {
+      setStatuses(s=>[...s,fallbackStatus]);
+    }
+
     setSavingSt(false); setShowSF(null); setSfForm({name:"",color:"#3b82f6",type:"client"});
   }
   async function delStatus(id:string){
-    await supabase.from("statuses").delete().eq("id",id);
+    if(!id.startsWith("local-status-")){
+      try {
+        const accountId = await getAccountId();
+        const deleteQuery = supabase.from("statuses").delete().eq("id",id);
+
+        if(accountId){
+          await deleteQuery.eq("account_id",accountId);
+        } else {
+          await deleteQuery;
+        }
+      } catch {}
+    }
     setStatuses(s=>s.filter(x=>x.id!==id));
   }
 

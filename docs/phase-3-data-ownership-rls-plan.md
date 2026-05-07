@@ -111,18 +111,23 @@ Foundation added after this plan:
 Statuses pilot added after the account foundation:
 
 - `supabase/migrations/20260507013000_add_statuses_account_id.sql` adds nullable `statuses.account_id` with an index and an `accounts(id)` foreign key.
+- `supabase/migrations/20260507020000_backfill_statuses_account_id_single_account.sql` backfills unowned status rows only when the database has exactly one account. If there are zero accounts or multiple accounts, the migration updates no rows and leaves ambiguous `statuses.account_id` values null for manual review.
 - RLS remains disabled for `statuses`.
 - `statuses.account_id` remains nullable until existing rows are backfilled and runtime scoping is verified.
 - `app/settings/configuration/page.tsx` now attempts to resolve the current user's account membership in the browser and reads account-scoped statuses when rows exist.
 - If no Supabase session, no account membership, no account-scoped statuses, or missing Supabase config exists, the settings UI keeps the previous unscoped/fallback behavior.
 - New custom status inserts include `account_id` only when an account membership can be safely resolved.
+- Custom status deletes include both `id` and `account_id` when an account membership can be safely resolved. If no account is available, the UI preserves the previous fallback delete behavior until RLS policies can become authoritative.
+- The visible settings workflow has Playwright coverage for page load, custom client status creation, custom client status deletion, and no app/runtime error without requiring real Supabase credentials. These tests exercise the no-credentials fallback path through the browser Supabase no-op client. Direct cross-account database isolation still needs Supabase-backed test data before RLS is enabled.
 
 Before making `statuses.account_id` `NOT NULL`:
 
 - Every existing custom status row must be assigned to the correct account.
+- Any rows left null after the guarded single-account backfill must be manually assigned or intentionally archived in a later audited migration.
 - New status inserts must reliably include `account_id` for authenticated business users.
 - Production must have at least one `account_memberships` row for every active business user.
 - The settings UI must continue to handle empty account-scoped status lists cleanly.
+- Supabase-backed tests or manual verification must confirm account membership resolution succeeds in production-like environments.
 
 Before enabling `statuses` RLS:
 
@@ -130,6 +135,8 @@ Before enabling `statuses` RLS:
 - Add write policies limited to owner/admin-style roles once role semantics are confirmed.
 - Confirm the anon client cannot read or mutate another account's statuses.
 - Add regression coverage for scoped read, scoped insert, scoped delete, and cross-account denial.
+- Confirm delete/update paths include account ownership constraints or are protected by RLS policies before trusting client-provided status ids.
+- Run Supabase-backed manual verification or seeded integration tests with at least two accounts before enabling policies, because the current Playwright tests intentionally avoid real Supabase credentials.
 
 1. Add tenant tables: `accounts`, `account_memberships`, and later `client_portal_users`.
 2. Add nullable `account_id` columns to persisted business tables: `clients`, `leads`, `affiliates`, `disputes`, `dispute_letters`, `invoices`, `calendar_events`, `employees`, `statuses`.
