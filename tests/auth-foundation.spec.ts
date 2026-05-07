@@ -74,3 +74,22 @@ test('reset password page renders', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Update Password' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Business Login' })).toBeVisible();
 });
+
+test('sensitive API routes reject logged-out requests', async ({ browser }) => {
+  const context = await browser.newContext({
+    extraHTTPHeaders: {
+      'x-disputepilot-test-auth': '0',
+    },
+  });
+
+  for (const route of ['/api/send-email', '/api/analyze-credit', '/api/rewrite-letter']) {
+    const response = await context.request.post(`${BASE_URL}${route}`, {
+      data: {},
+    });
+
+    expect(response.status(), route).toBe(401);
+    await expect(response.json(), route).resolves.toEqual({ error: 'Authentication required' });
+  }
+
+  await context.close();
+});

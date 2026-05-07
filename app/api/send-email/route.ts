@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
+import { requireBusinessApiAuth } from "@/lib/api-auth";
+
 export async function GET() {
   return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
 }
 
 export async function POST(req: NextRequest) {
+  const authResponse = await requireBusinessApiAuth(req);
+
+  if (authResponse) {
+    return authResponse;
+  }
+
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {

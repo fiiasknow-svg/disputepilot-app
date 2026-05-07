@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireBusinessApiAuth } from "@/lib/api-auth";
+
 export async function POST(req: NextRequest) {
+  const authResponse = await requireBusinessApiAuth(req);
+
+  if (authResponse) {
+    return authResponse;
+  }
+
   try {
     const { letter, tone, focus, letterType } = await req.json();
 
