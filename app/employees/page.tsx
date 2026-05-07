@@ -70,10 +70,42 @@ export default function Page() {
     ];
   });
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("employees").select("*").order("created_at",{ascending:false});
-    setEmployees(data||[]);
+    try {
+      const accountId = await getAccountId();
+
+      if(accountId){
+        const { data } = await supabase.from("employees").select("*").eq("account_id",accountId).order("created_at",{ascending:false});
+
+        if(data?.length){
+          setEmployees(data);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const { data } = await supabase.from("employees").select("*").order("created_at",{ascending:false});
+      setEmployees(data||[]);
+    } catch {
+      setEmployees([]);
+    }
     setLoading(false);
   }
   useEffect(()=>{ load(); },[]);
@@ -98,8 +130,19 @@ export default function Page() {
   async function save() {
     if(!form.first_name||!form.email) return;
     setSaving(true);
-    if(editing) await supabase.from("employees").update({...form}).eq("id",editing.id);
-    else await supabase.from("employees").insert([{...form}]);
+    let accountId = null;
+    try {
+      accountId = await getAccountId();
+    } catch {}
+    const payload = accountId ? {...form,account_id:accountId} : {...form};
+
+    if(editing) {
+      const updateQuery = supabase.from("employees").update(payload).eq("id",editing.id);
+      if(accountId) await updateQuery.eq("account_id",accountId);
+      else await updateQuery;
+    } else {
+      await supabase.from("employees").insert([payload]);
+    }
     setSaving(false); setShowForm(false); setEditing(null); setForm({...EMPTY_FORM}); load();
   }
 
@@ -110,26 +153,46 @@ export default function Page() {
   }
 
   async function del(id:string) {
-    await supabase.from("employees").delete().eq("id",id);
+    try {
+      const accountId = await getAccountId();
+      const deleteQuery = supabase.from("employees").delete().eq("id",id);
+      if(accountId) await deleteQuery.eq("account_id",accountId);
+      else await deleteQuery;
+    } catch {}
     setDeleteId(null); setEmployees(e=>e.filter(x=>x.id!==id)); setSelected(s=>{const n=new Set(s);n.delete(id);return n;});
   }
 
   async function bulkDelete() {
     const ids=[...selected];
-    await supabase.from("employees").delete().in("id",ids);
+    try {
+      const accountId = await getAccountId();
+      const deleteQuery = supabase.from("employees").delete().in("id",ids);
+      if(accountId) await deleteQuery.eq("account_id",accountId);
+      else await deleteQuery;
+    } catch {}
     setEmployees(e=>e.filter(x=>!ids.includes(x.id))); setSelected(new Set());
   }
 
   async function bulkSetStatus(status:string) {
     const ids=[...selected];
-    await supabase.from("employees").update({status}).in("id",ids);
+    try {
+      const accountId = await getAccountId();
+      const updateQuery = supabase.from("employees").update({status}).in("id",ids);
+      if(accountId) await updateQuery.eq("account_id",accountId);
+      else await updateQuery;
+    } catch {}
     setEmployees(e=>e.map(x=>ids.includes(x.id)?{...x,status}:x));
     setSelected(new Set()); setBulkStatusOpen(false);
   }
 
   async function toggleStatus(id:string, cur:string) {
     const status=cur==="active"?"inactive":"active";
-    await supabase.from("employees").update({status}).eq("id",id);
+    try {
+      const accountId = await getAccountId();
+      const updateQuery = supabase.from("employees").update({status}).eq("id",id);
+      if(accountId) await updateQuery.eq("account_id",accountId);
+      else await updateQuery;
+    } catch {}
     setEmployees(e=>e.map(x=>x.id===id?{...x,status}:x));
   }
 

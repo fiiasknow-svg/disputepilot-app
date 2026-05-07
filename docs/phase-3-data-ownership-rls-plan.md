@@ -133,6 +133,35 @@ Statuses policy draft summary:
 - Current default statuses are app-defined, not persisted database rows. If defaults become database rows, prefer account-owned copies rather than global null-account rows.
 - `account_memberships` currently has `role` but no membership `status` column. The draft treats any membership as active and notes where to add `status = 'active'` if that column is introduced.
 
+Employees pilot added after the statuses pilot:
+
+- `supabase/migrations/20260507030000_add_employees_account_id.sql` adds nullable `employees.account_id` with an index and an `accounts(id)` foreign key.
+- `supabase/migrations/20260507033000_backfill_employees_account_id_single_account.sql` backfills unowned employee rows only when the database has exactly one account. If there are zero accounts or multiple accounts, it updates no rows and leaves ambiguous employee rows null for manual review.
+- RLS remains disabled for `employees`.
+- `employees.account_id` remains nullable until existing rows are backfilled and runtime scoping is verified.
+- `app/employees/page.tsx` now attempts to resolve the current user's account membership in the browser and reads account-scoped employees when rows exist.
+- If no Supabase session, no account membership, no account-scoped employee rows, or missing Supabase config exists, the employees UI keeps the previous unscoped/fallback behavior.
+- New employee inserts include `account_id` only when an account membership can be safely resolved.
+- Employee updates, deletes, bulk deletes, and status updates include `account_id` constraints when an account membership can be safely resolved.
+- `tests/employees-behavior.spec.ts` verifies the employees page loads, the add employee flow remains usable, optional edit/delete/status controls remain usable when rows exist, and no page exception or visible app/runtime error occurs without requiring real Supabase credentials.
+
+Before making `employees.account_id` `NOT NULL`:
+
+- Every existing employee row must be assigned to the correct account.
+- Any rows left null after the guarded single-account backfill must be manually assigned or intentionally archived in a later audited migration.
+- New employee inserts must reliably include `account_id` for authenticated business users.
+- Production must have at least one `account_memberships` row for every active business user who manages employees.
+- Supabase-backed tests or manual verification must confirm account membership resolution succeeds in production-like environments.
+
+Before enabling `employees` RLS:
+
+- Draft policies allowing account members to read employee rows in their account.
+- Decide write-role semantics before policy apply. UI roles such as Admin and Manager are employee record roles today, not database membership roles.
+- Add write policies limited to confirmed account membership roles after role semantics are finalized.
+- Confirm anon users and authenticated users without membership cannot read or mutate employees.
+- Add Supabase-backed two-account tests or manual SQL verification for scoped read, insert, update, delete, bulk delete, bulk status update, and cross-account denial.
+- Confirm all update/delete paths are protected by RLS policies before trusting client-provided employee ids.
+
 Current automated statuses coverage:
 
 - `tests/configuration-behavior.spec.ts` verifies the settings/configuration page loads and that custom client status creation and deletion stay usable without page exceptions or visible app/runtime errors.
