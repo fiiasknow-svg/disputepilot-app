@@ -38,6 +38,22 @@ export default function Page() {
   const [bureauBreakdown, setBureauBreakdown] = useState<Record<string, number>>({});
   const [period, setPeriod] = useState("6m");
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -48,14 +64,26 @@ export default function Page() {
         return { label: MONTHS_SHORT[d.getMonth()], year: d.getFullYear(), month: d.getMonth() };
       });
 
-      const [clients, disputes, invoices, leads] = await Promise.all([
-        supabase.from("clients").select("id, created_at"),
+      let accountId = null;
+      try {
+        accountId = await getAccountId();
+      } catch {}
+      const [disputes, invoices, leads] = await Promise.all([
         supabase.from("disputes").select("id, created_at, status, bureau"),
         supabase.from("invoices").select("id, amount, status, created_at"),
         supabase.from("leads").select("id"),
       ]);
+      let clientRows: any[] = [];
+      if (accountId) {
+        const { data } = await supabase.from("clients").select("id, created_at").eq("account_id", accountId);
+        clientRows = data || [];
+      }
+      if (!clientRows.length) {
+        const { data } = await supabase.from("clients").select("id, created_at");
+        clientRows = data || [];
+      }
 
-      const aC: any[] = clients.data || [], aD: any[] = disputes.data || [], aI: any[] = invoices.data || [];
+      const aC: any[] = clientRows, aD: any[] = disputes.data || [], aI: any[] = invoices.data || [];
       const totalRevenue = aI.filter(i => i.status === "paid").reduce((s, i) => s + (i.amount || 0), 0);
       setStats({ clients: aC.length, disputes: aD.length, resolved: aD.filter(d => d.status === "resolved").length, revenue: totalRevenue, leads: (leads.data || []).length });
 

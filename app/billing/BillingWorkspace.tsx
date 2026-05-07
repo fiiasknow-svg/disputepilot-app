@@ -131,6 +131,22 @@ function mergeClientOptions(...sources: string[][]) {
   return merged;
 }
 
+async function getAccountId() {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+
+  if (!userId) return null;
+
+  const { data } = await supabase
+    .from("account_memberships")
+    .select("account_id")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  return data?.account_id || null;
+}
+
 export default function BillingWorkspace({ view = "overview" }: { view?: "overview" | "invoices" | "payments" | "history" | "services" }) {
   const [invoices, setInvoices] = useState(initialInvoices);
   const [payments, setPayments] = useState(initialPayments);
@@ -166,13 +182,28 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
       const localClientNames = readLocalClients().map(clientDisplayName).filter(Boolean);
 
       try {
-        const { data } = await supabase
-          .from("clients")
-          .select("id, first_name, last_name, full_name, email")
-          .order("created_at", { ascending: false });
+        const accountId = await getAccountId();
+        let remoteClients: any[] = [];
+
+        if (accountId) {
+          const { data } = await supabase
+            .from("clients")
+            .select("id, first_name, last_name, full_name, email")
+            .eq("account_id", accountId)
+            .order("created_at", { ascending: false });
+          remoteClients = data || [];
+        }
+
+        if (!remoteClients.length) {
+          const { data } = await supabase
+            .from("clients")
+            .select("id, first_name, last_name, full_name, email")
+            .order("created_at", { ascending: false });
+          remoteClients = data || [];
+        }
 
         if (cancelled) return;
-        const remoteClientNames = Array.isArray(data) ? data.map(clientDisplayName).filter(Boolean) : [];
+        const remoteClientNames = remoteClients.map(clientDisplayName).filter(Boolean);
         setClientOptions(mergeClientOptions(localClientNames, remoteClientNames, demoClients));
       } catch {
         if (!cancelled) setClientOptions(mergeClientOptions(localClientNames, demoClients));

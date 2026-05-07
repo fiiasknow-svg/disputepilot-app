@@ -70,14 +70,42 @@ export default function Page() {
   const firstDay = new Date(year,month,1).getDay();
   const daysInMonth = new Date(year,month+1,0).getDate();
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   async function load() {
-    const [evts, cli, leads, inv, disp] = await Promise.all([
+    let accountId = null;
+    try {
+      accountId = await getAccountId();
+    } catch {}
+    const [evts, leads, inv, disp] = await Promise.all([
       supabase.from("calendar_events").select("*").order("date").order("start_time"),
-      supabase.from("clients").select("id,first_name,last_name,dob"),
       supabase.from("leads").select("id,first_name,last_name,follow_up_date").not("follow_up_date","is",null),
       supabase.from("invoices").select("id,amount,due_date,status,clients(first_name,last_name)").eq("status","pending").not("due_date","is",null),
       supabase.from("disputes").select("id,account_name,bureau,status").neq("status","resolved"),
     ]);
+    let clientRows: any[] = [];
+    if (accountId) {
+      const { data } = await supabase.from("clients").select("id,first_name,last_name,dob").eq("account_id", accountId);
+      clientRows = data || [];
+    }
+    if (!clientRows.length) {
+      const { data } = await supabase.from("clients").select("id,first_name,last_name,dob");
+      clientRows = data || [];
+    }
     const local = readLocalEvents();
     setLocalEvents(local);
     const merged = [...(evts.data || []), ...local];
@@ -86,13 +114,13 @@ export default function Page() {
       return list.findIndex((candidate) => eventSignature(candidate) === sig) === index;
     });
     setEvents(deduped);
-    setClients(cli.data||[]);
+    setClients(clientRows);
     // Build auto-events
     const auto: any[] = [];
     (leads.data||[]).forEach((l:any)=>{ if(l.follow_up_date) auto.push({ id:`lead-${l.id}`, title:`Follow-up: ${l.first_name} ${l.last_name}`, date:l.follow_up_date, type:"lead", auto:true, color:EVENT_COLORS.lead }); });
     (inv.data||[]).forEach((i:any)=>{ if(i.due_date) auto.push({ id:`inv-${i.id}`, title:`Invoice due: ${i.clients?.first_name||""} ${i.clients?.last_name||""} ($${i.amount||0})`, date:i.due_date, type:"invoice", auto:true, color:EVENT_COLORS.invoice }); });
     // Client birthdays
-    (cli.data||[]).forEach((c:any)=>{ if(c.dob) { const bd=new Date(c.dob); const thisYear=new Date(`${today.getFullYear()}-${pad(bd.getMonth()+1)}-${pad(bd.getDate())}`); auto.push({ id:`bday-${c.id}`, title:`🎂 Birthday: ${c.first_name} ${c.last_name}`, date:thisYear.toISOString().slice(0,10), type:"reminder", auto:true, color:"#ec4899" }); } });
+    clientRows.forEach((c:any)=>{ if(c.dob) { const bd=new Date(c.dob); const thisYear=new Date(`${today.getFullYear()}-${pad(bd.getMonth()+1)}-${pad(bd.getDate())}`); auto.push({ id:`bday-${c.id}`, title:`🎂 Birthday: ${c.first_name} ${c.last_name}`, date:thisYear.toISOString().slice(0,10), type:"reminder", auto:true, color:"#ec4899" }); } });
     setAutoEvents(auto);
   }
 

@@ -15,8 +15,45 @@ export default function Page() {
   const [building, setBuilding] = useState(false);
   const [estimates, setEstimates] = useState<any[]>([]);
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   useEffect(() => {
-    supabase.from("clients").select("id, full_name").order("full_name").then(({ data }: { data: any[] | null }) => setClients(data || []));
+    async function loadClients() {
+      try {
+        const accountId = await getAccountId();
+        let remoteClients: any[] = [];
+
+        if (accountId) {
+          const { data } = await supabase.from("clients").select("id, full_name").eq("account_id", accountId).order("full_name");
+          remoteClients = data || [];
+        }
+
+        if (!remoteClients.length) {
+          const { data } = await supabase.from("clients").select("id, full_name").order("full_name");
+          remoteClients = data || [];
+        }
+
+        setClients(remoteClients);
+      } catch {
+        setClients([]);
+      }
+    }
+
+    loadClients();
   }, []);
 
   function toggle(k: string) { setChecked(p => ({ ...p, [k]: !p[k] })); }
