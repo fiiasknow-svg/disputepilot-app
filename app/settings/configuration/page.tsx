@@ -14,7 +14,7 @@ const COLOR_OPTIONS = ["#10b981","#3b82f6","#8b5cf6","#f59e0b","#ef4444","#94a3b
 const TABS = ["General","Client Statuses","Dispute Statuses","Round Settings","Notifications","Portal","Service Plans","Tags","Integrations"];
 const TIMEZONES = ["America/New_York","America/Chicago","America/Denver","America/Los_Angeles","America/Phoenix","America/Anchorage","Pacific/Honolulu"];
 
-type Status = {id?:string;name:string;color:string;type?:string};
+type Status = {id?:string;name:string;color:string;type?:string;account_id?:string|null};
 type Plan = {id:number;name:string;price:number;interval:"monthly"|"quarterly"|"annual";features:string;active:boolean};
 type Tag = {id:number;name:string;color:string};
 
@@ -91,15 +91,55 @@ export default function Page() {
   const [tagInput, setTagInput] = useState("");
   const [tagColor, setTagColor] = useState("#3b82f6");
 
-  useEffect(()=>{
-    supabase.from("statuses").select("*").order("name")
-      .then(({data}: { data: Status[] | null })=>{setStatuses(data||[]); setLoadingSt(false);});
-  },[]);
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
+  async function loadStatuses() {
+    setLoadingSt(true);
+
+    try {
+      const accountId = await getAccountId();
+
+      if (accountId) {
+        const { data } = await supabase.from("statuses").select("*").eq("account_id", accountId).order("name");
+
+        if (data?.length) {
+          setStatuses(data);
+          setLoadingSt(false);
+          return;
+        }
+      }
+
+      const { data } = await supabase.from("statuses").select("*").order("name");
+      setStatuses(data || []);
+    } catch {
+      setStatuses([]);
+    }
+
+    setLoadingSt(false);
+  }
+
+  useEffect(()=>{ loadStatuses(); },[]);
 
   async function addStatus(){
     if(!sfForm.name)return;
     setSavingSt(true);
-    const {data}=await supabase.from("statuses").insert([sfForm]).select().single();
+    const accountId = await getAccountId();
+    const payload = accountId ? {...sfForm, account_id: accountId} : sfForm;
+    const {data}=await supabase.from("statuses").insert([payload]).select().single();
     if(data)setStatuses(s=>[...s,data]);
     setSavingSt(false); setShowSF(null); setSfForm({name:"",color:"#3b82f6",type:"client"});
   }

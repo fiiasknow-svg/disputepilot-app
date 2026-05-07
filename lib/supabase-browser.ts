@@ -68,6 +68,10 @@ export function createSupabaseBrowserClient(): BrowserSupabaseClient {
           data: { user: null },
           error: missingConfigError,
         }),
+        getUser: () => Promise.resolve({
+          data: { user: null },
+          error: missingConfigError,
+        }),
         signOut: () => Promise.resolve({ error: null }),
       },
     } as unknown as BrowserSupabaseClient;

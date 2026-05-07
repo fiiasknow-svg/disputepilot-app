@@ -108,6 +108,29 @@ Foundation added after this plan:
 - No `account_id` columns were added to existing app tables.
 - No runtime data reads or writes were changed to use account scoping yet.
 
+Statuses pilot added after the account foundation:
+
+- `supabase/migrations/20260507013000_add_statuses_account_id.sql` adds nullable `statuses.account_id` with an index and an `accounts(id)` foreign key.
+- RLS remains disabled for `statuses`.
+- `statuses.account_id` remains nullable until existing rows are backfilled and runtime scoping is verified.
+- `app/settings/configuration/page.tsx` now attempts to resolve the current user's account membership in the browser and reads account-scoped statuses when rows exist.
+- If no Supabase session, no account membership, no account-scoped statuses, or missing Supabase config exists, the settings UI keeps the previous unscoped/fallback behavior.
+- New custom status inserts include `account_id` only when an account membership can be safely resolved.
+
+Before making `statuses.account_id` `NOT NULL`:
+
+- Every existing custom status row must be assigned to the correct account.
+- New status inserts must reliably include `account_id` for authenticated business users.
+- Production must have at least one `account_memberships` row for every active business user.
+- The settings UI must continue to handle empty account-scoped status lists cleanly.
+
+Before enabling `statuses` RLS:
+
+- Add policies allowing active `account_memberships` users to read account statuses.
+- Add write policies limited to owner/admin-style roles once role semantics are confirmed.
+- Confirm the anon client cannot read or mutate another account's statuses.
+- Add regression coverage for scoped read, scoped insert, scoped delete, and cross-account denial.
+
 1. Add tenant tables: `accounts`, `account_memberships`, and later `client_portal_users`.
 2. Add nullable `account_id` columns to persisted business tables: `clients`, `leads`, `affiliates`, `disputes`, `dispute_letters`, `invoices`, `calendar_events`, `employees`, `statuses`.
 3. Backfill one default account for existing data, then derive child ownership from parent records where possible:
