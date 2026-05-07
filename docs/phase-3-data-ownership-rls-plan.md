@@ -215,6 +215,29 @@ Leads pilot added after the employees pilot:
 - Lead conversion still writes a `clients` row without adding ownership to `clients`; client ownership is intentionally left for a later clients pilot.
 - Affiliates remain a separate table and are not changed in this leads pilot. `app/leads/affiliates/page.tsx` still reads/writes the `affiliates` table directly, so affiliates need their own later ownership pilot before affiliate RLS.
 - `tests/leads-affiliates-behavior.spec.ts` verifies the leads page loads, the add lead flow remains usable, edit/status/delete behavior remains usable, and no page exception or visible app/runtime error occurs without requiring real Supabase credentials.
+- `supabase/tests/leads-two-account-rls-readiness.sql` documents the required two-account Supabase readiness check. It seeds two auth users, two accounts, memberships, and account-owned leads in a disposable database; verifies the current pre-RLS scoped read, insert, update, and delete query shapes; documents expected future RLS behavior; and includes cleanup SQL.
+- `supabase/policies/drafts/leads-rls-policy-draft.sql` contains draft-only leads RLS policies for review. It is not an active migration and does not enable RLS.
+
+Leads policy draft summary:
+
+- SELECT allows authenticated users to read rows where `leads.account_id` is in their `account_memberships`.
+- INSERT allows authenticated users to create rows only for account ids in their `account_memberships`.
+- UPDATE requires the existing row account and the updated row account to stay within the user's `account_memberships`.
+- DELETE allows deleting only rows whose `account_id` is in the user's `account_memberships`.
+- Anonymous users and authenticated users without membership should receive no access once RLS is enabled.
+- Null `account_id` legacy rows are intentionally hidden by the draft policies and must be manually assigned or explicitly archived before apply if they should remain visible.
+- Lead write role semantics must be finalized against `account_memberships.role` or a future permission table before applying RLS.
+- `account_memberships` currently has `role` but no membership `status` column. The draft treats any membership as active and notes where to add `status = 'active'` if that column is introduced.
+- Converted client isolation remains incomplete until a later clients ownership pilot adds and verifies `clients.account_id`.
+- Affiliates remain separate and are not covered by the leads readiness checklist or draft policies.
+
+Manual leads coverage before RLS:
+
+- Run `supabase/tests/leads-two-account-rls-readiness.sql` against a disposable Supabase database after applying the account foundation and leads migrations.
+- Confirm Account A-scoped reads return only Account A readiness leads and Account B-scoped reads return only Account B readiness leads.
+- Confirm an Account A insert includes Account A ownership.
+- Confirm an Account A-scoped update cannot update Account B's lead and can update Account A's inserted lead.
+- Confirm an Account A-scoped delete cannot delete Account B's lead and can delete Account A's inserted lead.
 
 Before making `leads.account_id` `NOT NULL`:
 
@@ -234,6 +257,28 @@ Before enabling `leads` RLS:
 - Add Supabase-backed two-account tests or manual SQL verification for scoped read, insert, update, delete, bulk delete, status update, CSV import ownership, conversion status update, and cross-account denial.
 - Confirm all update/delete paths are protected by RLS policies before trusting client-provided lead ids.
 - Keep affiliates out of the leads RLS apply unless an affiliates ownership pilot has added and verified `affiliates.account_id`.
+- Run the future post-RLS block in `supabase/tests/leads-two-account-rls-readiness.sql` in a disposable database after applying draft policies.
+- Review `supabase/policies/drafts/leads-rls-policy-draft.sql` and decide whether write policies should allow every member or only owner/admin/manager/sales roles.
+- Confirm whether `account_memberships` needs a `status` column before policies are applied, then include active-membership checks if it exists.
+- Confirm converted-client isolation separately after the later clients ownership pilot; leads RLS alone does not protect newly inserted clients rows.
+
+Rollback notes for future leads RLS apply:
+
+- Keep the apply migration reversible by dropping the four leads policies before disabling RLS.
+- Use the rollback SQL already documented in `supabase/policies/drafts/leads-rls-policy-draft.sql`.
+- Do not roll back by deleting leads rows or removing `leads.account_id`; rollback should only remove policies and disable RLS if the migration must be reverted.
+
+Exact criteria to enable `leads` RLS safely:
+
+- All production `leads` rows have the correct `account_id`, or any remaining null rows are explicitly documented and intentionally excluded from account-scoped reads.
+- Leads page membership resolution works for real business users in a production-like Supabase environment.
+- The two-account readiness SQL passes before RLS, proving the app query shape is scoped by `account_id`.
+- Draft RLS policies are reviewed for select, insert, update, and delete using active account membership.
+- Lead write role semantics are decided using account membership roles or a future permissions table.
+- The future post-RLS block in `supabase/tests/leads-two-account-rls-readiness.sql` passes after policies are applied: Account A sees only Account A leads, can insert Account A leads, cannot insert Account B leads, cannot update Account B leads, and cannot delete Account B leads.
+- CSV import ownership and conversion status updates are verified in a Supabase-backed environment.
+- Converted client isolation is documented as dependent on a later clients ownership pilot.
+- No `leads.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
 Current automated statuses coverage:
 
