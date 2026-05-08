@@ -68,11 +68,19 @@ export default function Page() {
       try {
         accountId = await getAccountId();
       } catch {}
-      const [disputes, invoices, leads] = await Promise.all([
+      const [disputes, leads] = await Promise.all([
         supabase.from("disputes").select("id, created_at, status, bureau"),
-        supabase.from("invoices").select("id, amount, status, created_at"),
         supabase.from("leads").select("id"),
       ]);
+      let invoiceRows: any[] = [];
+      if (accountId) {
+        const { data } = await supabase.from("invoices").select("id, amount, status, created_at").eq("account_id", accountId);
+        invoiceRows = data || [];
+      }
+      if (!invoiceRows.length) {
+        const { data } = await supabase.from("invoices").select("id, amount, status, created_at");
+        invoiceRows = data || [];
+      }
       let clientRows: any[] = [];
       if (accountId) {
         const { data } = await supabase.from("clients").select("id, created_at").eq("account_id", accountId);
@@ -83,7 +91,7 @@ export default function Page() {
         clientRows = data || [];
       }
 
-      const aC: any[] = clientRows, aD: any[] = disputes.data || [], aI: any[] = invoices.data || [];
+      const aC: any[] = clientRows, aD: any[] = disputes.data || [], aI: any[] = invoiceRows;
       const totalRevenue = aI.filter(i => i.status === "paid").reduce((s, i) => s + (i.amount || 0), 0);
       setStats({ clients: aC.length, disputes: aD.length, resolved: aD.filter(d => d.status === "resolved").length, revenue: totalRevenue, leads: (leads.data || []).length });
 

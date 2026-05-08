@@ -296,7 +296,7 @@ Clients pilot added after the leads pilot:
 - `supabase/policies/drafts/clients-rls-policy-draft.sql` is the draft-only clients RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
 - Draft clients policies allow authenticated users to select, insert, update, and delete only client rows whose `account_id` appears in their `account_memberships`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no clients policy.
 - Dependent tables remain intentionally unchanged: `invoices`, `payments`, `services`, `disputes`, `calendar_events`, `dispute_letters`, letters/documents, and `client_portal_users` still need their own ownership pilots before RLS can protect their rows.
-- `app/calendar/page.tsx` still reads unowned leads, invoices, disputes, and calendar events for auto-events. Only the direct client list and birthday source are scoped in this clients pilot.
+- `app/calendar/page.tsx` still reads unowned leads, disputes, and calendar events for auto-events. The direct client list and birthday source are scoped in this clients pilot; invoice auto-events are scoped in the later invoices pilot.
 - Billing workspace records remain browser-local and keyed by client display name, not durable `client_id`; persisted billing ownership is deferred.
 
 Before making `clients.account_id` `NOT NULL`:
@@ -320,6 +320,38 @@ Before enabling `clients` RLS:
 - Keep child tables out of the clients RLS apply unless their own ownership pilots have added and verified `account_id`.
 - Confirm client portal data access separately after `client_portal_users` and portal-specific policies exist.
 - No `clients.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
+
+Invoices/billing pilot added after the clients pilot:
+
+- `supabase/migrations/20260508010000_add_invoices_account_id.sql` adds nullable `invoices.account_id` with an index and an `accounts(id)` foreign key.
+- `supabase/migrations/20260508013000_backfill_invoices_account_id_single_account.sql` backfills unowned invoice rows only when the database has exactly one account. If there are zero accounts or multiple accounts, it updates no rows and leaves ambiguous invoice rows null for manual review.
+- RLS remains disabled for `invoices`.
+- `invoices.account_id` remains nullable until existing rows are audited/backfilled and runtime scoping is verified.
+- `app/clients/[id]/page.tsx` now prefers account-scoped invoice rows for the selected client when account membership resolves, then falls back to the previous client-id-only invoice read when no scoped rows exist.
+- `app/calendar/page.tsx` now prefers account-scoped pending invoice rows for invoice due auto-events when account membership resolves, then falls back to the previous unscoped pending invoice read when no scoped rows exist.
+- `app/reports/page.tsx` now prefers account-scoped invoice rows for revenue calculations when account membership resolves, then falls back to the previous unscoped invoice read when no scoped rows exist.
+- `app/billing/BillingWorkspace.tsx` still uses browser-local invoices, payments, and services. No Supabase invoice insert/update/delete path was found there, so this pilot does not migrate local billing records into persisted invoices.
+- New persisted invoices should include both `client_id` and `account_id` when that write path is introduced. Do not rely on `client_id` alone for tenant isolation, even though clients already have account ownership.
+- Payments, services/products, disputes, calendar events, letters/documents, and client portal mappings remain intentionally unchanged and need their own ownership pilots before RLS can protect those rows.
+
+Before making `invoices.account_id` `NOT NULL`:
+
+- Every existing invoice row must be assigned to the correct account.
+- Any rows left null after the guarded single-account backfill must be manually assigned or intentionally archived in a later audited migration.
+- Persisted invoice creation must reliably include `account_id` for authenticated business users.
+- Persisted invoice creation must validate that any `client_id` belongs to the same account as the invoice.
+- Production must have at least one `account_memberships` row for every active business user who manages billing.
+- Supabase-backed tests or manual verification must confirm account membership resolution succeeds in production-like environments.
+
+Before enabling `invoices` RLS:
+
+- Add draft policies allowing account members to read invoice rows in their account.
+- Decide write-role semantics before policy apply. Billing management may need owner/admin/manager roles rather than every account member.
+- Add write policies limited to confirmed account membership roles after role semantics are finalized.
+- Confirm anon users and authenticated users without membership cannot read or mutate invoices.
+- Add Supabase-backed two-account readiness checks for scoped read, insert with `account_id`, update/delete by `id` plus `account_id`, cross-account denial, client detail payment history, calendar invoice auto-events, and reports revenue aggregation.
+- Keep payments/services and portal invoice access out of the invoices RLS apply unless their own ownership and policy work is complete.
+- No `invoices.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
 Current automated statuses coverage:
 

@@ -2,6 +2,25 @@ import { test, expect } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
+test.beforeEach(async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error') pageErrors.push(message.text());
+  });
+
+  await page.exposeFunction('assertNoBillingRuntimeErrors', async () => {
+    expect(pageErrors.join('\n')).not.toMatch(/Application error|Runtime Error|Unhandled/i);
+  });
+});
+
+async function expectNoBillingRuntimeErrors(page: any) {
+  await expect(page.locator('body')).not.toContainText(/Application error|Runtime Error/);
+  await page.evaluate(async () => {
+    await (window as any).assertNoBillingRuntimeErrors();
+  });
+}
+
 test('billing overview loads useful summary information', async ({ page }) => {
   await page.goto(`${BASE_URL}/billing`);
 
@@ -12,6 +31,7 @@ test('billing overview loads useful summary information', async ({ page }) => {
   await expect(main.getByLabel('Billing summary')).toContainText('Overdue Invoices');
   await expect(main.getByText('INV-1042')).toBeVisible();
   await expect(main.getByText('PAY-8831')).toBeVisible();
+  await expectNoBillingRuntimeErrors(page);
 });
 
 test('create invoice opens form, cancel closes it, and save shows invoice confirmation', async ({ page }) => {
@@ -39,6 +59,7 @@ test('create invoice opens form, cancel closes it, and save shows invoice confir
   await expect(page.getByRole('status')).toContainText('Saved invoice INV-2001');
   await expect(page.getByRole('cell', { name: 'INV-2001' })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Avery Brooks' })).toBeVisible();
+  await expectNoBillingRuntimeErrors(page);
 });
 
 test('add payment opens form and save shows payment confirmation', async ({ page }) => {
@@ -63,6 +84,7 @@ test('add payment opens form and save shows payment confirmation', async ({ page
   await expect(page.getByRole('status')).toContainText('Saved payment PAY-9001');
   await expect(page.getByRole('cell', { name: 'PAY-9001' })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Morgan Credit' })).toBeVisible();
+  await expectNoBillingRuntimeErrors(page);
 });
 
 test('view and manage actions open useful details', async ({ page }) => {
@@ -78,6 +100,7 @@ test('view and manage actions open useful details', async ({ page }) => {
 
   await main.getByRole('button', { name: 'Manage' }).first().click();
   await expect(page.getByRole('dialog', { name: /Details/ })).toContainText(/Payment|Service|reference|amount/i);
+  await expectNoBillingRuntimeErrors(page);
 });
 
 test('payment history is visible and useful', async ({ page }) => {
@@ -89,4 +112,5 @@ test('payment history is visible and useful', async ({ page }) => {
   await expect(main.getByText('$248.00 collected')).toBeVisible();
   await expect(main.getByText('PAY-8831')).toBeVisible();
   await expect(main.getByText('Credit Card')).toBeVisible();
+  await expectNoBillingRuntimeErrors(page);
 });

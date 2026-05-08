@@ -117,10 +117,27 @@ export default function Page() {
         cr = await supabase.from("clients").select("*").eq("id", id).single();
       }
 
-      const [dr, ir] = await Promise.all([
+      const [dr] = await Promise.all([
         supabase.from("disputes").select("id,account_name,bureau,status,round,created_at").eq("client_id", id).order("created_at",{ascending:false}),
-        supabase.from("invoices").select("id,invoice_number,amount,status,created_at,due_date").eq("client_id", id).order("created_at",{ascending:false}),
       ]);
+      let invoiceRows: any[] = [];
+      if (accountId) {
+        const { data } = await supabase
+          .from("invoices")
+          .select("id,invoice_number,amount,status,created_at,due_date")
+          .eq("client_id", id)
+          .eq("account_id", accountId)
+          .order("created_at",{ascending:false});
+        invoiceRows = data || [];
+      }
+      if (!invoiceRows.length) {
+        const { data } = await supabase
+          .from("invoices")
+          .select("id,invoice_number,amount,status,created_at,due_date")
+          .eq("client_id", id)
+          .order("created_at",{ascending:false});
+        invoiceRows = data || [];
+      }
       if (cr.data) {
         const d = cr.data;
         const parts = (d.full_name||"").split(" ");
@@ -139,7 +156,7 @@ export default function Page() {
         }
       }
       setDisputes(dr.data||[]);
-      setInvoices(ir.data||[]);
+      setInvoices(invoiceRows);
       setLoading(false);
     }
     load();
