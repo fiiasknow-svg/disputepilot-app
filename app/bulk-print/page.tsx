@@ -61,14 +61,43 @@ export default function Page() {
   const [page, setPage] = useState(1);
   const [viewDispute, setViewDispute] = useState<any | null>(null);
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data } = await supabase
-        .from("disputes")
-        .select("*, clients(first_name, last_name, email)")
-        .order("created_at", { ascending: false });
-      setDisputes(data || []);
+      const accountId = await getAccountId().catch(() => null);
+      let rows: any[] = [];
+      if (accountId) {
+        const { data } = await supabase
+          .from("disputes")
+          .select("*, clients(first_name, last_name, email)")
+          .eq("account_id", accountId)
+          .order("created_at", { ascending: false });
+        rows = data || [];
+      }
+      if (!rows.length) {
+        const { data } = await supabase
+          .from("disputes")
+          .select("*, clients(first_name, last_name, email)")
+          .order("created_at", { ascending: false });
+        rows = data || [];
+      }
+      setDisputes(rows);
       setLoading(false);
     }
     load();

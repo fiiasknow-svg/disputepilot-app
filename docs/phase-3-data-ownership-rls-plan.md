@@ -295,8 +295,8 @@ Clients pilot added after the leads pilot:
 - `supabase/tests/clients-two-account-rls-readiness.sql` is the draft SQL readiness checklist for clients RLS. It seeds two users/accounts/memberships and verifies account-scoped reads, direct inserts, CSV/import-style inserts, lead-conversion-style inserts, single update, bulk-style status update, single delete, bulk-style delete, and cross-account denial shapes without enabling RLS.
 - `supabase/policies/drafts/clients-rls-policy-draft.sql` is the draft-only clients RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
 - Draft clients policies allow authenticated users to select, insert, update, and delete only client rows whose `account_id` appears in their `account_memberships`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no clients policy.
-- Dependent tables remain intentionally unchanged: `invoices`, `payments`, `services`, `disputes`, `calendar_events`, `dispute_letters`, letters/documents, and `client_portal_users` still need their own ownership pilots before RLS can protect their rows.
-- `app/calendar/page.tsx` still reads unowned leads, disputes, and calendar events for auto-events. The direct client list and birthday source are scoped in this clients pilot; invoice auto-events are scoped in the later invoices pilot.
+- Dependent tables remain intentionally unchanged in the clients pilot: `payments`, `services`, `calendar_events`, `dispute_letters`, letters/documents, and `client_portal_users` still need their own ownership pilots before RLS can protect their rows. `invoices` and `disputes` have separate ownership pilots.
+- `app/calendar/page.tsx` still reads unowned leads and calendar events for auto-events. The direct client list and birthday source are scoped in this clients pilot; invoice and dispute source reads are scoped in their later pilots.
 - Billing workspace records remain browser-local and keyed by client display name, not durable `client_id`; persisted billing ownership is deferred.
 
 Before making `clients.account_id` `NOT NULL`:
@@ -335,7 +335,7 @@ Invoices/billing pilot added after the clients pilot:
 - `supabase/tests/invoices-two-account-rls-readiness.sql` is the draft SQL readiness checklist for invoices RLS. It seeds two users/accounts/memberships, account-owned clients, and account-owned invoices, then verifies account-scoped reads, insert with `client_id` plus `account_id`, invoice/client account matching, scoped update/delete behavior, and future post-RLS cross-account denial expectations.
 - `supabase/policies/drafts/invoices-rls-policy-draft.sql` is the draft-only invoices RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
 - Draft invoices policies allow authenticated users to select, insert, update, and delete only invoice rows whose `account_id` appears in their `account_memberships`. Insert/update also require any non-null `client_id` to reference a client with the same `account_id`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no invoices policy.
-- Payments, services/products, disputes, calendar events, letters/documents, and client portal mappings remain intentionally unchanged and need their own ownership pilots before RLS can protect those rows.
+- Payments, services/products, calendar events, dispute letters, letters/documents, and client portal mappings remain intentionally unchanged and need their own ownership pilots before RLS can protect those rows. Disputes have a separate ownership pilot.
 
 Before making `invoices.account_id` `NOT NULL`:
 
@@ -359,6 +359,40 @@ Before enabling `invoices` RLS:
 - Confirm client detail payment history, calendar invoice auto-events, and reports revenue aggregation continue to use account-scoped invoice reads in a production-like Supabase environment.
 - Keep payments/services and portal invoice access out of the invoices RLS apply unless their own ownership and policy work is complete.
 - No `invoices.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
+
+Disputes pilot added after the invoices pilot:
+
+- `supabase/migrations/20260508020000_add_disputes_account_id.sql` adds nullable `disputes.account_id` with an index and an `accounts(id)` foreign key.
+- `supabase/migrations/20260508023000_backfill_disputes_account_id_single_account.sql` backfills unowned dispute rows only when the database has exactly one account. If there are zero accounts or multiple accounts, it updates no rows and leaves ambiguous dispute rows null for manual review.
+- RLS remains disabled for `disputes`.
+- `disputes.account_id` remains nullable until existing rows are audited/backfilled and runtime scoping is verified.
+- `app/disputes/status/page.tsx`, `app/disputes/[id]/page.tsx`, `app/bulk-print/page.tsx`, `app/clients/page.tsx`, `app/clients/[id]/page.tsx`, `app/calendar/page.tsx`, and `app/reports/page.tsx` now prefer account-scoped dispute rows when account membership resolves, then fall back to the previous unscoped reads when no scoped rows exist.
+- Persisted dispute status/detail updates now include both `id` and `account_id` when account membership resolves. If account context cannot be resolved, the previous `id`-only update behavior is preserved until RLS policies are ready.
+- `app/disputes/page.tsx` remains local/static and no Supabase dispute insert path was found there, so this pilot does not add persisted dispute creation.
+- New persisted disputes should include both `client_id` and `account_id` when that write path is introduced. Do not rely on `client_id` alone for tenant isolation, even though clients already have account ownership.
+- `dispute_letters`, persisted letters/documents, and `calendar_events` are intentionally unchanged in this pilot. They need separate ownership pilots before their rows can be protected by RLS.
+
+Before making `disputes.account_id` `NOT NULL`:
+
+- Every existing dispute row must be assigned to the correct account.
+- Any rows left null after the guarded single-account backfill must be manually assigned or intentionally archived in a later audited migration.
+- Disputes with `client_id` must be audited so `disputes.account_id` matches `clients.account_id`.
+- Disputes with null or missing legacy `client_id` must be classified as valid account-level records, repaired, or archived before enforcing stricter constraints.
+- Persisted dispute creation must reliably include `account_id` for authenticated business users.
+- Persisted dispute creation and client changes must validate that any `client_id` belongs to the same account as the dispute.
+- Production must have at least one `account_memberships` row for every active business user who manages disputes.
+- Supabase-backed tests or manual verification must confirm account membership resolution succeeds in production-like environments.
+
+Before enabling `disputes` RLS:
+
+- Add a two-account readiness SQL checklist for account-scoped dispute reads, inserts, status updates, detail updates, deletes, and client/dispute account matching.
+- Add draft policies allowing account members to read dispute rows in their account.
+- Decide write-role semantics before policy apply. Dispute management may need owner/admin/manager/specialist roles rather than every account member.
+- Add write policies limited to confirmed account membership roles after role semantics are finalized.
+- Confirm anon users and authenticated users without membership cannot read or mutate disputes.
+- Confirm client detail dispute lists, dispute status management, bulk print queues, calendar dispute source reads, and reports dispute aggregation continue to use account-scoped dispute reads in a production-like Supabase environment.
+- Keep `dispute_letters`, letters/documents, calendar event writes, and portal dispute access out of the disputes RLS apply unless their own ownership and policy work is complete.
+- No `disputes.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
 Current automated statuses coverage:
 

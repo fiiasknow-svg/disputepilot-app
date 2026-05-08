@@ -289,11 +289,19 @@ export default function Page() {
         remoteClients = data || [];
       }
 
-      const { data: disp } = await supabase.from("disputes").select("client_id");
+      let disputeRows: any[] = [];
+      if (accountId) {
+        const { data } = await supabase.from("disputes").select("client_id").eq("account_id", accountId);
+        disputeRows = data || [];
+      }
+      if (!disputeRows.length) {
+        const { data } = await supabase.from("disputes").select("client_id");
+        disputeRows = data || [];
+      }
       const remoteIds = new Set(remoteClients.map((c: any) => c.id));
       setClients([...localClients.filter((c: any) => !remoteIds.has(c.id)), ...remoteClients, ...(!remoteClients.length && !localClients.length ? SAMPLE_CLIENTS : [])]);
       const counts: Record<string, number> = {};
-      for (const d of disp || []) counts[d.client_id] = (counts[d.client_id] || 0) + 1;
+      for (const d of disputeRows) counts[d.client_id] = (counts[d.client_id] || 0) + 1;
       setDisputeCounts(counts);
     } catch {
       setClients(localClients.length ? localClients : SAMPLE_CLIENTS);

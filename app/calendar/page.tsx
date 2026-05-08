@@ -91,11 +91,23 @@ export default function Page() {
     try {
       accountId = await getAccountId();
     } catch {}
-    const [evts, leads, disp] = await Promise.all([
+    const [evts, leads] = await Promise.all([
       supabase.from("calendar_events").select("*").order("date").order("start_time"),
       supabase.from("leads").select("id,first_name,last_name,follow_up_date").not("follow_up_date","is",null),
-      supabase.from("disputes").select("id,account_name,bureau,status").neq("status","resolved"),
     ]);
+    let disputeRows: any[] = [];
+    if (accountId) {
+      const { data } = await supabase
+        .from("disputes")
+        .select("id,account_name,bureau,status")
+        .eq("account_id", accountId)
+        .neq("status","resolved");
+      disputeRows = data || [];
+    }
+    if (!disputeRows.length) {
+      const { data } = await supabase.from("disputes").select("id,account_name,bureau,status").neq("status","resolved");
+      disputeRows = data || [];
+    }
     let invoiceRows: any[] = [];
     if (accountId) {
       const { data } = await supabase

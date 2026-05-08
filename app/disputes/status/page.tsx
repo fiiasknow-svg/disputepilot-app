@@ -22,27 +22,66 @@ export default function Page() {
   const [batchStatus, setBatchStatus] = useState("sent");
   const [showBatchModal, setShowBatchModal] = useState(false);
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("disputes")
-      .select("*, clients(first_name, last_name, email)")
-      .order("created_at", { ascending: false });
-    setDisputes(data || []);
+    let accountId = null;
+    try {
+      accountId = await getAccountId();
+    } catch {}
+    let rows: any[] = [];
+    if (accountId) {
+      const { data } = await supabase
+        .from("disputes")
+        .select("*, clients(first_name, last_name, email)")
+        .eq("account_id", accountId)
+        .order("created_at", { ascending: false });
+      rows = data || [];
+    }
+    if (!rows.length) {
+      const { data } = await supabase
+        .from("disputes")
+        .select("*, clients(first_name, last_name, email)")
+        .order("created_at", { ascending: false });
+      rows = data || [];
+    }
+    setDisputes(rows);
     setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
 
   async function updateStatus(id: string, status: string) {
-    await supabase.from("disputes").update({ status }).eq("id", id);
+    const accountId = await getAccountId().catch(() => null);
+    const query = supabase.from("disputes").update({ status }).eq("id", id);
+    if (accountId) await query.eq("account_id", accountId);
+    else await query;
     setDisputes(ds => ds.map(d => d.id === id ? { ...d, status } : d));
     if (selected?.id === id) setSelected((s: any) => ({ ...s, status }));
   }
 
   async function batchUpdateStatus() {
     const ids = Array.from(checkedIds);
-    await Promise.all(ids.map(id => supabase.from("disputes").update({ status: batchStatus }).eq("id", id)));
+    const accountId = await getAccountId().catch(() => null);
+    await Promise.all(ids.map(id => {
+      const query = supabase.from("disputes").update({ status: batchStatus }).eq("id", id);
+      return accountId ? query.eq("account_id", accountId) : query;
+    }));
     setDisputes(ds => ds.map(d => checkedIds.has(d.id) ? { ...d, status: batchStatus } : d));
     setCheckedIds(new Set());
     setShowBatchModal(false);

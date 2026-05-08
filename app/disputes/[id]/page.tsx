@@ -49,12 +49,45 @@ export default function Page() {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [addingRound, setAddingRound] = useState(false);
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
+  async function updateDispute(values: Record<string, unknown>) {
+    const accountId = await getAccountId().catch(() => null);
+    const query = supabase.from("disputes").update(values).eq("id", id);
+    if (accountId) await query.eq("account_id", accountId);
+    else await query;
+  }
+
   useEffect(() => {
     async function load() {
-      const [d, l] = await Promise.all([
-        supabase.from("disputes").select("*, clients(first_name,last_name,email,mobile_phone)").eq("id",id).single(),
-        supabase.from("dispute_letters").select("*").eq("dispute_id",id).order("created_at",{ascending:false}),
-      ]);
+      const accountId = await getAccountId().catch(() => null);
+      let d: any = null;
+      if (accountId) {
+        d = await supabase
+          .from("disputes")
+          .select("*, clients(first_name,last_name,email,mobile_phone)")
+          .eq("id",id)
+          .eq("account_id", accountId)
+          .single();
+      }
+      if (!d?.data) {
+        d = await supabase.from("disputes").select("*, clients(first_name,last_name,email,mobile_phone)").eq("id",id).single();
+      }
+      const l = await supabase.from("dispute_letters").select("*").eq("dispute_id",id).order("created_at",{ascending:false});
       if(d.data){
         setDispute(d.data);
         setEditFields({
@@ -90,14 +123,14 @@ export default function Page() {
 
   async function updateStatus(status: string) {
     setUpdating(true);
-    await supabase.from("disputes").update({status}).eq("id",id);
+    await updateDispute({status});
     setDispute((d: any)=>({...d,status}));
     setUpdating(false);
   }
 
   async function saveEdit() {
     setSavingEdit(true);
-    await supabase.from("disputes").update(editFields).eq("id",id);
+    await updateDispute(editFields);
     setDispute((d: any)=>({...d,...editFields}));
     setSavingEdit(false);
     setEditMode(false);
@@ -105,7 +138,7 @@ export default function Page() {
 
   async function saveBureauResponse() {
     setSavingResp(true);
-    await supabase.from("disputes").update({bureau_response:response,response_outcome:outcome,response_date:responseDate,status:"responded"}).eq("id",id);
+    await updateDispute({bureau_response:response,response_outcome:outcome,response_date:responseDate,status:"responded"});
     setDispute((d: any)=>({...d,bureau_response:response,response_outcome:outcome,response_date:responseDate,status:"responded"}));
     setSavingResp(false);
     setRespSaved(true);
@@ -121,7 +154,7 @@ export default function Page() {
     setRounds(r=>[...r,{round:nextRound,status:"active",letterSent:"—",bureauResponse:"Not Yet Received",outcome:"Pending",date:new Date().toISOString()}]);
     updateStatus("sent");
     setAddingRound(false);
-    supabase.from("disputes").update({round:nextRound}).eq("id",id);
+    void updateDispute({round:nextRound});
   }
 
   const inp: React.CSSProperties={width:"100%",padding:"9px 12px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:14,boxSizing:"border-box",background:"#fff"};

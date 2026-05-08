@@ -117,9 +117,24 @@ export default function Page() {
         cr = await supabase.from("clients").select("*").eq("id", id).single();
       }
 
-      const [dr] = await Promise.all([
-        supabase.from("disputes").select("id,account_name,bureau,status,round,created_at").eq("client_id", id).order("created_at",{ascending:false}),
-      ]);
+      let disputeRows: any[] = [];
+      if (accountId) {
+        const { data } = await supabase
+          .from("disputes")
+          .select("id,account_name,bureau,status,round,created_at")
+          .eq("client_id", id)
+          .eq("account_id", accountId)
+          .order("created_at",{ascending:false});
+        disputeRows = data || [];
+      }
+      if (!disputeRows.length) {
+        const { data } = await supabase
+          .from("disputes")
+          .select("id,account_name,bureau,status,round,created_at")
+          .eq("client_id", id)
+          .order("created_at",{ascending:false});
+        disputeRows = data || [];
+      }
       let invoiceRows: any[] = [];
       if (accountId) {
         const { data } = await supabase
@@ -155,7 +170,7 @@ export default function Page() {
           setActivity([{icon:"Profile",label:"Client profile loaded from saved data",date:d.updated_at||d.created_at||new Date().toISOString()}]);
         }
       }
-      setDisputes(dr.data||[]);
+      setDisputes(disputeRows);
       setInvoices(invoiceRows);
       setLoading(false);
     }
