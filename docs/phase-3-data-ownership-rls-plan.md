@@ -410,6 +410,9 @@ Calendar events pilot added after the disputes pilot:
 - Browser-local events remain in `localStorage` under `disputepilot.calendar-events`; database RLS cannot protect those local/demo records.
 - Calendar auto-event sources are unchanged except for existing scoped source reads: clients, invoices, and disputes already have account ownership pilots and are read with scoped-first fallback. Leads auto-events still come from the current leads query path and should be confirmed before calendar_events RLS is applied.
 - `letters`, documents, `dispute_letters`, and portal data are intentionally unchanged in this pilot.
+- `supabase/tests/calendar-events-two-account-rls-readiness.sql` is the draft SQL readiness checklist for calendar_events RLS. It seeds two users/accounts/memberships, account-owned clients, and account-owned calendar events, then verifies account-scoped reads, insert with `account_id`, client/event account matching when `client_id` is present, scoped update/delete behavior, and future post-RLS cross-account denial expectations.
+- `supabase/policies/drafts/calendar-events-rls-policy-draft.sql` is the draft-only calendar_events RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
+- Draft calendar_events policies allow authenticated users to select, insert, update, and delete only calendar event rows whose `account_id` appears in their `account_memberships`. Insert/update also require any non-null `client_id` to reference a client with the same `account_id`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no calendar_events policy.
 
 Before making `calendar_events.account_id` `NOT NULL`:
 
@@ -423,11 +426,13 @@ Before making `calendar_events.account_id` `NOT NULL`:
 
 Before enabling `calendar_events` RLS:
 
-- Add a two-account readiness SQL checklist for account-scoped calendar event reads, inserts, updates, deletes, and optional client/event account matching.
-- Add draft policies allowing account members to read calendar events in their account.
+- Run `supabase/tests/calendar-events-two-account-rls-readiness.sql` against a disposable Supabase database and confirm the pre-RLS account-scoped checks pass.
+- Review `supabase/policies/drafts/calendar-events-rls-policy-draft.sql` and confirm the select, insert, update, and delete policy shape.
 - Decide write-role semantics before policy apply. Calendar management may need owner/admin/manager/staff roles rather than every account member.
 - Confirm anon users and authenticated users without membership cannot read or mutate calendar events.
+- After a later RLS migration is drafted, run the commented post-RLS block in `supabase/tests/calendar-events-two-account-rls-readiness.sql` and confirm Account A cannot read, insert, update, or delete Account B calendar events.
 - Confirm add/edit/delete calendar workflows continue to use account-scoped persisted event writes in a production-like Supabase environment.
+- Confirm source-linked events do not cross accounts. The current app uses `client_id`; future `invoice_id`, `dispute_id`, or similar source columns should add same-account policy checks before RLS is applied.
 - Confirm portal calendar visibility separately if client-specific events are ever exposed to customers.
 - Keep letters/documents, `dispute_letters`, and portal data out of the calendar_events RLS apply unless their own ownership and policy work is complete.
 - No `calendar_events.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
