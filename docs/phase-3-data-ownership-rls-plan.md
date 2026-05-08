@@ -332,12 +332,17 @@ Invoices/billing pilot added after the clients pilot:
 - `app/reports/page.tsx` now prefers account-scoped invoice rows for revenue calculations when account membership resolves, then falls back to the previous unscoped invoice read when no scoped rows exist.
 - `app/billing/BillingWorkspace.tsx` still uses browser-local invoices, payments, and services. No Supabase invoice insert/update/delete path was found there, so this pilot does not migrate local billing records into persisted invoices.
 - New persisted invoices should include both `client_id` and `account_id` when that write path is introduced. Do not rely on `client_id` alone for tenant isolation, even though clients already have account ownership.
+- `supabase/tests/invoices-two-account-rls-readiness.sql` is the draft SQL readiness checklist for invoices RLS. It seeds two users/accounts/memberships, account-owned clients, and account-owned invoices, then verifies account-scoped reads, insert with `client_id` plus `account_id`, invoice/client account matching, scoped update/delete behavior, and future post-RLS cross-account denial expectations.
+- `supabase/policies/drafts/invoices-rls-policy-draft.sql` is the draft-only invoices RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
+- Draft invoices policies allow authenticated users to select, insert, update, and delete only invoice rows whose `account_id` appears in their `account_memberships`. Insert/update also require any non-null `client_id` to reference a client with the same `account_id`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no invoices policy.
 - Payments, services/products, disputes, calendar events, letters/documents, and client portal mappings remain intentionally unchanged and need their own ownership pilots before RLS can protect those rows.
 
 Before making `invoices.account_id` `NOT NULL`:
 
 - Every existing invoice row must be assigned to the correct account.
 - Any rows left null after the guarded single-account backfill must be manually assigned or intentionally archived in a later audited migration.
+- Invoices with `client_id` must be audited so `invoices.account_id` matches `clients.account_id`.
+- Invoices with null or missing legacy `client_id` must be classified as valid account-level billing rows, repaired, or archived before enforcing stricter constraints.
 - Persisted invoice creation must reliably include `account_id` for authenticated business users.
 - Persisted invoice creation must validate that any `client_id` belongs to the same account as the invoice.
 - Production must have at least one `account_memberships` row for every active business user who manages billing.
@@ -349,7 +354,9 @@ Before enabling `invoices` RLS:
 - Decide write-role semantics before policy apply. Billing management may need owner/admin/manager roles rather than every account member.
 - Add write policies limited to confirmed account membership roles after role semantics are finalized.
 - Confirm anon users and authenticated users without membership cannot read or mutate invoices.
-- Add Supabase-backed two-account readiness checks for scoped read, insert with `account_id`, update/delete by `id` plus `account_id`, cross-account denial, client detail payment history, calendar invoice auto-events, and reports revenue aggregation.
+- Run `supabase/tests/invoices-two-account-rls-readiness.sql` against a disposable Supabase database and confirm the pre-RLS account-scoped checks pass.
+- After a later RLS migration is drafted, run the commented post-RLS block in `supabase/tests/invoices-two-account-rls-readiness.sql` and confirm Account A cannot read, insert, update, or delete Account B invoices and cannot attach an Account A invoice to an Account B client.
+- Confirm client detail payment history, calendar invoice auto-events, and reports revenue aggregation continue to use account-scoped invoice reads in a production-like Supabase environment.
 - Keep payments/services and portal invoice access out of the invoices RLS apply unless their own ownership and policy work is complete.
 - No `invoices.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
