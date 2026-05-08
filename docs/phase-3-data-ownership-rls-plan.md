@@ -292,6 +292,9 @@ Clients pilot added after the leads pilot:
 - `app/clients/[id]/page.tsx` now prefers the account-scoped client detail row when account membership resolves, then falls back to the previous unscoped/local saved behavior. Detail page client updates include `account_id` and constrain by `id` plus `account_id` when available.
 - Lead conversion now passes the resolved lead account context into the created `clients` row when available. If account context cannot be resolved, conversion preserves the previous client creation behavior.
 - Client selector/list reads in `app/billing/BillingWorkspace.tsx`, `app/billing/pay-per-deletion/page.tsx`, `app/calendar/page.tsx`, `app/credit-analysis/page.tsx`, and `app/reports/page.tsx` prefer account-scoped client rows when account membership resolves and preserve unscoped fallback behavior.
+- `supabase/tests/clients-two-account-rls-readiness.sql` is the draft SQL readiness checklist for clients RLS. It seeds two users/accounts/memberships and verifies account-scoped reads, direct inserts, CSV/import-style inserts, lead-conversion-style inserts, single update, bulk-style status update, single delete, bulk-style delete, and cross-account denial shapes without enabling RLS.
+- `supabase/policies/drafts/clients-rls-policy-draft.sql` is the draft-only clients RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
+- Draft clients policies allow authenticated users to select, insert, update, and delete only client rows whose `account_id` appears in their `account_memberships`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no clients policy.
 - Dependent tables remain intentionally unchanged: `invoices`, `payments`, `services`, `disputes`, `calendar_events`, `dispute_letters`, letters/documents, and `client_portal_users` still need their own ownership pilots before RLS can protect their rows.
 - `app/calendar/page.tsx` still reads unowned leads, invoices, disputes, and calendar events for auto-events. Only the direct client list and birthday source are scoped in this clients pilot.
 - Billing workspace records remain browser-local and keyed by client display name, not durable `client_id`; persisted billing ownership is deferred.
@@ -311,7 +314,8 @@ Before enabling `clients` RLS:
 - Decide write-role semantics before policy apply. Client management may need owner/admin/manager roles rather than every account member.
 - Add write policies limited to confirmed account membership roles after role semantics are finalized.
 - Confirm anon users and authenticated users without membership cannot read or mutate clients.
-- Add Supabase-backed two-account tests or manual SQL verification for scoped read, insert, update, delete, bulk delete, bulk status update, CSV import ownership, detail update, lead conversion client ownership, and cross-account denial.
+- Run `supabase/tests/clients-two-account-rls-readiness.sql` against a disposable Supabase database and confirm the pre-RLS account-scoped checks pass.
+- After a later RLS migration is drafted, run the commented post-RLS block in `supabase/tests/clients-two-account-rls-readiness.sql` and confirm Account A cannot read, insert, update, or delete Account B clients.
 - Confirm all update/delete paths are protected by RLS policies before trusting client-provided client ids.
 - Keep child tables out of the clients RLS apply unless their own ownership pilots have added and verified `account_id`.
 - Confirm client portal data access separately after `client_portal_users` and portal-specific policies exist.
