@@ -371,6 +371,9 @@ Disputes pilot added after the invoices pilot:
 - `app/disputes/page.tsx` remains local/static and no Supabase dispute insert path was found there, so this pilot does not add persisted dispute creation.
 - New persisted disputes should include both `client_id` and `account_id` when that write path is introduced. Do not rely on `client_id` alone for tenant isolation, even though clients already have account ownership.
 - `dispute_letters`, persisted letters/documents, and `calendar_events` are intentionally unchanged in this pilot. They need separate ownership pilots before their rows can be protected by RLS.
+- `supabase/tests/disputes-two-account-rls-readiness.sql` is the draft SQL readiness checklist for disputes RLS. It seeds two users/accounts/memberships, account-owned clients, and account-owned disputes, then verifies account-scoped reads, insert with `client_id` plus `account_id`, dispute/client account matching, scoped status/detail update behavior, scoped delete behavior, and future post-RLS cross-account denial expectations.
+- `supabase/policies/drafts/disputes-rls-policy-draft.sql` is the draft-only disputes RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
+- Draft disputes policies allow authenticated users to select, insert, update, and delete only dispute rows whose `account_id` appears in their `account_memberships`. Insert/update also require any non-null `client_id` to reference a client with the same `account_id`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no disputes policy.
 
 Before making `disputes.account_id` `NOT NULL`:
 
@@ -385,12 +388,14 @@ Before making `disputes.account_id` `NOT NULL`:
 
 Before enabling `disputes` RLS:
 
-- Add a two-account readiness SQL checklist for account-scoped dispute reads, inserts, status updates, detail updates, deletes, and client/dispute account matching.
-- Add draft policies allowing account members to read dispute rows in their account.
+- Run `supabase/tests/disputes-two-account-rls-readiness.sql` against a disposable Supabase database and confirm the pre-RLS account-scoped checks pass.
+- Review `supabase/policies/drafts/disputes-rls-policy-draft.sql` and confirm the select, insert, update, and delete policy shape.
 - Decide write-role semantics before policy apply. Dispute management may need owner/admin/manager/specialist roles rather than every account member.
 - Add write policies limited to confirmed account membership roles after role semantics are finalized.
 - Confirm anon users and authenticated users without membership cannot read or mutate disputes.
+- After a later RLS migration is drafted, run the commented post-RLS block in `supabase/tests/disputes-two-account-rls-readiness.sql` and confirm Account A cannot read, insert, update, or delete Account B disputes and cannot attach an Account A dispute to an Account B client.
 - Confirm client detail dispute lists, dispute status management, bulk print queues, calendar dispute source reads, and reports dispute aggregation continue to use account-scoped dispute reads in a production-like Supabase environment.
+- Confirm the future persisted dispute create path writes `account_id` and validates same-account `client_id` before relying on insert policies.
 - Keep `dispute_letters`, letters/documents, calendar event writes, and portal dispute access out of the disputes RLS apply unless their own ownership and policy work is complete.
 - No `disputes.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
