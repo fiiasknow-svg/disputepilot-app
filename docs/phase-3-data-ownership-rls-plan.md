@@ -295,8 +295,8 @@ Clients pilot added after the leads pilot:
 - `supabase/tests/clients-two-account-rls-readiness.sql` is the draft SQL readiness checklist for clients RLS. It seeds two users/accounts/memberships and verifies account-scoped reads, direct inserts, CSV/import-style inserts, lead-conversion-style inserts, single update, bulk-style status update, single delete, bulk-style delete, and cross-account denial shapes without enabling RLS.
 - `supabase/policies/drafts/clients-rls-policy-draft.sql` is the draft-only clients RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
 - Draft clients policies allow authenticated users to select, insert, update, and delete only client rows whose `account_id` appears in their `account_memberships`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no clients policy.
-- Dependent tables remain intentionally unchanged in the clients pilot: `payments`, `services`, `calendar_events`, `dispute_letters`, letters/documents, and `client_portal_users` still need their own ownership pilots before RLS can protect their rows. `invoices` and `disputes` have separate ownership pilots.
-- `app/calendar/page.tsx` still reads unowned leads and calendar events for auto-events. The direct client list and birthday source are scoped in this clients pilot; invoice and dispute source reads are scoped in their later pilots.
+- Dependent tables remain intentionally unchanged in the clients pilot: `payments`, `services`, `dispute_letters`, letters/documents, and `client_portal_users` still need their own ownership pilots before RLS can protect their rows. `invoices`, `disputes`, and `calendar_events` have separate ownership pilots.
+- `app/calendar/page.tsx` still reads unowned leads for auto-events. The direct client list and birthday source are scoped in this clients pilot; invoice, dispute, and persisted calendar event reads are scoped in their later pilots.
 - Billing workspace records remain browser-local and keyed by client display name, not durable `client_id`; persisted billing ownership is deferred.
 
 Before making `clients.account_id` `NOT NULL`:
@@ -335,7 +335,7 @@ Invoices/billing pilot added after the clients pilot:
 - `supabase/tests/invoices-two-account-rls-readiness.sql` is the draft SQL readiness checklist for invoices RLS. It seeds two users/accounts/memberships, account-owned clients, and account-owned invoices, then verifies account-scoped reads, insert with `client_id` plus `account_id`, invoice/client account matching, scoped update/delete behavior, and future post-RLS cross-account denial expectations.
 - `supabase/policies/drafts/invoices-rls-policy-draft.sql` is the draft-only invoices RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
 - Draft invoices policies allow authenticated users to select, insert, update, and delete only invoice rows whose `account_id` appears in their `account_memberships`. Insert/update also require any non-null `client_id` to reference a client with the same `account_id`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no invoices policy.
-- Payments, services/products, calendar events, dispute letters, letters/documents, and client portal mappings remain intentionally unchanged and need their own ownership pilots before RLS can protect those rows. Disputes have a separate ownership pilot.
+- Payments, services/products, dispute letters, letters/documents, and client portal mappings remain intentionally unchanged and need their own ownership pilots before RLS can protect those rows. Disputes and calendar events have separate ownership pilots.
 
 Before making `invoices.account_id` `NOT NULL`:
 
@@ -370,7 +370,7 @@ Disputes pilot added after the invoices pilot:
 - Persisted dispute status/detail updates now include both `id` and `account_id` when account membership resolves. If account context cannot be resolved, the previous `id`-only update behavior is preserved until RLS policies are ready.
 - `app/disputes/page.tsx` remains local/static and no Supabase dispute insert path was found there, so this pilot does not add persisted dispute creation.
 - New persisted disputes should include both `client_id` and `account_id` when that write path is introduced. Do not rely on `client_id` alone for tenant isolation, even though clients already have account ownership.
-- `dispute_letters`, persisted letters/documents, and `calendar_events` are intentionally unchanged in this pilot. They need separate ownership pilots before their rows can be protected by RLS.
+- `dispute_letters` and persisted letters/documents are intentionally unchanged in this pilot. They need separate ownership pilots before their rows can be protected by RLS. `calendar_events` has a separate ownership pilot.
 - `supabase/tests/disputes-two-account-rls-readiness.sql` is the draft SQL readiness checklist for disputes RLS. It seeds two users/accounts/memberships, account-owned clients, and account-owned disputes, then verifies account-scoped reads, insert with `client_id` plus `account_id`, dispute/client account matching, scoped status/detail update behavior, scoped delete behavior, and future post-RLS cross-account denial expectations.
 - `supabase/policies/drafts/disputes-rls-policy-draft.sql` is the draft-only disputes RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
 - Draft disputes policies allow authenticated users to select, insert, update, and delete only dispute rows whose `account_id` appears in their `account_memberships`. Insert/update also require any non-null `client_id` to reference a client with the same `account_id`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no disputes policy.
@@ -398,6 +398,39 @@ Before enabling `disputes` RLS:
 - Confirm the future persisted dispute create path writes `account_id` and validates same-account `client_id` before relying on insert policies.
 - Keep `dispute_letters`, letters/documents, calendar event writes, and portal dispute access out of the disputes RLS apply unless their own ownership and policy work is complete.
 - No `disputes.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
+
+Calendar events pilot added after the disputes pilot:
+
+- `supabase/migrations/20260508030000_add_calendar_events_account_id.sql` adds nullable `calendar_events.account_id` with an index and an `accounts(id)` foreign key.
+- `supabase/migrations/20260508033000_backfill_calendar_events_account_id_single_account.sql` backfills unowned calendar event rows only when the database has exactly one account. If there are zero accounts or multiple accounts, it updates no rows and leaves ambiguous calendar event rows null for manual review.
+- RLS remains disabled for `calendar_events`.
+- `calendar_events.account_id` remains nullable until existing rows are audited/backfilled and runtime scoping is verified.
+- `app/calendar/page.tsx` now prefers account-scoped persisted calendar event rows when account membership resolves, then falls back to the previous unscoped event read when no scoped rows exist.
+- Persisted calendar event inserts include `account_id` when account membership resolves. Persisted event updates and deletes include both `id` and `account_id` when membership resolves, while preserving previous fallback behavior without account context.
+- Browser-local events remain in `localStorage` under `disputepilot.calendar-events`; database RLS cannot protect those local/demo records.
+- Calendar auto-event sources are unchanged except for existing scoped source reads: clients, invoices, and disputes already have account ownership pilots and are read with scoped-first fallback. Leads auto-events still come from the current leads query path and should be confirmed before calendar_events RLS is applied.
+- `letters`, documents, `dispute_letters`, and portal data are intentionally unchanged in this pilot.
+
+Before making `calendar_events.account_id` `NOT NULL`:
+
+- Every existing calendar event row must be assigned to the correct account.
+- Any rows left null after the guarded single-account backfill must be manually assigned or intentionally archived in a later audited migration.
+- Calendar events with `client_id` must be audited so `calendar_events.account_id` matches `clients.account_id`.
+- Persisted event inserts must reliably include `account_id` for authenticated business users.
+- Persisted event updates/deletes must continue to constrain by `id` plus `account_id` or be protected by RLS before trusting client-provided event ids.
+- Production must have at least one `account_memberships` row for every active business user who manages calendar events.
+- Supabase-backed tests or manual verification must confirm account membership resolution succeeds in production-like environments.
+
+Before enabling `calendar_events` RLS:
+
+- Add a two-account readiness SQL checklist for account-scoped calendar event reads, inserts, updates, deletes, and optional client/event account matching.
+- Add draft policies allowing account members to read calendar events in their account.
+- Decide write-role semantics before policy apply. Calendar management may need owner/admin/manager/staff roles rather than every account member.
+- Confirm anon users and authenticated users without membership cannot read or mutate calendar events.
+- Confirm add/edit/delete calendar workflows continue to use account-scoped persisted event writes in a production-like Supabase environment.
+- Confirm portal calendar visibility separately if client-specific events are ever exposed to customers.
+- Keep letters/documents, `dispute_letters`, and portal data out of the calendar_events RLS apply unless their own ownership and policy work is complete.
+- No `calendar_events.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
 Current automated statuses coverage:
 

@@ -91,10 +91,23 @@ export default function Page() {
     try {
       accountId = await getAccountId();
     } catch {}
-    const [evts, leads] = await Promise.all([
-      supabase.from("calendar_events").select("*").order("date").order("start_time"),
+    const [leads] = await Promise.all([
       supabase.from("leads").select("id,first_name,last_name,follow_up_date").not("follow_up_date","is",null),
     ]);
+    let eventRows: any[] = [];
+    if (accountId) {
+      const { data } = await supabase
+        .from("calendar_events")
+        .select("*")
+        .eq("account_id", accountId)
+        .order("date")
+        .order("start_time");
+      eventRows = data || [];
+    }
+    if (!eventRows.length) {
+      const { data } = await supabase.from("calendar_events").select("*").order("date").order("start_time");
+      eventRows = data || [];
+    }
     let disputeRows: any[] = [];
     if (accountId) {
       const { data } = await supabase
@@ -137,7 +150,7 @@ export default function Page() {
     }
     const local = readLocalEvents();
     setLocalEvents(local);
-    const merged = [...(evts.data || []), ...local];
+    const merged = [...eventRows, ...local];
     const deduped = merged.filter((event, index, list) => {
       const sig = eventSignature(event);
       return list.findIndex((candidate) => eventSignature(candidate) === sig) === index;
@@ -209,12 +222,18 @@ export default function Page() {
   async function save() {
     if(!form.title||!form.date) return;
     setSaving(true);
+    const accountId = await getAccountId().catch(() => null);
     const payload={...form, color:form.color||(EVENT_COLORS[form.type]||"#3b82f6"), client_id: form.client_id || null};
+    const remotePayload = accountId ? { ...payload, account_id: accountId } : payload;
     const nextEvent = editingEvent ? { ...editingEvent, ...payload } : { ...payload, id: `local-${Date.now()}`, auto: false };
     if(editingEvent && !String(editingEvent.id).startsWith("local-")) {
-      try { await supabase.from("calendar_events").update(payload).eq("id",editingEvent.id); } catch {}
+      try {
+        const updateQuery = supabase.from("calendar_events").update(payload).eq("id",editingEvent.id);
+        if (accountId) await updateQuery.eq("account_id", accountId);
+        else await updateQuery;
+      } catch {}
     } else if (!editingEvent) {
-      try { await supabase.from("calendar_events").insert([payload]); } catch {}
+      try { await supabase.from("calendar_events").insert([remotePayload]); } catch {}
     }
     setEvents(prev => {
       const next = editingEvent
@@ -231,7 +250,12 @@ export default function Page() {
   async function deleteEvent(id: string) {
     const target = [...events, ...autoEvents].find(e => e.id === id);
     if (target && !String(id).startsWith("local-")) {
-      try { await supabase.from("calendar_events").delete().eq("id",id); } catch {}
+      try {
+        const accountId = await getAccountId().catch(() => null);
+        const deleteQuery = supabase.from("calendar_events").delete().eq("id",id);
+        if (accountId) await deleteQuery.eq("account_id", accountId);
+        else await deleteQuery;
+      } catch {}
     }
     setEvents(e => {
       const next = e.filter(x=>x.id!==id);
