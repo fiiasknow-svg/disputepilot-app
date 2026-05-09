@@ -295,7 +295,7 @@ Clients pilot added after the leads pilot:
 - `supabase/tests/clients-two-account-rls-readiness.sql` is the draft SQL readiness checklist for clients RLS. It seeds two users/accounts/memberships and verifies account-scoped reads, direct inserts, CSV/import-style inserts, lead-conversion-style inserts, single update, bulk-style status update, single delete, bulk-style delete, and cross-account denial shapes without enabling RLS.
 - `supabase/policies/drafts/clients-rls-policy-draft.sql` is the draft-only clients RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
 - Draft clients policies allow authenticated users to select, insert, update, and delete only client rows whose `account_id` appears in their `account_memberships`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no clients policy.
-- Dependent tables remain intentionally unchanged in the clients pilot: `payments`, `services`, `dispute_letters`, letters/documents, and `client_portal_users` still need their own ownership pilots before RLS can protect their rows. `invoices`, `disputes`, and `calendar_events` have separate ownership pilots.
+- Dependent tables remain intentionally unchanged in the clients pilot: `payments`, `services`, letters/documents, and `client_portal_users` still need their own ownership pilots before RLS can protect their rows. `invoices`, `disputes`, `calendar_events`, and `dispute_letters` have separate ownership pilots.
 - `app/calendar/page.tsx` still reads unowned leads for auto-events. The direct client list and birthday source are scoped in this clients pilot; invoice, dispute, and persisted calendar event reads are scoped in their later pilots.
 - Billing workspace records remain browser-local and keyed by client display name, not durable `client_id`; persisted billing ownership is deferred.
 
@@ -335,7 +335,7 @@ Invoices/billing pilot added after the clients pilot:
 - `supabase/tests/invoices-two-account-rls-readiness.sql` is the draft SQL readiness checklist for invoices RLS. It seeds two users/accounts/memberships, account-owned clients, and account-owned invoices, then verifies account-scoped reads, insert with `client_id` plus `account_id`, invoice/client account matching, scoped update/delete behavior, and future post-RLS cross-account denial expectations.
 - `supabase/policies/drafts/invoices-rls-policy-draft.sql` is the draft-only invoices RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
 - Draft invoices policies allow authenticated users to select, insert, update, and delete only invoice rows whose `account_id` appears in their `account_memberships`. Insert/update also require any non-null `client_id` to reference a client with the same `account_id`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no invoices policy.
-- Payments, services/products, dispute letters, letters/documents, and client portal mappings remain intentionally unchanged and need their own ownership pilots before RLS can protect those rows. Disputes and calendar events have separate ownership pilots.
+- Payments, services/products, letters/documents, and client portal mappings remain intentionally unchanged and need their own ownership pilots before RLS can protect those rows. Disputes, calendar events, and dispute letters have separate ownership pilots.
 
 Before making `invoices.account_id` `NOT NULL`:
 
@@ -448,6 +448,9 @@ Dispute letters pilot added after the calendar_events pilot:
 - `/letters`, `/letters/ai-rewriter`, and `/letter-vault` are local/template-driven UI surfaces. No active Supabase CRUD was found for `letters`, `documents`, or `letter_templates`, so this pilot does not force migrations for those tables.
 - Parent disputes already have account ownership. Future persisted dispute letter writes should include both `dispute_id` and `account_id`; do not rely on `dispute_id` alone for tenant isolation.
 - Letters/documents, portal letter access, and any future template persistence remain separate ownership/RLS work.
+- `supabase/tests/dispute-letters-two-account-rls-readiness.sql` is the draft SQL readiness checklist for dispute_letters RLS. It seeds two users/accounts/memberships, account-owned clients, account-owned disputes, and account-owned dispute letters, then verifies account-scoped reads by `dispute_id` plus `account_id`, insert with `dispute_id` plus `account_id`, dispute letter/dispute account matching, scoped update/delete behavior, and future post-RLS cross-account denial expectations.
+- `supabase/policies/drafts/dispute-letters-rls-policy-draft.sql` is the draft-only dispute_letters RLS policy file. It is not a migration and must not be applied until the readiness script and post-RLS checks pass in a disposable database.
+- Draft dispute_letters policies allow authenticated users to select, insert, update, and delete only dispute letter rows whose `account_id` appears in their `account_memberships`. Insert/update also require any non-null `dispute_id` to reference a dispute with the same `account_id`. Null `account_id` rows and users without membership are intentionally not exposed; anon receives no dispute_letters policy.
 
 Before making `dispute_letters.account_id` `NOT NULL`:
 
@@ -460,10 +463,11 @@ Before making `dispute_letters.account_id` `NOT NULL`:
 
 Before enabling `dispute_letters` RLS:
 
-- Add and run a `dispute_letters` two-account readiness SQL checklist against a disposable Supabase database and confirm the pre-RLS account-scoped checks pass.
-- Add and review draft-only `dispute_letters` RLS policies for select, insert, update, and delete using active account membership.
+- Run `supabase/tests/dispute-letters-two-account-rls-readiness.sql` against a disposable Supabase database and confirm the pre-RLS account-scoped checks pass.
+- Review `supabase/policies/drafts/dispute-letters-rls-policy-draft.sql` and confirm the select, insert, update, and delete policy shape.
 - Decide write-role semantics before policy apply. Letter generation and review may need owner/admin/manager/specialist roles rather than every account member.
 - Confirm anon users and authenticated users without membership cannot read or mutate dispute letters after policies are applied.
+- After a later RLS migration is drafted, run the commented post-RLS block in `supabase/tests/dispute-letters-two-account-rls-readiness.sql` and confirm Account A cannot read, insert, update, or delete Account B dispute letters and cannot attach an Account A dispute letter to an Account B dispute.
 - Confirm the dispute detail letter list continues to use account-scoped reads in a production-like Supabase environment.
 - Keep letters/documents, templates, and portal letter access out of the `dispute_letters` RLS apply unless their own ownership and policy work is complete.
 - No `dispute_letters.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
