@@ -87,7 +87,20 @@ export default function Page() {
       if (!d?.data) {
         d = await supabase.from("disputes").select("*, clients(first_name,last_name,email,mobile_phone)").eq("id",id).single();
       }
-      const l = await supabase.from("dispute_letters").select("*").eq("dispute_id",id).order("created_at",{ascending:false});
+      let letterRows: any[] = [];
+      if (accountId) {
+        const { data } = await supabase
+          .from("dispute_letters")
+          .select("*")
+          .eq("dispute_id",id)
+          .eq("account_id", accountId)
+          .order("created_at",{ascending:false});
+        letterRows = data || [];
+      }
+      if (!letterRows.length) {
+        const { data } = await supabase.from("dispute_letters").select("*").eq("dispute_id",id).order("created_at",{ascending:false});
+        letterRows = data || [];
+      }
       if(d.data){
         setDispute(d.data);
         setEditFields({
@@ -115,7 +128,7 @@ export default function Page() {
         }));
         setRounds(seed);
       }
-      setLetters(l.data||[]);
+      setLetters(letterRows);
       setLoading(false);
     }
     load();
