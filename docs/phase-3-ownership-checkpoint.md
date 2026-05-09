@@ -45,6 +45,7 @@ No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` 
 ## Known Gaps Before RLS
 
 - Run every `supabase/tests/*two-account-rls-readiness.sql` script against a disposable Supabase database.
+- Use [docs/phase-3-disposable-supabase-readiness-runbook.md](./phase-3-disposable-supabase-readiness-runbook.md) as the execution checklist and recording sheet.
 - Audit and backfill all nullable `account_id` rows, including orphan child rows and cross-account parent mismatches.
 - Do not add `NOT NULL` until null-row audits and manual backfills are complete.
 - Decide write-role semantics per table; current drafts generally start from account membership and note where writes may need owner/admin/manager/specialist roles.
