@@ -16,10 +16,11 @@ No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` 
 | `disputes` | yes | yes | status/detail updates, status list, client pages, reports, calendar, bulk print reads | yes | yes |
 | `calendar_events` | yes | yes | calendar persisted read, insert, update, delete | yes | yes |
 | `dispute_letters` | yes | yes | dispute detail read path | yes | yes |
+| `affiliates` | yes | yes | affiliate page read, insert, delete | no | no |
 
 ## Remaining Private Tables / Areas
 
-- `affiliates`: active Supabase CRUD in `app/leads/affiliates/page.tsx`; no ownership pilot or readiness materials yet.
+- `affiliates`: ownership pilot exists, but two-account readiness SQL and draft RLS policies are still missing.
 - `payments` and `services`: billing workspace is browser-local today, but these need ownership if/when persisted.
 - Persisted `letters`, `documents`, and `letter_templates`: no active Supabase CRUD found in the current app scan; letter/vault/document UI is local, template-driven, or company-page workflow today.
 - `client_portal_users` and portal-visible data paths: still missing as a dedicated portal identity/policy model.
@@ -46,6 +47,6 @@ No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` 
 
 ## Safest Next Tasks
 
-1. Add an `affiliates.account_id` ownership pilot, guarded single-account backfill, runtime scoping, two-account readiness SQL, draft RLS policies, and docs.
+1. Add affiliates two-account readiness SQL and draft RLS policies, then update the Phase 3 docs with the policy summary.
 2. Close the remaining lead-derived unscoped reads in calendar and reports while preserving fallback behavior, then update the leads readiness notes if needed.
 3. Run the existing readiness SQL scripts in a disposable Supabase database and record audit results for null `account_id`, orphan child rows, and parent/child account mismatches before drafting any RLS apply migration.

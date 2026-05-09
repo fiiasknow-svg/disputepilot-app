@@ -45,5 +45,18 @@ test('leads and affiliates page actions are usable without app error', async ({ 
 
   await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
   await expect(page.getByText(/Leads|Affiliates|Website Lead Form/i).first()).toBeVisible();
+
+  await page.goto(`${BASE_URL}/leads/affiliates`);
+  await expect(page.getByRole('heading', { name: 'Affiliates', exact: true })).toBeVisible();
+  await expect(page.getByText(/Loading/i)).toHaveCount(0);
+  await page.getByRole('button', { name: /Add New/i }).click();
+  const affiliateModal = page.getByRole('heading', { name: 'Add New Affiliate' }).locator('xpath=..');
+  await expect(affiliateModal).toBeVisible();
+  await affiliateModal.locator('input').nth(0).fill(`Affiliate ${unique}`);
+  await affiliateModal.locator('input').nth(4).fill(`affiliate-${unique}@example.test`);
+  await affiliateModal.getByRole('button', { name: 'Cancel' }).click();
+  await expect(affiliateModal).toHaveCount(0);
+  await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
+
   expect(pageErrors).toEqual([]);
 });

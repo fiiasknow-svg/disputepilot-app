@@ -18,17 +18,56 @@ export default function Page() {
 
   useEffect(() => { load(); }, []);
 
+  async function getAccountId() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return null;
+
+    const { data } = await supabase
+      .from("account_memberships")
+      .select("account_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.account_id || null;
+  }
+
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("affiliates").select("*").order("created_at", { ascending: false });
-    setAffiliates(data || []);
+    try {
+      const accountId = await getAccountId();
+
+      if (accountId) {
+        const { data } = await supabase.from("affiliates").select("*").eq("account_id", accountId).order("created_at", { ascending: false });
+        const scopedAffiliates = data || [];
+
+        if (scopedAffiliates.length) {
+          setAffiliates(scopedAffiliates);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const { data } = await supabase.from("affiliates").select("*").order("created_at", { ascending: false });
+      setAffiliates(data || []);
+    } catch {
+      setAffiliates([]);
+    }
     setLoading(false);
   }
 
   async function save() {
     if (!form.name || !form.email) return;
     setSaving(true);
-    await supabase.from("affiliates").insert([form]);
+    try {
+      const accountId = await getAccountId();
+      const payload = accountId ? { ...form, account_id: accountId } : form;
+      await supabase.from("affiliates").insert([payload]);
+    } catch {
+      // Keep the local UI usable when Supabase is unavailable.
+    }
     setSaving(false);
     setShowForm(false);
     setForm({ name: "", company_name: "", office_phone: "", cell_phone: "", email: "", status: "Active", start_date: "", end_date: "", commission: "" });
@@ -36,7 +75,14 @@ export default function Page() {
   }
 
   async function remove(id: string) {
-    await supabase.from("affiliates").delete().eq("id", id);
+    try {
+      const accountId = await getAccountId();
+      const deleteQuery = supabase.from("affiliates").delete().eq("id", id);
+      if (accountId) await deleteQuery.eq("account_id", accountId);
+      else await deleteQuery;
+    } catch {
+      // Keep the local UI usable when Supabase is unavailable.
+    }
     setAffiliates(a => a.filter(x => x.id !== id));
   }
 

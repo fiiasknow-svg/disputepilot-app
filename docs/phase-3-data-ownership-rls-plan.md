@@ -213,7 +213,7 @@ Leads pilot added after the employees pilot:
 - New lead inserts and CSV imports include `account_id` only when an account membership can be safely resolved.
 - Lead updates, deletes, bulk deletes, status updates, and conversion status updates include `account_id` constraints when an account membership can be safely resolved.
 - Lead conversion still writes a `clients` row without adding ownership to `clients`; client ownership is intentionally left for a later clients pilot.
-- Affiliates remain a separate table and are not changed in this leads pilot. `app/leads/affiliates/page.tsx` still reads/writes the `affiliates` table directly, so affiliates need their own later ownership pilot before affiliate RLS.
+- Affiliates remain a separate table and are not changed in this leads pilot. They have a later separate ownership pilot before affiliate RLS.
 - `tests/leads-affiliates-behavior.spec.ts` verifies the leads page loads, the add lead flow remains usable, edit/status/delete behavior remains usable, and no page exception or visible app/runtime error occurs without requiring real Supabase credentials.
 - `supabase/tests/leads-two-account-rls-readiness.sql` documents the required two-account Supabase readiness check. It seeds two auth users, two accounts, memberships, and account-owned leads in a disposable database; verifies the current pre-RLS scoped read, insert, update, and delete query shapes; documents expected future RLS behavior; and includes cleanup SQL.
 - `supabase/policies/drafts/leads-rls-policy-draft.sql` contains draft-only leads RLS policies for review. It is not an active migration and does not enable RLS.
@@ -229,7 +229,7 @@ Leads policy draft summary:
 - Lead write role semantics must be finalized against `account_memberships.role` or a future permission table before applying RLS.
 - `account_memberships` currently has `role` but no membership `status` column. The draft treats any membership as active and notes where to add `status = 'active'` if that column is introduced.
 - Converted client isolation remains incomplete until a later clients ownership pilot adds and verifies `clients.account_id`.
-- Affiliates remain separate and are not covered by the leads readiness checklist or draft policies.
+- Affiliates remain separate and are not covered by the leads readiness checklist or draft policies. They have a later separate ownership pilot.
 
 Manual leads coverage before RLS:
 
@@ -256,7 +256,7 @@ Before enabling `leads` RLS:
 - Confirm anon users and authenticated users without membership cannot read or mutate leads.
 - Add Supabase-backed two-account tests or manual SQL verification for scoped read, insert, update, delete, bulk delete, status update, CSV import ownership, conversion status update, and cross-account denial.
 - Confirm all update/delete paths are protected by RLS policies before trusting client-provided lead ids.
-- Keep affiliates out of the leads RLS apply unless an affiliates ownership pilot has added and verified `affiliates.account_id`.
+- Keep affiliates out of the leads RLS apply unless the affiliates ownership pilot has been verified and affiliates readiness materials have been added.
 - Run the future post-RLS block in `supabase/tests/leads-two-account-rls-readiness.sql` in a disposable database after applying draft policies.
 - Review `supabase/policies/drafts/leads-rls-policy-draft.sql` and decide whether write policies should allow every member or only owner/admin/manager/sales roles.
 - Confirm whether `account_memberships` needs a `status` column before policies are applied, then include active-membership checks if it exists.
@@ -279,6 +279,34 @@ Exact criteria to enable `leads` RLS safely:
 - CSV import ownership and conversion status updates are verified in a Supabase-backed environment.
 - Converted client isolation is documented as dependent on a later clients ownership pilot.
 - No `leads.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
+
+Affiliates pilot added after the dispute_letters readiness checkpoint:
+
+- `supabase/migrations/20260509020000_add_affiliates_account_id.sql` adds nullable `affiliates.account_id` with an index and an `accounts(id)` foreign key.
+- `supabase/migrations/20260509023000_backfill_affiliates_account_id_single_account.sql` backfills unowned affiliate rows only when the database has exactly one account. If there are zero accounts or multiple accounts, it updates no rows and leaves ambiguous affiliate rows null for manual review.
+- RLS remains disabled for `affiliates`.
+- `affiliates.account_id` remains nullable until existing rows are audited/backfilled and runtime scoping is verified.
+- `app/leads/affiliates/page.tsx` now attempts to resolve the current user's account membership in the browser and reads account-scoped affiliates when rows exist, then falls back to the previous unscoped read when no scoped rows exist.
+- New affiliate inserts include `account_id` only when an account membership can be safely resolved.
+- Affiliate deletes include both `id` and `account_id` when account membership resolves. If account context cannot be resolved, the previous `id`-only delete behavior is preserved.
+- No affiliate edit or status update path was found in the current UI, so this pilot does not add one.
+
+Before making `affiliates.account_id` `NOT NULL`:
+
+- Every existing affiliate row must be assigned to the correct account.
+- Any rows left null after the guarded single-account backfill must be manually assigned or intentionally archived in a later audited migration.
+- New affiliate inserts must reliably include `account_id` for authenticated business users.
+- Production must have at least one `account_memberships` row for every active business user who manages affiliates.
+- Supabase-backed tests or manual verification must confirm account membership resolution succeeds in production-like environments.
+
+Before enabling `affiliates` RLS:
+
+- Add and run an `affiliates` two-account readiness SQL checklist against a disposable Supabase database and confirm the pre-RLS account-scoped checks pass.
+- Add and review draft-only `affiliates` RLS policies for select, insert, update, and delete using active account membership.
+- Decide write-role semantics before policy apply. Affiliate management may need owner/admin/manager/sales roles rather than every account member.
+- Confirm anon users and authenticated users without membership cannot read or mutate affiliates after policies are applied.
+- Confirm the affiliates page continues to use account-scoped reads, inserts, and deletes in a production-like Supabase environment.
+- No `affiliates.account_id NOT NULL` constraint is added until null-row audit and manual backfill are complete.
 
 Clients pilot added after the leads pilot:
 
