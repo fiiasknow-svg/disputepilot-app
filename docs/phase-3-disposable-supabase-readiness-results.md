@@ -30,6 +30,13 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - after applying in disposable DB: rerun `supabase/tests/statuses-two-account-rls-readiness.sql` and confirm the post-RLS block passes
 - production apply blocked until disposable post-RLS denial checks pass: yes
 
+### statuses post-RLS verification
+
+- attempted: yes
+- result: still returned false
+- note: the readiness script is not a reliable authenticated-user RLS test by itself; use `supabase/tests/statuses-post-rls-verification.sql` instead
+- status: needs corrected post-RLS verification script before production RLS
+
 ## employees
 
 - date run: 2026-05-11
@@ -152,3 +159,4 @@ Record facts from the actual SQL output. Do not infer pass/fail.
   - null/orphan/cross-account production audits still needed before production RLS
   - post-RLS denial checks must be rerun after enabling policies in disposable DB
   - statuses apply migration must pass disposable DB post-RLS checks before production use
+  - statuses post-RLS verification must use the dedicated authenticated-user script, not the readiness script alone
