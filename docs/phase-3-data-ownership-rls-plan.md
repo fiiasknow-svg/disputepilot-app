@@ -121,6 +121,8 @@ Statuses pilot added after the account foundation:
 - The visible settings workflow has Playwright coverage for page load, custom client status creation, custom client status deletion, and no app/runtime error without requiring real Supabase credentials. These tests exercise the no-credentials fallback path through the browser Supabase no-op client. Direct cross-account database isolation still needs Supabase-backed test data before RLS is enabled.
 - `supabase/tests/statuses-two-account-rls-readiness.sql` documents the required two-account Supabase readiness check. It seeds two auth users, two accounts, memberships, and account-owned statuses in a disposable database; verifies the current pre-RLS scoped read, insert, and delete query shapes; documents expected future RLS behavior; and includes cleanup SQL.
 - `supabase/policies/drafts/statuses-rls-policy-draft.sql` contains draft-only statuses RLS policies for review. It is not an active migration and does not enable RLS.
+- First applyable RLS migration: `supabase/migrations/20260511010000_enable_statuses_rls.sql`. Test it in the disposable database first, then rerun `supabase/tests/statuses-two-account-rls-readiness.sql` with the post-RLS block enabled before any production apply.
+- Rollback notes for the apply migration: in a disposable database, `drop policy if exists` for the four statuses policies and `alter table statuses disable row level security;`. Do not run rollback casually in production.
 
 Statuses policy draft summary:
 

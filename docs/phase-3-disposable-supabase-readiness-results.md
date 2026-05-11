@@ -23,6 +23,13 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - cross-account mismatch findings: not audited in this run
 - notes/fixes needed: rerun post-RLS checks after future RLS apply migration
 
+### statuses first RLS apply migration
+
+- migration path: `supabase/migrations/20260511010000_enable_statuses_rls.sql`
+- test in disposable DB first: yes
+- after applying in disposable DB: rerun `supabase/tests/statuses-two-account-rls-readiness.sql` and confirm the post-RLS block passes
+- production apply blocked until disposable post-RLS denial checks pass: yes
+
 ## employees
 
 - date run: 2026-05-11
@@ -144,3 +151,4 @@ Record facts from the actual SQL output. Do not infer pass/fail.
   - write-role semantics still need final decision
   - null/orphan/cross-account production audits still needed before production RLS
   - post-RLS denial checks must be rerun after enabling policies in disposable DB
+  - statuses apply migration must pass disposable DB post-RLS checks before production use

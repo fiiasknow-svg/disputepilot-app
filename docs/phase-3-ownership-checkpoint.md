@@ -48,6 +48,7 @@ No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` 
 - Use [docs/phase-3-disposable-supabase-readiness-runbook.md](./phase-3-disposable-supabase-readiness-runbook.md) as the execution checklist and recording sheet.
 - Capture the outcomes in [docs/phase-3-disposable-supabase-readiness-results.md](./phase-3-disposable-supabase-readiness-results.md).
 - If the disposable database only has the account foundation, bootstrap it with `supabase/tests/disposable-test-schema-setup.sql` first.
+- First applyable RLS migration: `supabase/migrations/20260511010000_enable_statuses_rls.sql`. Test it in the disposable database first, then rerun `supabase/tests/statuses-two-account-rls-readiness.sql` with the post-RLS block enabled before any production apply.
 - Audit and backfill all nullable `account_id` rows, including orphan child rows and cross-account parent mismatches.
 - Do not add `NOT NULL` until null-row audits and manual backfills are complete.
 - Decide write-role semantics per table; current drafts generally start from account membership and note where writes may need owner/admin/manager/specialist roles.
