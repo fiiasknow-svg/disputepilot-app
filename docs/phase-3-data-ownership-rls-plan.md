@@ -148,6 +148,8 @@ Employees pilot added after the statuses pilot:
 - `tests/employees-behavior.spec.ts` verifies the employees page loads, the add employee flow remains usable, optional edit/delete/status controls remain usable when rows exist, and no page exception or visible app/runtime error occurs without requiring real Supabase credentials.
 - `supabase/tests/employees-two-account-rls-readiness.sql` documents the required two-account Supabase readiness check. It seeds two auth users, two accounts, memberships, and account-owned employees in a disposable database; verifies the current pre-RLS scoped read, insert, update, and delete query shapes; documents expected future RLS behavior; and includes cleanup SQL.
 - `supabase/policies/drafts/employees-rls-policy-draft.sql` contains draft-only employees RLS policies for review. It is not an active migration and does not enable RLS.
+- `supabase/migrations/20260511020000_enable_employees_rls.sql` is the first applyable employees RLS migration. It uses a SECURITY DEFINER helper for membership checks, grants authenticated privileges only on employees, and must be tested in a disposable database before production use.
+- `supabase/tests/employees-post-rls-verification.sql` is the disposable-only authenticated verification script for employees RLS. It mirrors the statuses post-RLS helper pattern and must pass before any production apply.
 
 Employees policy draft summary:
 
@@ -163,6 +165,7 @@ Employees policy draft summary:
 Manual employees coverage before RLS:
 
 - Run `supabase/tests/employees-two-account-rls-readiness.sql` against a disposable Supabase database after applying the account foundation and employees migrations.
+- After the employees RLS migration is applied in a disposable database, rerun `supabase/tests/employees-two-account-rls-readiness.sql` and `supabase/tests/employees-post-rls-verification.sql`.
 - Confirm Account A-scoped reads return only Account A readiness employees and Account B-scoped reads return only Account B readiness employees.
 - Confirm an Account A insert includes Account A ownership.
 - Confirm an Account A-scoped update cannot update Account B's employee and can update Account A's inserted employee.
@@ -186,6 +189,7 @@ Before enabling `employees` RLS:
 - Confirm all update/delete paths are protected by RLS policies before trusting client-provided employee ids.
 - Run the future post-RLS block in `supabase/tests/employees-two-account-rls-readiness.sql` in a disposable database after applying draft policies.
 - Review `supabase/policies/drafts/employees-rls-policy-draft.sql` and decide whether write policies should allow every member or only owner/admin/manager roles.
+- Keep production apply blocked until the disposable authenticated post-RLS verifier passes.
 - Confirm whether `account_memberships` needs a `status` column before policies are applied, then include active-membership checks if it exists.
 
 Rollback notes for future employees RLS apply:

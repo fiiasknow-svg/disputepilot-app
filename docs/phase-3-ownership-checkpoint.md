@@ -49,6 +49,7 @@ No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` 
 - Capture the outcomes in [docs/phase-3-disposable-supabase-readiness-results.md](./phase-3-disposable-supabase-readiness-results.md).
 - If the disposable database only has the account foundation, bootstrap it with `supabase/tests/disposable-test-schema-setup.sql` first.
 - First applyable RLS migration: `supabase/migrations/20260511010000_enable_statuses_rls.sql`. Test it in the disposable database first, then rerun `supabase/tests/statuses-two-account-rls-readiness.sql` with the post-RLS block enabled before any production apply.
+- Next applyable RLS migration: `supabase/migrations/20260511020000_enable_employees_rls.sql`. Test it in the disposable database first, then rerun `supabase/tests/employees-two-account-rls-readiness.sql` and `supabase/tests/employees-post-rls-verification.sql` before any production apply.
 - Audit and backfill all nullable `account_id` rows, including orphan child rows and cross-account parent mismatches.
 - Do not add `NOT NULL` until null-row audits and manual backfills are complete.
 - Decide write-role semantics per table; current drafts generally start from account membership and note where writes may need owner/admin/manager/specialist roles.
@@ -75,6 +76,13 @@ No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` 
 - Company document/settings pages are mostly local workflow/static UI unless a specific persisted table is introduced later.
 - `app/billing/BillingWorkspace.tsx` is intentionally excluded from the business-table readiness matrix until invoices/payments/services persistence is introduced.
 - `app/letters/*`, `app/letter-vault`, `app/disputes/page.tsx`, and company document pages are intentionally excluded because they are local/template-driven or static workflow surfaces today.
+
+## Employees RLS
+
+- Migration path: `supabase/migrations/20260511020000_enable_employees_rls.sql`
+- Post-RLS verification path: `supabase/tests/employees-post-rls-verification.sql`
+- Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun the employees readiness script and the dedicated post-RLS verifier before production use.
+- Production apply blocked until the disposable post-RLS checks pass.
 
 ## Safest Next Tasks
 
