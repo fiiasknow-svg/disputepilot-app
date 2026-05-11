@@ -16,16 +16,46 @@ drop policy if exists "statuses_select_account_members" on statuses;
 
 alter table statuses enable row level security;
 
+grant select, insert, update, delete on public.statuses to authenticated;
+
+do $$
+begin
+  if to_regclass('public.statuses_id_seq') is not null then
+    execute 'grant usage, select on sequence public.statuses_id_seq to authenticated';
+  end if;
+end $$;
+
+create or replace function public.statuses_has_membership(
+  p_account_id uuid,
+  p_roles text[] default null
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, auth
+as $$
+  select exists (
+    select 1
+    from public.account_memberships am
+    where am.account_id = p_account_id
+      and am.user_id = auth.uid()
+      and (
+        p_roles is null
+        or am.role = any(p_roles)
+      )
+  );
+$$;
+
+revoke all on function public.statuses_has_membership(uuid, text[]) from public;
+grant execute on function public.statuses_has_membership(uuid, text[]) to authenticated;
+
 create policy "statuses_select_account_members"
 on statuses
 for select
 to authenticated
 using (
-  account_id in (
-    select account_id
-    from account_memberships
-    where user_id = auth.uid()
-  )
+  public.statuses_has_membership(account_id)
 );
 
 create policy "statuses_insert_account_members"
@@ -33,12 +63,7 @@ on statuses
 for insert
 to authenticated
 with check (
-  account_id in (
-    select account_id
-    from account_memberships
-    where user_id = auth.uid()
-      and role in ('owner', 'admin', 'manager', 'member')
-  )
+  public.statuses_has_membership(account_id, array['owner', 'admin', 'manager', 'member'])
 );
 
 create policy "statuses_update_account_members"
@@ -46,20 +71,10 @@ on statuses
 for update
 to authenticated
 using (
-  account_id in (
-    select account_id
-    from account_memberships
-    where user_id = auth.uid()
-      and role in ('owner', 'admin', 'manager', 'member')
-  )
+  public.statuses_has_membership(account_id, array['owner', 'admin', 'manager', 'member'])
 )
 with check (
-  account_id in (
-    select account_id
-    from account_memberships
-    where user_id = auth.uid()
-      and role in ('owner', 'admin', 'manager', 'member')
-  )
+  public.statuses_has_membership(account_id, array['owner', 'admin', 'manager', 'member'])
 );
 
 create policy "statuses_delete_account_members"
@@ -67,12 +82,7 @@ on statuses
 for delete
 to authenticated
 using (
-  account_id in (
-    select account_id
-    from account_memberships
-    where user_id = auth.uid()
-      and role in ('owner', 'admin', 'manager', 'member')
-  )
+  public.statuses_has_membership(account_id, array['owner', 'admin', 'manager', 'member'])
 );
 
 -- Rollback notes:
@@ -80,4 +90,3 @@ using (
 -- policies with the DROP POLICY statements above, then:
 -- alter table statuses disable row level security;
 -- Do not run rollback casually in production.
-

@@ -6,6 +6,10 @@
 -- - Do not use this against production.
 -- - Do not rely on the Supabase SQL Editor if it runs with elevated or
 --   bypass privileges; that can invalidate the RLS check.
+-- - Status policies depend on authenticated SELECT access to
+--   a security-definer membership helper so policy evaluation can resolve
+--   membership without granting direct read access to account_memberships.
+-- - This script assumes the statuses migration defines that helper.
 -- - The actual verification must run with an authenticated session that
 --   resolves auth.uid() to the test user ids below.
 --
@@ -29,30 +33,70 @@ create temporary table if not exists statuses_post_rls_results (
   notes text
 ) on commit preserve rows;
 
+grant select, insert, update, delete on statuses_post_rls_results to authenticated;
+
+create or replace function public.statuses_post_rls_snapshot(p_name text)
+returns table (
+  id bigint,
+  name text,
+  color text,
+  type text,
+  account_id uuid
+)
+language sql
+stable
+security definer
+set search_path = public, auth
+as $$
+  select s.id, s.name, s.color, s.type, s.account_id
+  from public.statuses s
+  where s.name = p_name
+  limit 1;
+$$;
+
+revoke all on function public.statuses_post_rls_snapshot(text) from public;
+grant execute on function public.statuses_post_rls_snapshot(text) to authenticated;
+
 -- Clean any interrupted run from previous attempts.
 delete from statuses
-where name like 'rls-post-rls-%';
+where name in (
+  'rls-post-rls-a-visible',
+  'rls-post-rls-a-inserted',
+  'rls-post-rls-b-visible',
+  'rls-post-rls-b-update-target',
+  'rls-post-rls-b-delete-target',
+  'rls-post-rls-cross-account-insert-should-fail'
+)
+or name like 'rls-post-rls-%';
 
 delete from account_memberships
 where user_id in (
-  '10000000-0000-4000-8000-000000000001',
-  '10000000-0000-4000-8000-000000000002'
+  select id
+  from auth.users
+  where email in (
+    'rls-readiness-a@example.test',
+    'rls-readiness-b@example.test'
+  )
 )
 or account_id in (
-  '20000000-0000-4000-8000-000000000001',
-  '20000000-0000-4000-8000-000000000002'
+  select id
+  from accounts
+  where name in (
+    'RLS Readiness Account A',
+    'RLS Readiness Account B'
+  )
 );
 
 delete from accounts
-where id in (
-  '20000000-0000-4000-8000-000000000001',
-  '20000000-0000-4000-8000-000000000002'
+where name in (
+  'RLS Readiness Account A',
+  'RLS Readiness Account B'
 );
 
 delete from auth.users
-where id in (
-  '10000000-0000-4000-8000-000000000001',
-  '10000000-0000-4000-8000-000000000002'
+where email in (
+  'rls-readiness-a@example.test',
+  'rls-readiness-b@example.test'
 );
 
 insert into auth.users (
@@ -128,6 +172,18 @@ values
     '#ef4444',
     'client',
     '20000000-0000-4000-8000-000000000002'
+  ),
+  (
+    'rls-post-rls-b-update-target',
+    '#ef4444',
+    'client',
+    '20000000-0000-4000-8000-000000000002'
+  ),
+  (
+    'rls-post-rls-b-delete-target',
+    '#ef4444',
+    'client',
+    '20000000-0000-4000-8000-000000000002'
   );
 
 begin;
@@ -155,6 +211,7 @@ begin;
 
   do $$
   declare inserted_id bigint;
+  declare inserted_account_id uuid;
   begin
     insert into statuses (name, color, type, account_id)
     values (
@@ -165,12 +222,17 @@ begin;
     )
     returning id into inserted_id;
 
+    select account_id
+    into inserted_account_id
+    from statuses
+    where id = inserted_id;
+
     insert into statuses_post_rls_results
     values (
       'account_a_insert_account_a',
       'insert allowed',
-      'insert succeeded with id=' || inserted_id::text,
-      true,
+      'insert succeeded with id=' || inserted_id::text || ', account_id=' || coalesce(inserted_account_id::text, 'null'),
+      inserted_account_id = '20000000-0000-4000-8000-000000000001'::uuid,
       'Account A insert should pass'
     );
 
@@ -224,60 +286,104 @@ begin;
   end $$;
 
   do $$
+  declare
+    update_count integer;
+    before_color text;
+    after_color text;
+    before_snapshot record;
+    after_snapshot record;
   begin
-    begin
-      update statuses
-      set color = '#000000'
-      where name = 'rls-post-rls-b-visible'
-        and account_id = '20000000-0000-4000-8000-000000000002'::uuid;
+    select *
+    into before_snapshot
+    from public.statuses_post_rls_snapshot('rls-post-rls-b-update-target');
+    before_color := before_snapshot.color;
 
+    update statuses
+    set color = '#000000'
+    where name = 'rls-post-rls-b-update-target'
+      and account_id = '20000000-0000-4000-8000-000000000002'::uuid;
+
+    get diagnostics update_count = row_count;
+
+    select *
+    into after_snapshot
+    from public.statuses_post_rls_snapshot('rls-post-rls-b-update-target');
+    after_color := after_snapshot.color;
+
+    insert into statuses_post_rls_results
+    values (
+      'account_a_update_account_b_blocked',
+      'blocked and row unchanged',
+      'row_count=' || update_count::text || ', before=' || coalesce(before_color, 'null') || ', after=' || coalesce(after_color, 'null'),
+      before_snapshot.id is not null
+        and after_snapshot.id is not null
+        and before_snapshot.account_id = '20000000-0000-4000-8000-000000000002'::uuid
+        and after_snapshot.account_id = '20000000-0000-4000-8000-000000000002'::uuid
+        and before_color = '#ef4444'
+        and after_color = '#ef4444'
+        and update_count = 0,
+      'Account A update of Account B should be blocked and leave the row unchanged'
+    );
+  exception
+    when insufficient_privilege or check_violation then
       insert into statuses_post_rls_results
       values (
         'account_a_update_account_b_blocked',
-        'blocked',
-        'update unexpectedly succeeded',
-        false,
-        'Account A should not update Account B rows'
+        'blocked and row unchanged',
+        sqlerrm,
+        true,
+        'Account A update of Account B should be blocked'
       );
-    exception
-      when insufficient_privilege or check_violation then
-        insert into statuses_post_rls_results
-        values (
-          'account_a_update_account_b_blocked',
-          'blocked',
-          sqlerrm,
-          true,
-          'Account A update of Account B should be blocked'
-        );
-    end;
   end $$;
 
   do $$
+  declare
+    delete_count integer;
+    existed_before boolean;
+    existed_after boolean;
+    delete_snapshot_before record;
+    delete_snapshot_after record;
   begin
-    begin
-      delete from statuses
-      where name = 'rls-post-rls-b-visible'
-        and account_id = '20000000-0000-4000-8000-000000000002'::uuid;
+    select *
+    into delete_snapshot_before
+    from public.statuses_post_rls_snapshot('rls-post-rls-b-delete-target');
+    existed_before := delete_snapshot_before.id is not null;
 
+    delete from statuses
+    where name = 'rls-post-rls-b-delete-target'
+      and account_id = '20000000-0000-4000-8000-000000000002'::uuid;
+
+    get diagnostics delete_count = row_count;
+
+    select *
+    into delete_snapshot_after
+    from public.statuses_post_rls_snapshot('rls-post-rls-b-delete-target');
+    existed_after := delete_snapshot_after.id is not null;
+
+    insert into statuses_post_rls_results
+    values (
+      'account_a_delete_account_b_blocked',
+      'blocked and row preserved',
+      'row_count=' || delete_count::text || ', existed_before=' || existed_before::text || ', existed_after=' || existed_after::text,
+      delete_snapshot_before.id is not null
+        and delete_snapshot_after.id is not null
+        and delete_snapshot_before.account_id = '20000000-0000-4000-8000-000000000002'::uuid
+        and delete_snapshot_after.account_id = '20000000-0000-4000-8000-000000000002'::uuid
+        and existed_before
+        and existed_after
+        and delete_count = 0,
+      'Account A delete of Account B should be blocked and preserve the row'
+    );
+  exception
+    when insufficient_privilege or check_violation then
       insert into statuses_post_rls_results
       values (
         'account_a_delete_account_b_blocked',
-        'blocked',
-        'delete unexpectedly succeeded',
-        false,
-        'Account A should not delete Account B rows'
+        'blocked and row preserved',
+        sqlerrm,
+        true,
+        'Account A delete of Account B should be blocked'
       );
-    exception
-      when insufficient_privilege or check_violation then
-        insert into statuses_post_rls_results
-        values (
-          'account_a_delete_account_b_blocked',
-          'blocked',
-          sqlerrm,
-          true,
-          'Account A delete of Account B should be blocked'
-        );
-    end;
   end $$;
 
 commit;
@@ -301,9 +407,9 @@ begin;
     '1 visible row for Account B',
     'visible_count=' || count(*)::text || ', names=' || coalesce(string_agg(name, ', ' order by name), 'none'),
     count(*) = 1 and bool_and(account_id = '20000000-0000-4000-8000-000000000002'::uuid),
-    'Account B should only see its own row'
+    'Account B should only see the seeded visible row'
   from statuses
-  where name like 'rls-post-rls-%';
+  where name = 'rls-post-rls-b-visible';
 commit;
 
 select check_name, expected, actual, passed, notes
@@ -316,22 +422,32 @@ where name like 'rls-post-rls-%';
 
 delete from account_memberships
 where user_id in (
-  '10000000-0000-4000-8000-000000000001',
-  '10000000-0000-4000-8000-000000000002'
+  select id
+  from auth.users
+  where email in (
+    'rls-readiness-a@example.test',
+    'rls-readiness-b@example.test'
+  )
 )
 or account_id in (
-  '20000000-0000-4000-8000-000000000001',
-  '20000000-0000-4000-8000-000000000002'
+  select id
+  from accounts
+  where name in (
+    'RLS Readiness Account A',
+    'RLS Readiness Account B'
+  )
 );
 
 delete from accounts
-where id in (
-  '20000000-0000-4000-8000-000000000001',
-  '20000000-0000-4000-8000-000000000002'
+where name in (
+  'RLS Readiness Account A',
+  'RLS Readiness Account B'
 );
 
 delete from auth.users
-where id in (
-  '10000000-0000-4000-8000-000000000001',
-  '10000000-0000-4000-8000-000000000002'
+where email in (
+  'rls-readiness-a@example.test',
+  'rls-readiness-b@example.test'
 );
+
+drop function if exists public.statuses_post_rls_snapshot(text);

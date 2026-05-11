@@ -34,8 +34,14 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 
 - attempted: yes
 - result: still returned false
-- note: the readiness script is not a reliable authenticated-user RLS test by itself; use `supabase/tests/statuses-post-rls-verification.sql` instead
-- status: needs corrected post-RLS verification script before production RLS
+- note: the first disposable verification run hit a temp results table permission issue; the script was patched to grant authenticated access. The second run hit an empty IN-list cleanup bug; the script was patched again. The readiness script is not a reliable authenticated-user RLS test by itself; use `supabase/tests/statuses-post-rls-verification.sql` instead
+- note: the disposable post-RLS verification also exposed missing authenticated table grants on `public.statuses`; the apply migration was patched to grant table access before policies run
+- note: the disposable post-RLS verification also exposed a missing authenticated `SELECT` grant on `public.account_memberships`; the apply migration was patched so status policies can evaluate membership for authenticated users
+- note: the disposable verification script now documents the `account_memberships` dependency explicitly
+- note: a mixed PASS/FAIL run followed; visibility and insert/update/delete checks were tightened so zero-row effects are treated as blocked, not success
+- note: the latest disposable rerun mostly passed but exposed a delete-check setup issue; the verification script now seeds separate update and delete targets and snapshots the protected rows with a disposable helper
+- note: the latest disposable rerun mostly passed but exposed an idempotent cleanup/counting issue; the verification script now clears prior disposable statuses fixtures up front and counts only the seeded visible Account B row
+- status: requires rerun after verification-script fix before production RLS
 
 ## employees
 

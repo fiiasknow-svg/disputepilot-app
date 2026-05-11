@@ -16,6 +16,8 @@
 -- Policy model:
 -- - A user can access a status only when statuses.account_id belongs to one of
 --   their account_memberships rows.
+-- - The apply migration uses a security-definer helper to evaluate membership
+--   without granting authenticated direct read access to account_memberships.
 -- - account_memberships currently has role but no status column, so this draft
 --   treats any membership as active. If a membership status column is added,
 --   include "and account_memberships.status = 'active'" in each subquery.
