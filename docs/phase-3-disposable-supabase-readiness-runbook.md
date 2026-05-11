@@ -18,6 +18,7 @@ Use a disposable Supabase project or a throwaway local database only.
 
 - A disposable Supabase database or project.
 - The account foundation migrations already applied.
+- If the disposable database is blank, first run the account ownership foundation migration, then `supabase/tests/disposable-test-schema-setup.sql`.
 - The ownership pilot migrations already applied for:
   - `statuses`
   - `employees`
@@ -47,6 +48,8 @@ Apply migrations in the same order the ownership pilots were introduced:
 10. `affiliates` ownership migrations
 
 If the disposable database starts from a clean schema snapshot, apply every schema migration in chronological order instead of cherry-picking individual files.
+
+If the database only has the account foundation, run `supabase/tests/disposable-test-schema-setup.sql` before the readiness scripts.
 
 ## Readiness Script Order
 
@@ -125,4 +128,3 @@ Do not try to preserve the disposable state across failed ownership audits.
 - Portal-specific access is modeled separately from business membership access.
 - Draft policies are reviewed against the validated query shapes.
 - The apply migration is reversible and only enables RLS after policies are ready.
-
