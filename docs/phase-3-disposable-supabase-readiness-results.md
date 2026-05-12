@@ -99,7 +99,7 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 
 ## clients
 
-- date run: 2026-05-11
+- date run: 2026-05-12
 - disposable DB/project used: disposable Supabase DB via SQL Editor
 - script path: `supabase/tests/clients-two-account-rls-readiness.sql`
 - pass/fail: pre-RLS readiness run passed / no SQL error reported
@@ -110,6 +110,19 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - orphan row findings: not audited in this run
 - cross-account mismatch findings: not audited in this run
 - notes/fixes needed: rerun post-RLS checks after future RLS apply migration
+
+### clients first RLS apply migration
+
+- migration path: `supabase/migrations/20260511040000_enable_clients_rls.sql`
+- test in disposable DB first: yes
+- after applying in disposable DB: rerun `supabase/tests/clients-two-account-rls-readiness.sql` and `supabase/tests/clients-post-rls-verification.sql`
+- production apply blocked until disposable post-RLS denial checks pass: yes
+
+### clients post-RLS verification
+
+- verification script path: `supabase/tests/clients-post-rls-verification.sql`
+- status: pending disposable DB run
+- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, and leads and must pass in a disposable session before any production apply
 
 ## invoices
 

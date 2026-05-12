@@ -152,6 +152,8 @@ Employees pilot added after the statuses pilot:
 - `supabase/tests/employees-post-rls-verification.sql` is the disposable-only authenticated verification script for employees RLS. It mirrors the statuses post-RLS helper pattern and must pass before any production apply.
 - `supabase/migrations/20260511030000_enable_leads_rls.sql` is the next applyable leads RLS migration. It uses the same SECURITY DEFINER helper pattern as statuses and employees, grants authenticated privileges only on leads, and must be tested in a disposable database before production use.
 - `supabase/tests/leads-post-rls-verification.sql` is the disposable-only authenticated verification script for leads RLS. It mirrors the helper-based statuses and employees post-RLS pattern and must pass before any production apply.
+- `supabase/migrations/20260511040000_enable_clients_rls.sql` is the next applyable clients RLS migration. It uses the same SECURITY DEFINER helper pattern as statuses, employees, and leads, grants authenticated privileges only on clients, and must be tested in a disposable database before production use.
+- `supabase/tests/clients-post-rls-verification.sql` is the disposable-only authenticated verification script for clients RLS. It mirrors the helper-based statuses, employees, and leads post-RLS pattern and must pass before any production apply.
 
 Employees policy draft summary:
 
@@ -201,6 +203,14 @@ Before enabling `employees` RLS:
 - Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun `supabase/tests/leads-two-account-rls-readiness.sql` and the dedicated post-RLS verifier before production use.
 - Production apply blocked until the disposable post-RLS checks pass.
 - Use the same helper-based authenticated-user pattern as statuses and employees so membership checks do not require direct `account_memberships` visibility.
+
+## Clients RLS
+
+- Migration path: `supabase/migrations/20260511040000_enable_clients_rls.sql`
+- Post-RLS verification path: `supabase/tests/clients-post-rls-verification.sql`
+- Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun `supabase/tests/clients-two-account-rls-readiness.sql` and the dedicated post-RLS verifier before production use.
+- Production apply blocked until the disposable post-RLS checks pass.
+- Keep child-table ownership separate: invoices, disputes, calendar_events, dispute_letters, and any portal mappings still need their own ownership pilots and policies.
 
 Rollback notes for future employees RLS apply:
 

@@ -91,6 +91,13 @@ No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` 
 - Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun the leads readiness script and the dedicated post-RLS verifier before production use.
 - Production apply blocked until the disposable post-RLS checks pass.
 
+## Clients RLS
+
+- Migration path: `supabase/migrations/20260511040000_enable_clients_rls.sql`
+- Post-RLS verification path: `supabase/tests/clients-post-rls-verification.sql`
+- Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun the clients readiness script and the dedicated post-RLS verifier before production use.
+- Production apply blocked until the disposable post-RLS checks pass.
+
 ## Safest Next Tasks
 
 1. Close the remaining lead-derived unscoped reads in calendar and reports while preserving fallback behavior, then update the leads readiness notes if needed.
