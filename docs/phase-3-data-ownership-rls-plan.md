@@ -158,6 +158,8 @@ Employees pilot added after the statuses pilot:
 - `supabase/tests/invoices-post-rls-verification.sql` is the disposable-only authenticated verification script for invoices RLS. It verifies account isolation plus cross-account and cross-client write denials before any production apply.
 - `supabase/migrations/20260511060000_enable_disputes_rls.sql` is the next applyable disputes RLS migration. It uses the same SECURITY DEFINER helper pattern as statuses, employees, leads, clients, and invoices, grants authenticated privileges only on disputes, and adds dispute/client account-match validation for writes.
 - `supabase/tests/disputes-post-rls-verification.sql` is the disposable-only authenticated verification script for disputes RLS. It verifies account isolation plus cross-account and cross-client write denials before any production apply.
+- `supabase/migrations/20260511070000_enable_calendar_events_rls.sql` is the next applyable calendar_events RLS migration. It uses the same SECURITY DEFINER helper pattern as statuses, employees, leads, clients, invoices, and disputes, grants authenticated privileges only on calendar_events, and adds calendar event/client account-match validation for writes.
+- `supabase/tests/calendar-events-post-rls-verification.sql` is the disposable-only authenticated verification script for calendar_events RLS. It verifies account isolation plus cross-account and cross-client write denials before any production apply.
 
 Employees policy draft summary:
 
@@ -231,6 +233,15 @@ Before enabling `employees` RLS:
 - Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun `supabase/tests/disputes-two-account-rls-readiness.sql` and the dedicated post-RLS verifier before production use.
 - Production apply blocked until the disposable post-RLS checks pass.
 - Keep child dispute data separate: `dispute_letters`, persisted letters/documents, calendar events, and portal dispute access still need their own ownership and policy work. `dispute_letters` RLS remains required even after disputes RLS passes.
+
+## Calendar Events RLS
+
+- Migration path: `supabase/migrations/20260511070000_enable_calendar_events_rls.sql`
+- Post-RLS verification path: `supabase/tests/calendar-events-post-rls-verification.sql`
+- Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun `supabase/tests/calendar-events-two-account-rls-readiness.sql` and the dedicated post-RLS verifier before production use.
+- Production apply blocked until the disposable post-RLS checks pass.
+- Calendar event writes also verify that any `client_id` belongs to the same `account_id` as the calendar event.
+- Keep portal calendar access and future source-linked event columns separate until their own ownership and policy checks are defined.
 
 Rollback notes for future employees RLS apply:
 

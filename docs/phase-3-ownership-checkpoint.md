@@ -52,6 +52,7 @@ No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` 
 - Next applyable RLS migration: `supabase/migrations/20260511020000_enable_employees_rls.sql`. Test it in the disposable database first, then rerun `supabase/tests/employees-two-account-rls-readiness.sql` and `supabase/tests/employees-post-rls-verification.sql` before any production apply.
 - Next applyable RLS migration: `supabase/migrations/20260511050000_enable_invoices_rls.sql`. Test it in the disposable database first, then rerun `supabase/tests/invoices-two-account-rls-readiness.sql` and `supabase/tests/invoices-post-rls-verification.sql` before any production apply.
 - Next applyable RLS migration: `supabase/migrations/20260511060000_enable_disputes_rls.sql`. Test it in the disposable database first, then rerun `supabase/tests/disputes-two-account-rls-readiness.sql` and `supabase/tests/disputes-post-rls-verification.sql` before any production apply.
+- Next applyable RLS migration: `supabase/migrations/20260511070000_enable_calendar_events_rls.sql`. Test it in the disposable database first, then rerun `supabase/tests/calendar-events-two-account-rls-readiness.sql` and `supabase/tests/calendar-events-post-rls-verification.sql` before any production apply.
 - Audit and backfill all nullable `account_id` rows, including orphan child rows and cross-account parent mismatches.
 - Do not add `NOT NULL` until null-row audits and manual backfills are complete.
 - Decide write-role semantics per table; current drafts generally start from account membership and note where writes may need owner/admin/manager/specialist roles.
@@ -116,6 +117,14 @@ No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` 
 - Production apply blocked until the disposable post-RLS checks pass.
 - Dispute writes also verify that any `client_id` belongs to the same `account_id` as the dispute.
 - `dispute_letters` still require their own RLS; disputes RLS does not protect child letter rows by itself.
+
+## Calendar Events RLS
+
+- Migration path: `supabase/migrations/20260511070000_enable_calendar_events_rls.sql`
+- Post-RLS verification path: `supabase/tests/calendar-events-post-rls-verification.sql`
+- Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun the calendar_events readiness script and the dedicated post-RLS verifier before production use.
+- Production apply blocked until the disposable post-RLS checks pass.
+- Calendar event writes also verify that any `client_id` belongs to the same `account_id` as the calendar event.
 
 ## Safest Next Tasks
 

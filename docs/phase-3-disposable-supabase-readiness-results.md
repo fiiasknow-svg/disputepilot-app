@@ -183,7 +183,7 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 
 ## calendar_events
 
-- date run: 2026-05-11
+- date run: 2026-05-12
 - disposable DB/project used: disposable Supabase DB via SQL Editor
 - script path: `supabase/tests/calendar-events-two-account-rls-readiness.sql`
 - pass/fail: pre-RLS readiness run passed / no SQL error reported
@@ -194,6 +194,20 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - orphan row findings: not audited in this run
 - cross-account mismatch findings: not audited in this run
 - notes/fixes needed: rerun post-RLS checks after future RLS apply migration
+
+### calendar_events first RLS apply migration
+
+- migration path: `supabase/migrations/20260511070000_enable_calendar_events_rls.sql`
+- test in disposable DB first: yes
+- after applying in disposable DB: rerun `supabase/tests/calendar-events-two-account-rls-readiness.sql` and `supabase/tests/calendar-events-post-rls-verification.sql`
+- production apply blocked until disposable post-RLS denial checks pass: yes
+- note: calendar event insert/update checks also require any `client_id` to belong to the same `account_id` as the calendar event
+
+### calendar_events post-RLS verification
+
+- verification script path: `supabase/tests/calendar-events-post-rls-verification.sql`
+- status: pending disposable DB run
+- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, clients, invoices, and disputes, with additional calendar event/client account-match denial checks
 
 ## dispute_letters
 
