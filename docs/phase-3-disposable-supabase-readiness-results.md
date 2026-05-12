@@ -270,6 +270,7 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 
 - Ready for first RLS apply candidate: yes
 - Safest first RLS candidate: statuses or employees
+- production preflight note: the read-only production RLS preflight audit was run on 2026-05-12 after the combined-output fix; based on the visible/exported operator-provided result, the combined output returned 29 rows, active private tables showed 0 total rows, and no blocker rows were observed. Production RLS apply remains a separate manual rollout decision.
 - Blockers:
   - actual RLS migrations not applied yet
   - write-role semantics still need final decision

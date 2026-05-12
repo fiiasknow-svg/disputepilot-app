@@ -10,6 +10,30 @@ This is a read-only audit step. Do not apply RLS yet. Do not run repair SQL from
 
 Audit script: `supabase/audits/production-rls-preflight-readonly.sql`
 
+The audit returns one combined results table with these columns:
+
+- `audit_category`
+- `table_name`
+- `check_name`
+- `finding_count`
+- `severity`
+- `blocks_rls`
+- `notes`
+
+## Recorded Production Audit Result
+
+Run date: 2026-05-12
+
+Based on the visible/exported production audit result provided by the operator:
+
+- The read-only preflight audit script was run in production after the combined-output refactor.
+- The combined output returned 29 rows.
+- No blocker rows were observed in the provided result.
+- Active private tables showed `0` total rows in the visible audit output.
+- Visible `blocks_rls` values were `false`.
+
+This note records the production preflight observation only. Production RLS apply remains a separate manual rollout decision and should not proceed without the required backup/restore checkpoint, rollout order review, and post-apply verification plan.
+
 ## How to Run
 
 1. Open the production Supabase project.
@@ -18,7 +42,7 @@ Audit script: `supabase/audits/production-rls-preflight-readonly.sql`
 4. Open `supabase/audits/production-rls-preflight-readonly.sql` locally.
 5. Paste the full SQL into SQL Editor.
 6. Run the full script.
-7. Export or screenshot the result sets.
+7. Export or screenshot the single combined results table.
 8. Record findings in the Phase 3 rollout notes before deciding whether production RLS can proceed.
 
 ## Safe to Proceed Criteria
@@ -54,12 +78,13 @@ Do not continue to production RLS until blockers are repaired through a reviewed
 
 ## Findings Record
 
-For each result set, record:
+For each row in the combined results table, record:
 
 - Run date and Supabase project.
 - Person running the audit.
-- Table or audit category.
-- Count returned.
+- Audit category, table name, and check name.
+- `finding_count`.
+- `severity` and `blocks_rls`.
 - Whether the result is expected.
 - Link to supporting ticket or migration for any repair.
 - Final go/no-go decision.
