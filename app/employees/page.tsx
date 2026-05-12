@@ -66,6 +66,47 @@ function employeePayload(form: typeof EMPTY_FORM, accountId: string | null, incl
   return payload;
 }
 
+function supabaseErrorParts(error: any) {
+  return {
+    message: typeof error?.message === "string" ? error.message : "",
+    code: typeof error?.code === "string" ? error.code : "",
+    details: typeof error?.details === "string" ? error.details : "",
+    hint: typeof error?.hint === "string" ? error.hint : "",
+  };
+}
+
+function formatSaveError(error: unknown) {
+  if (error instanceof Error) return error.message;
+
+  const parts = supabaseErrorParts(error);
+  const text = [
+    parts.message,
+    parts.code ? `code: ${parts.code}` : "",
+    parts.details ? `details: ${parts.details}` : "",
+    parts.hint ? `hint: ${parts.hint}` : "",
+  ].filter(Boolean).join(" | ");
+
+  return text || "Employee could not be saved.";
+}
+
+function logEmployeeSaveFailure(context: {
+  accountIdResolved: boolean;
+  operation: "insert" | "update";
+  payloadColumns: string[];
+  error: unknown;
+}) {
+  const parts = supabaseErrorParts(context.error);
+  console.error("Employee save failed", {
+    accountIdResolved: context.accountIdResolved,
+    operation: context.operation,
+    payloadColumns: context.payloadColumns,
+    message: parts.message || (context.error instanceof Error ? context.error.message : ""),
+    code: parts.code,
+    details: parts.details,
+    hint: parts.hint,
+  });
+}
+
 export default function Page() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,20 +141,33 @@ export default function Page() {
     ];
   });
 
-  async function getAccountId() {
-    const { data: userData } = await supabase.auth.getUser();
+  async function getAccountContext() {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      if (userError.message === "Auth session missing!") return { accountId: null, userId: null };
+      throw userError;
+    }
+
     const userId = userData.user?.id;
 
-    if (!userId) return null;
+    if (!userId) return { accountId: null, userId: null };
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("account_memberships")
-      .select("account_id")
+      .select("account_id, role")
       .eq("user_id", userId)
       .limit(1)
       .maybeSingle();
 
-    return data?.account_id || null;
+    if (error) throw error;
+    if (!data?.account_id) throw new Error("No account membership was found for the signed-in user.");
+
+    return { accountId: data.account_id, userId };
+  }
+
+  async function getAccountId() {
+    const { accountId } = await getAccountContext();
+    return accountId;
   }
 
   async function load() {
@@ -161,29 +215,36 @@ export default function Page() {
     if(!form.first_name||!form.email) return;
     setSaving(true);
     setSaveError("");
-    let accountId = null;
+    let accountId: string | null = null;
+    let operation: "insert" | "update" = editing ? "update" : "insert";
+    let payloadColumns: string[] = [];
     try {
-      accountId = await getAccountId();
-    } catch {
-      accountId = null;
-    }
-
-    try {
+      const accountContext = await getAccountContext();
+      accountId = accountContext.accountId;
       if(editing) {
-        let updateQuery = supabase.from("employees").update(employeePayload(form, accountId)).eq("id",editing.id);
+        const payload = employeePayload(form, accountId);
+        payloadColumns = Object.keys(payload);
+        let updateQuery = supabase.from("employees").update(payload).eq("id",editing.id);
         if(accountId) updateQuery = updateQuery.eq("account_id",accountId);
         const { data, error } = await updateQuery.select("id").maybeSingle();
         if(error) throw error;
         if(!data) throw new Error("No employee row was updated. Confirm this employee belongs to your account.");
       } else {
-        const { error } = await supabase.from("employees").insert([employeePayload(form, accountId, true)]);
+        const payload = employeePayload(form, accountId, true);
+        payloadColumns = Object.keys(payload);
+        const { error } = await supabase.from("employees").insert([payload]);
         if(error) throw error;
       }
 
       setSaving(false); setShowForm(false); setEditing(null); setForm({...EMPTY_FORM}); load();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Employee could not be saved.";
-      setSaveError(message);
+      logEmployeeSaveFailure({
+        accountIdResolved: Boolean(accountId),
+        operation,
+        payloadColumns,
+        error,
+      });
+      setSaveError(formatSaveError(error));
       setSaving(false);
     }
   }
