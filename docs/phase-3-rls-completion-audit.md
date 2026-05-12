@@ -40,6 +40,7 @@ Production preflight materials:
 
 - Read-only SQL audit: `supabase/audits/production-rls-preflight-readonly.sql`
 - Runbook: [docs/phase-3-production-rls-preflight-runbook.md](./phase-3-production-rls-preflight-runbook.md)
+- Manual production rollout checklist: [docs/phase-3-production-rls-rollout-checklist.md](./phase-3-production-rls-rollout-checklist.md)
 
 Required production preflight before any production RLS migration:
 
@@ -64,13 +65,13 @@ Apply one table at a time, stopping after each table for verification.
 2. `employees`
 3. `leads`
 4. `clients`
-5. `affiliates`
-6. `invoices`
-7. `disputes`
-8. `calendar_events`
-9. `dispute_letters`
+5. `invoices`
+6. `disputes`
+7. `calendar_events`
+8. `dispute_letters`
+9. `affiliates`
 
-Reasoning: start with lower-blast-radius configuration/team/lead/affiliate tables, then move to core customer ownership, then child tables with parent consistency checks.
+Reasoning: start with lower-blast-radius configuration/team/lead tables, move to core customer ownership, then invoice/dispute/calendar/letter child tables with parent consistency checks, and apply affiliates last as its own lead-adjacent table.
 
 ## Recommended Post-Production Verification Order
 
@@ -88,11 +89,11 @@ Run table checks in the same order as production rollout:
 2. `employees`
 3. `leads`
 4. `clients`
-5. `affiliates`
-6. `invoices`
-7. `disputes`
-8. `calendar_events`
-9. `dispute_letters`
+5. `invoices`
+6. `disputes`
+7. `calendar_events`
+8. `dispute_letters`
+9. `affiliates`
 
 ## Remaining Work
 
