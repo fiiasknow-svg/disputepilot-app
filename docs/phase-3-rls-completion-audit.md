@@ -41,6 +41,13 @@ Production preflight materials:
 - Read-only SQL audit: `supabase/audits/production-rls-preflight-readonly.sql`
 - Runbook: [docs/phase-3-production-rls-preflight-runbook.md](./phase-3-production-rls-preflight-runbook.md)
 - Manual production rollout checklist: [docs/phase-3-production-rls-rollout-checklist.md](./phase-3-production-rls-rollout-checklist.md)
+- Account foundation read policy migration: `supabase/migrations/20260511100000_add_account_membership_read_policies.sql`
+
+Production checkpoint recorded after first apply:
+
+- Production employees RLS was applied first.
+- `account_memberships` and `accounts` required authenticated read policies so the app can resolve a signed-in user's account membership before account-scoped writes.
+- Employee save was verified in production after applying those account foundation read policies.
 
 Required production preflight before any production RLS migration:
 

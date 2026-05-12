@@ -52,6 +52,14 @@ For each table:
 | 8 | `dispute_letters` | `supabase/migrations/20260511080000_enable_dispute_letters_rls.sql` | Verify dispute letter workflows load for account-owned disputes, and letters cannot be written with another account's `account_id` or `dispute_id`. |
 | 9 | `affiliates` | `supabase/migrations/20260511090000_enable_affiliates_rls.sql` | Verify affiliate list/add/delete workflows for an account member, and confirm cross-account/no-membership access is blocked. |
 
+## Production Employees Checkpoint
+
+- Production employees RLS was applied first.
+- Employee save initially required account foundation read policies because the app must resolve the signed-in user's `account_id` from `account_memberships` before inserting an employee row.
+- The account foundation read policy migration is `supabase/migrations/20260511100000_add_account_membership_read_policies.sql`.
+- The policies allow authenticated users to read only their own `account_memberships` rows and the `accounts` rows where they are members.
+- Employee save was verified in production after those read policies were applied manually.
+
 ## App Workflow Checks
 
 After each table migration, verify the relevant production UI as an authenticated account member:
