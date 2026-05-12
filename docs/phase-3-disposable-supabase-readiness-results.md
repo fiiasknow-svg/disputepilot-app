@@ -240,7 +240,7 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 
 ## affiliates
 
-- date run: 2026-05-11
+- date run: 2026-05-12
 - disposable DB/project used: disposable Supabase DB via SQL Editor
 - script path: `supabase/tests/affiliates-two-account-rls-readiness.sql`
 - pass/fail: pre-RLS readiness run passed / no SQL error reported
@@ -251,6 +251,20 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - orphan row findings: not audited in this run
 - cross-account mismatch findings: not audited in this run
 - notes/fixes needed: rerun post-RLS checks after future RLS apply migration
+
+### affiliates first RLS apply migration
+
+- migration path: `supabase/migrations/20260511090000_enable_affiliates_rls.sql`
+- test in disposable DB first: yes
+- after applying in disposable DB: rerun `supabase/tests/affiliates-two-account-rls-readiness.sql` and `supabase/tests/affiliates-post-rls-verification.sql`
+- production apply blocked until disposable post-RLS denial checks pass: yes
+- note: affiliate policies use the same SECURITY DEFINER membership helper pattern as the prior Phase 3 RLS migrations
+
+### affiliates post-RLS verification
+
+- verification script path: `supabase/tests/affiliates-post-rls-verification.sql`
+- status: pending disposable DB run
+- note: this script verifies account isolation plus cross-account insert, update, and delete denials before any production apply
 
 ## Final Go / No-Go Summary
 

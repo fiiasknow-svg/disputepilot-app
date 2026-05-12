@@ -162,6 +162,8 @@ Employees pilot added after the statuses pilot:
 - `supabase/tests/calendar-events-post-rls-verification.sql` is the disposable-only authenticated verification script for calendar_events RLS. It verifies account isolation plus cross-account and cross-client write denials before any production apply.
 - `supabase/migrations/20260511080000_enable_dispute_letters_rls.sql` is the next applyable dispute_letters RLS migration. It uses the same SECURITY DEFINER helper pattern as statuses, employees, leads, clients, invoices, disputes, and calendar_events, grants authenticated privileges only on dispute_letters, and adds dispute letter/parent dispute account-match validation for writes.
 - `supabase/tests/dispute-letters-post-rls-verification.sql` is the disposable-only authenticated verification script for dispute_letters RLS. It verifies account isolation plus cross-account and cross-dispute write denials before any production apply.
+- `supabase/migrations/20260511090000_enable_affiliates_rls.sql` is the next applyable affiliates RLS migration. It uses the same SECURITY DEFINER helper pattern as the prior Phase 3 RLS migrations, grants authenticated privileges only on affiliates, and must pass disposable post-RLS verification before any production apply.
+- `supabase/tests/affiliates-post-rls-verification.sql` is the disposable-only authenticated verification script for affiliates RLS. It verifies account isolation plus cross-account insert, update, and delete denials before any production apply.
 
 Employees policy draft summary:
 
@@ -253,6 +255,14 @@ Before enabling `employees` RLS:
 - Production apply blocked until the disposable post-RLS checks pass.
 - Dispute letter writes also verify that any `dispute_id` belongs to the same `account_id` as the dispute letter.
 - Keep persisted letters, documents, templates, and portal letter access separate until their own ownership and policy checks are defined.
+
+## Affiliates RLS
+
+- Migration path: `supabase/migrations/20260511090000_enable_affiliates_rls.sql`
+- Post-RLS verification path: `supabase/tests/affiliates-post-rls-verification.sql`
+- Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun `supabase/tests/affiliates-two-account-rls-readiness.sql` and the dedicated post-RLS verifier before production use.
+- Production apply blocked until the disposable post-RLS checks pass.
+- Affiliate SELECT, INSERT, UPDATE, and DELETE policies use account membership. The UPDATE policy is included for future persisted affiliate edit/status paths even though the current UI only creates and deletes.
 
 Rollback notes for future employees RLS apply:
 
