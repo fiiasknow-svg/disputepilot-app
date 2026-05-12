@@ -126,7 +126,7 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 
 ## invoices
 
-- date run: 2026-05-11
+- date run: 2026-05-12
 - disposable DB/project used: disposable Supabase DB via SQL Editor
 - script path: `supabase/tests/invoices-two-account-rls-readiness.sql`
 - pass/fail: pre-RLS readiness run passed / no SQL error reported
@@ -137,6 +137,20 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - orphan row findings: not audited in this run
 - cross-account mismatch findings: not audited in this run
 - notes/fixes needed: rerun post-RLS checks after future RLS apply migration
+
+### invoices first RLS apply migration
+
+- migration path: `supabase/migrations/20260511050000_enable_invoices_rls.sql`
+- test in disposable DB first: yes
+- after applying in disposable DB: rerun `supabase/tests/invoices-two-account-rls-readiness.sql` and `supabase/tests/invoices-post-rls-verification.sql`
+- production apply blocked until disposable post-RLS denial checks pass: yes
+- note: invoice insert/update checks also require any `client_id` to belong to the same `account_id` as the invoice
+
+### invoices post-RLS verification
+
+- verification script path: `supabase/tests/invoices-post-rls-verification.sql`
+- status: pending disposable DB run
+- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, and clients, with additional invoice/client account-match denial checks
 
 ## disputes
 
