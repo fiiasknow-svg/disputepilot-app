@@ -37,6 +37,35 @@ function relTime(iso?: string) {
 
 const EMPTY_FORM = { first_name:"", last_name:"", email:"", phone:"", role:"Dispute Specialist", status:"active", department:"Operations", title:"", notes:"" };
 
+function employeeName(emp: any) {
+  return emp.name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim();
+}
+
+function splitEmployeeName(emp: any) {
+  const existingFirst = emp.first_name || "";
+  const existingLast = emp.last_name || "";
+  if (existingFirst || existingLast) return { firstName: existingFirst, lastName: existingLast };
+
+  const parts = String(emp.name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return { firstName: parts[0] || "", lastName: "" };
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
+
+function employeePayload(form: typeof EMPTY_FORM, accountId: string | null, includeId = false) {
+  const name = `${form.first_name} ${form.last_name}`.trim() || form.email;
+  const payload: Record<string, string> = {
+    name,
+    email: form.email,
+    role: form.role,
+    status: form.status,
+  };
+
+  if (includeId) payload.id = crypto.randomUUID();
+  if (accountId) payload.account_id = accountId;
+
+  return payload;
+}
+
 export default function Page() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +87,7 @@ export default function Page() {
   const [inviteSent, setInviteSent] = useState(false);
   const [form, setForm] = useState({...EMPTY_FORM});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
 
   // Mock activity log per employee
@@ -116,7 +146,7 @@ export default function Page() {
     if(statusFilter!=="all") out=out.filter(e=>e.status===statusFilter);
     if(roleFilter!=="all") out=out.filter(e=>e.role===roleFilter);
     if(deptFilter!=="all") out=out.filter(e=>e.department===deptFilter);
-    if(search) { const q=search.toLowerCase(); out=out.filter(e=>`${e.first_name} ${e.last_name} ${e.email} ${e.role} ${e.department} ${e.title}`.toLowerCase().includes(q)); }
+    if(search) { const q=search.toLowerCase(); out=out.filter(e=>`${employeeName(e)} ${e.email} ${e.role} ${e.department || ""} ${e.title || ""}`.toLowerCase().includes(q)); }
     return out;
   })();
 
@@ -130,25 +160,39 @@ export default function Page() {
   async function save() {
     if(!form.first_name||!form.email) return;
     setSaving(true);
+    setSaveError("");
     let accountId = null;
     try {
       accountId = await getAccountId();
-    } catch {}
-    const payload = accountId ? {...form,account_id:accountId} : {...form};
-
-    if(editing) {
-      const updateQuery = supabase.from("employees").update(payload).eq("id",editing.id);
-      if(accountId) await updateQuery.eq("account_id",accountId);
-      else await updateQuery;
-    } else {
-      await supabase.from("employees").insert([payload]);
+    } catch {
+      accountId = null;
     }
-    setSaving(false); setShowForm(false); setEditing(null); setForm({...EMPTY_FORM}); load();
+
+    try {
+      if(editing) {
+        let updateQuery = supabase.from("employees").update(employeePayload(form, accountId)).eq("id",editing.id);
+        if(accountId) updateQuery = updateQuery.eq("account_id",accountId);
+        const { data, error } = await updateQuery.select("id").maybeSingle();
+        if(error) throw error;
+        if(!data) throw new Error("No employee row was updated. Confirm this employee belongs to your account.");
+      } else {
+        const { error } = await supabase.from("employees").insert([employeePayload(form, accountId, true)]);
+        if(error) throw error;
+      }
+
+      setSaving(false); setShowForm(false); setEditing(null); setForm({...EMPTY_FORM}); load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Employee could not be saved.";
+      setSaveError(message);
+      setSaving(false);
+    }
   }
 
   function openEdit(emp: any) {
+    const { firstName, lastName } = splitEmployeeName(emp);
     setEditing(emp);
-    setForm({ first_name:emp.first_name||"", last_name:emp.last_name||"", email:emp.email||"", phone:emp.phone||"", role:emp.role||"Dispute Specialist", status:emp.status||"active", department:emp.department||"Operations", title:emp.title||"", notes:emp.notes||"" });
+    setSaveError("");
+    setForm({ first_name:firstName, last_name:lastName, email:emp.email||"", phone:emp.phone||"", role:emp.role||"Dispute Specialist", status:emp.status||"active", department:emp.department||"Operations", title:emp.title||"", notes:emp.notes||"" });
     setShowForm(true);
   }
 
@@ -203,7 +247,10 @@ export default function Page() {
 
   function exportCSV() {
     const hdrs=["First Name","Last Name","Email","Phone","Role","Department","Title","Status","Last Login","Added"];
-    const rows=filtered.map(e=>[e.first_name,e.last_name,e.email,e.phone||"",e.role,e.department||"",e.title||"",e.status,e.last_login||"",e.created_at?.slice(0,10)||""].map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(","));
+    const rows=filtered.map(e=>{
+      const { firstName, lastName } = splitEmployeeName(e);
+      return [firstName,lastName,e.email,e.phone||"",e.role,e.department||"",e.title||"",e.status,e.last_login||"",e.created_at?.slice(0,10)||""].map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(",");
+    });
     const blob=new Blob([[hdrs.join(","),...rows].join("\n")],{type:"text/csv"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="employees.csv"; a.click();
   }
@@ -230,7 +277,7 @@ export default function Page() {
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <button onClick={exportCSV} style={{padding:"8px 14px",border:"1px solid #e2e8f0",borderRadius:7,background:"#fff",cursor:"pointer",fontSize:13,fontWeight:600,color:"#475569"}}>⬇ Export CSV</button>
             <button onClick={()=>setShowInvite(true)} style={{padding:"8px 14px",border:"1px solid #3b82f6",borderRadius:7,background:"#eff6ff",cursor:"pointer",fontSize:13,fontWeight:600,color:"#3b82f6"}}>✉ Invite by Email</button>
-            <button onClick={()=>{setEditing(null);setForm({...EMPTY_FORM});setShowForm(true);}} style={{background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14}}>+ Add Employee</button>
+            <button onClick={()=>{setEditing(null);setSaveError("");setForm({...EMPTY_FORM});setShowForm(true);}} style={{background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14}}>+ Add Employee</button>
           </div>
         </div>
 
@@ -336,8 +383,9 @@ export default function Page() {
                       <div style={{fontSize:13}}>Try adjusting filters or add a new employee.</div>
                     </td></tr>
                   : paged.map(emp=>{
-                    const name=`${emp.first_name||""} ${emp.last_name||""}`.trim();
-                    const ac=avatarColor(name); const ini=initials(emp.first_name||"",emp.last_name||"");
+                    const name=employeeName(emp);
+                    const nameParts=splitEmployeeName(emp);
+                    const ac=avatarColor(name); const ini=initials(nameParts.firstName,nameParts.lastName);
                     const roleColor=ROLE_C[emp.role]||"#94a3b8";
                     return (
                       <tr key={emp.id} style={{borderTop:"1px solid #f1f5f9"}}>
@@ -449,6 +497,11 @@ export default function Page() {
                 <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}
                   style={{...inp,minHeight:56,resize:"vertical"} as React.CSSProperties} placeholder="Internal notes…"/>
               </div>
+              {saveError&&(
+                <div role="alert" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"10px 12px",marginBottom:14,color:"#991b1b",fontSize:13,fontWeight:600}}>
+                  Employee could not be saved: {saveError}
+                </div>
+              )}
               {/* Role permissions preview */}
               <div style={{background:"#f8fafc",borderRadius:8,padding:14,marginBottom:18}}>
                 <p style={{margin:"0 0 10px",fontSize:12,fontWeight:700,color:"#64748b",textTransform:"uppercase"}}>Permissions for {form.role}</p>
@@ -477,7 +530,7 @@ export default function Page() {
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
             <div style={{background:"#fff",borderRadius:12,padding:28,width:480}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-                <h2 style={{margin:0,fontSize:17,fontWeight:700}}>Permissions — {viewPerms.first_name} {viewPerms.last_name}</h2>
+                <h2 style={{margin:0,fontSize:17,fontWeight:700}}>Permissions — {employeeName(viewPerms)}</h2>
                 <button onClick={()=>setViewPerms(null)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}}>×</button>
               </div>
               <div style={{background:(ROLE_C[viewPerms.role]||"#94a3b8")+"22",borderRadius:8,padding:"8px 14px",marginBottom:16,display:"flex",justifyContent:"space-between"}}>
@@ -508,15 +561,15 @@ export default function Page() {
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
             <div style={{background:"#fff",borderRadius:12,padding:28,width:460}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-                <h2 style={{margin:0,fontSize:17,fontWeight:700}}>Activity — {viewActivity.first_name} {viewActivity.last_name}</h2>
+                <h2 style={{margin:0,fontSize:17,fontWeight:700}}>Activity — {employeeName(viewActivity)}</h2>
                 <button onClick={()=>setViewActivity(null)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}}>×</button>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"10px 14px",background:"#f8fafc",borderRadius:8}}>
-                <div style={{width:40,height:40,borderRadius:"50%",background:avatarColor(`${viewActivity.first_name} ${viewActivity.last_name}`),display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:14}}>
-                  {initials(viewActivity.first_name||"",viewActivity.last_name||"")}
+                <div style={{width:40,height:40,borderRadius:"50%",background:avatarColor(employeeName(viewActivity)),display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:14}}>
+                  {initials(splitEmployeeName(viewActivity).firstName,splitEmployeeName(viewActivity).lastName)}
                 </div>
                 <div>
-                  <div style={{fontWeight:700,fontSize:14}}>{viewActivity.first_name} {viewActivity.last_name}</div>
+                  <div style={{fontWeight:700,fontSize:14}}>{employeeName(viewActivity)}</div>
                   <div style={{fontSize:12,color:"#64748b"}}>{viewActivity.role} · {viewActivity.department||"—"}</div>
                   <div style={{fontSize:12,color:"#94a3b8"}}>Last login: {relTime(viewActivity.last_login)}</div>
                 </div>
