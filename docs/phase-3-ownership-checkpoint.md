@@ -4,6 +4,8 @@ Date: 2026-05-09
 
 No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` yet.
 
+Final disposable RLS completion audit: [docs/phase-3-rls-completion-audit.md](./phase-3-rls-completion-audit.md).
+
 ## Current Coverage
 
 | Table / area | `account_id` migration | guarded backfill | runtime account-aware access | two-account SQL | draft RLS policy |
