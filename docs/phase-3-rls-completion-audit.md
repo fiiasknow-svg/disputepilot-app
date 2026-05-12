@@ -36,6 +36,11 @@ RLS apply migrations and disposable post-RLS verification scripts exist for all 
 
 Production apply remains blocked. Disposable verification proves policy shape and denial behavior against seeded fixtures; it does not prove production data is ready.
 
+Production preflight materials:
+
+- Read-only SQL audit: `supabase/audits/production-rls-preflight-readonly.sql`
+- Runbook: [docs/phase-3-production-rls-preflight-runbook.md](./phase-3-production-rls-preflight-runbook.md)
+
 Required production preflight before any production RLS migration:
 
 - Audit every protected table for null `account_id` rows.
