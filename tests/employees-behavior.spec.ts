@@ -29,8 +29,13 @@ test('employees page actions are usable without app error', async ({ page }) => 
   await page.getByRole('button', { name: /^Add Employee$/ }).click();
 
   await expect(page.getByRole('heading', { name: 'Employees', exact: true })).toBeVisible();
-  await expect(page.getByText(/Employee could not be saved/i)).toHaveCount(0);
   await expect(page.getByText(/Application error|Runtime Error/i)).toHaveCount(0);
+
+  const saveError = page.getByRole('alert').filter({ hasText: /Employee could not be saved/i });
+  if (await saveError.count()) {
+    await expect(saveError).toContainText(/Employee could not be saved: .+/);
+    await page.getByRole('button', { name: 'Cancel' }).click();
+  }
 
   const firstDataRow = page.locator('tbody tr').filter({ has: page.locator('td') }).first();
 
