@@ -156,6 +156,8 @@ Employees pilot added after the statuses pilot:
 - `supabase/tests/clients-post-rls-verification.sql` is the disposable-only authenticated verification script for clients RLS. It mirrors the helper-based statuses, employees, and leads post-RLS pattern and must pass before any production apply.
 - `supabase/migrations/20260511050000_enable_invoices_rls.sql` is the next applyable invoices RLS migration. It uses the same SECURITY DEFINER helper pattern as statuses, employees, leads, and clients, grants authenticated privileges only on invoices, and adds invoice/client account-match validation for writes.
 - `supabase/tests/invoices-post-rls-verification.sql` is the disposable-only authenticated verification script for invoices RLS. It verifies account isolation plus cross-account and cross-client write denials before any production apply.
+- `supabase/migrations/20260511060000_enable_disputes_rls.sql` is the next applyable disputes RLS migration. It uses the same SECURITY DEFINER helper pattern as statuses, employees, leads, clients, and invoices, grants authenticated privileges only on disputes, and adds dispute/client account-match validation for writes.
+- `supabase/tests/disputes-post-rls-verification.sql` is the disposable-only authenticated verification script for disputes RLS. It verifies account isolation plus cross-account and cross-client write denials before any production apply.
 
 Employees policy draft summary:
 
@@ -221,6 +223,14 @@ Before enabling `employees` RLS:
 - Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun `supabase/tests/invoices-two-account-rls-readiness.sql` and the dedicated post-RLS verifier before production use.
 - Production apply blocked until the disposable post-RLS checks pass.
 - Keep related billing and portal tables separate: payments, services/products, payment history, and customer portal invoice access still need their own ownership and policy work before RLS is enabled for those paths.
+
+## Disputes RLS
+
+- Migration path: `supabase/migrations/20260511060000_enable_disputes_rls.sql`
+- Post-RLS verification path: `supabase/tests/disputes-post-rls-verification.sql`
+- Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun `supabase/tests/disputes-two-account-rls-readiness.sql` and the dedicated post-RLS verifier before production use.
+- Production apply blocked until the disposable post-RLS checks pass.
+- Keep child dispute data separate: `dispute_letters`, persisted letters/documents, calendar events, and portal dispute access still need their own ownership and policy work. `dispute_letters` RLS remains required even after disputes RLS passes.
 
 Rollback notes for future employees RLS apply:
 
