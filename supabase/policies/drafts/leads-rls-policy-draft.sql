@@ -14,14 +14,16 @@
 -- alter table leads force row level security;
 
 -- Policy model:
+-- - The apply migration uses a SECURITY DEFINER helper so authenticated users
+--   can evaluate membership without a direct read grant on account_memberships.
 -- - A user can access a lead only when leads.account_id belongs to one of
 --   their account_memberships rows.
 -- - account_memberships currently has role but no status column, so this draft
 --   treats any membership as active. If a membership status column is added,
 --   include "and account_memberships.status = 'active'" in each subquery.
--- - Lead write policies are drafted for any account member. Tighten writes to
---   owner/admin/manager/sales-style membership roles before apply if the
---   product differentiates lead management permissions.
+-- - Lead write policies are drafted for owner/admin/manager/member roles to
+--   match the proven statuses and employees RLS pattern used for disposable
+--   validation. Tighten writes further only if product permissions demand it.
 
 create policy "leads_select_account_members"
 on leads

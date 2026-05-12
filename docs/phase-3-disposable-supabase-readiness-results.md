@@ -84,6 +84,19 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - cross-account mismatch findings: not audited in this run
 - notes/fixes needed: rerun post-RLS checks after future RLS apply migration
 
+### leads first RLS apply migration
+
+- migration path: `supabase/migrations/20260511030000_enable_leads_rls.sql`
+- test in disposable DB first: yes
+- after applying in disposable DB: rerun `supabase/tests/leads-two-account-rls-readiness.sql` and `supabase/tests/leads-post-rls-verification.sql`
+- production apply blocked until disposable post-RLS denial checks pass: yes
+
+### leads post-RLS verification
+
+- verification script path: `supabase/tests/leads-post-rls-verification.sql`
+- status: pending disposable DB run
+- note: this script uses the same helper-based authenticated-user pattern as statuses and employees and must pass in a disposable session before any production apply
+
 ## clients
 
 - date run: 2026-05-11

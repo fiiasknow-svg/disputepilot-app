@@ -150,6 +150,8 @@ Employees pilot added after the statuses pilot:
 - `supabase/policies/drafts/employees-rls-policy-draft.sql` contains draft-only employees RLS policies for review. It is not an active migration and does not enable RLS.
 - `supabase/migrations/20260511020000_enable_employees_rls.sql` is the first applyable employees RLS migration. It uses a SECURITY DEFINER helper for membership checks, grants authenticated privileges only on employees, and must be tested in a disposable database before production use.
 - `supabase/tests/employees-post-rls-verification.sql` is the disposable-only authenticated verification script for employees RLS. It mirrors the statuses post-RLS helper pattern and must pass before any production apply.
+- `supabase/migrations/20260511030000_enable_leads_rls.sql` is the next applyable leads RLS migration. It uses the same SECURITY DEFINER helper pattern as statuses and employees, grants authenticated privileges only on leads, and must be tested in a disposable database before production use.
+- `supabase/tests/leads-post-rls-verification.sql` is the disposable-only authenticated verification script for leads RLS. It mirrors the helper-based statuses and employees post-RLS pattern and must pass before any production apply.
 
 Employees policy draft summary:
 
@@ -191,6 +193,14 @@ Before enabling `employees` RLS:
 - Review `supabase/policies/drafts/employees-rls-policy-draft.sql` and decide whether write policies should allow every member or only owner/admin/manager roles.
 - Keep production apply blocked until the disposable authenticated post-RLS verifier passes.
 - Confirm whether `account_memberships` needs a `status` column before policies are applied, then include active-membership checks if it exists.
+
+## Leads RLS
+
+- Migration path: `supabase/migrations/20260511030000_enable_leads_rls.sql`
+- Post-RLS verification path: `supabase/tests/leads-post-rls-verification.sql`
+- Disposable-first requirement: apply the migration in a disposable Supabase database first, then rerun `supabase/tests/leads-two-account-rls-readiness.sql` and the dedicated post-RLS verifier before production use.
+- Production apply blocked until the disposable post-RLS checks pass.
+- Use the same helper-based authenticated-user pattern as statuses and employees so membership checks do not require direct `account_memberships` visibility.
 
 Rollback notes for future employees RLS apply:
 
