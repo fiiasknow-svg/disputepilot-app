@@ -9,8 +9,10 @@
 -- - Disputes policies depend on authenticated membership evaluation through a
 --   security-definer helper so policy checks can resolve membership without
 --   granting direct read access to account_memberships.
--- - Dispute writes also require any client_id to belong to the same account_id
---   as the dispute.
+-- - Dispute writes use account_id as the primary tenant boundary. When
+--   disputes.client_id and clients.id are schema-compatible as bigint or uuid,
+--   writes also require client_id to belong to the same account_id as the
+--   dispute.
 -- - This script assumes the disputes migration defines those helpers.
 -- - The actual verification must run with an authenticated session that
 --   resolves auth.uid() to the test user ids below.
@@ -68,15 +70,46 @@ $$;
 
 create or replace function public.disputes_post_rls_client_id(p_email text)
 returns bigint
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
 as $$
-  select c.id
-  from public.clients c
-  where c.email = p_email
-  limit 1;
+declare
+  v_clients_id_type oid;
+  v_disputes_client_id_type oid;
+  v_client_id bigint;
+begin
+  select a.atttypid
+  into v_clients_id_type
+  from pg_attribute a
+  where a.attrelid = 'public.clients'::regclass
+    and a.attname = 'id'
+    and not a.attisdropped;
+
+  select a.atttypid
+  into v_disputes_client_id_type
+  from pg_attribute a
+  where a.attrelid = 'public.disputes'::regclass
+    and a.attname = 'client_id'
+    and not a.attisdropped;
+
+  if v_clients_id_type is distinct from v_disputes_client_id_type
+    or v_clients_id_type is distinct from 'bigint'::regtype
+  then
+    return null;
+  end if;
+
+  execute
+    'select c.id
+     from public.clients c
+     where c.email = $1
+     limit 1'
+  into v_client_id
+  using p_email;
+
+  return v_client_id;
+end;
 $$;
 
 revoke all on function public.disputes_post_rls_snapshot(text) from public;
@@ -216,7 +249,7 @@ insert into disputes (
   account_id
 ) values
   (
-    (select id from clients where email = 'rls-post-rls-dispute-client-a@example.test'),
+    public.disputes_post_rls_client_id('rls-post-rls-dispute-client-a@example.test'),
     'RLS-DISP-POST-VISIBLE-A',
     'A-1001',
     'Credit Card',
@@ -227,7 +260,7 @@ insert into disputes (
     '26000000-0000-4000-8000-000000000001'
   ),
   (
-    (select id from clients where email = 'rls-post-rls-dispute-client-b@example.test'),
+    public.disputes_post_rls_client_id('rls-post-rls-dispute-client-b@example.test'),
     'RLS-DISP-POST-VISIBLE-B',
     'B-1001',
     'Credit Card',
@@ -238,7 +271,7 @@ insert into disputes (
     '26000000-0000-4000-8000-000000000002'
   ),
   (
-    (select id from clients where email = 'rls-post-rls-dispute-client-b@example.test'),
+    public.disputes_post_rls_client_id('rls-post-rls-dispute-client-b@example.test'),
     'RLS-DISP-POST-PROTECTED-B-UPDATE',
     'B-2001',
     'Collection Account',
@@ -249,7 +282,7 @@ insert into disputes (
     '26000000-0000-4000-8000-000000000002'
   ),
   (
-    (select id from clients where email = 'rls-post-rls-dispute-client-b@example.test'),
+    public.disputes_post_rls_client_id('rls-post-rls-dispute-client-b@example.test'),
     'RLS-DISP-POST-PROTECTED-B-DELETE',
     'B-3001',
     'Collection Account',
@@ -272,6 +305,14 @@ begin;
     coalesce(auth.uid()::text, 'null') || ', current_user=' || current_user,
     auth.uid() = '16000000-0000-4000-8000-000000000001'::uuid and current_user = 'authenticated',
     'authenticated context should resolve to Account A';
+
+  insert into disputes_post_rls_results (check_name, expected, actual, passed, notes)
+  select
+    'client_account_validation_mode',
+    'compatible uuid/bigint schemas validate client/account; incompatible schemas skip safely',
+    'validation_supported=' || public.disputes_client_account_validation_supported()::text,
+    true,
+    'When clients.id and disputes.client_id have the same uuid or bigint type, this should be true; otherwise account_id remains the enforced tenant boundary';
 
   insert into disputes_post_rls_results (check_name, expected, actual, passed, notes)
   select
@@ -320,12 +361,12 @@ begin;
 
     insert into disputes_post_rls_results
     values (
-      'account_a_insert_account_a_with_account_a_client',
+      'account_a_insert_account_a_with_optional_client',
       'insert allowed',
       'insert succeeded with id=' || inserted_id::text || ', account_id=' || coalesce(inserted_snapshot.account_id::text, 'null') || ', client_id=' || coalesce(inserted_snapshot.client_id::text, 'null'),
       inserted_snapshot.account_id = '26000000-0000-4000-8000-000000000001'::uuid
-        and inserted_snapshot.client_id = account_a_client_id,
-      'Account A insert with an Account A client should pass'
+        and inserted_snapshot.client_id is not distinct from account_a_client_id,
+      'Account A insert should pass; client_id is present only when client/account validation is schema-supported'
     );
 
     delete from disputes where id = inserted_id;
@@ -333,11 +374,11 @@ begin;
     when insufficient_privilege or check_violation then
       insert into disputes_post_rls_results
       values (
-        'account_a_insert_account_a_with_account_a_client',
+        'account_a_insert_account_a_with_optional_client',
         'insert allowed',
         sqlerrm,
         false,
-        'Account A insert with an Account A client should have been allowed'
+        'Account A insert should have been allowed'
       );
   end $$;
 
@@ -346,6 +387,18 @@ begin;
     account_b_client_id bigint;
   begin
     account_b_client_id := public.disputes_post_rls_client_id('rls-post-rls-dispute-client-b@example.test');
+
+    if not public.disputes_client_account_validation_supported() then
+      insert into disputes_post_rls_results
+      values (
+        'account_a_insert_account_a_with_account_b_client_blocked',
+        'skipped when client schema is incompatible',
+        'validation_supported=false, account_b_client_id=' || coalesce(account_b_client_id::text, 'null'),
+        true,
+        'Production-safe policy does not compare incompatible clients.id and disputes.client_id types'
+      );
+      return;
+    end if;
 
     begin
       insert into disputes (
@@ -506,6 +559,18 @@ begin;
     select *
     into before_snapshot
     from public.disputes_post_rls_snapshot('RLS-DISP-POST-VISIBLE-A');
+
+    if not public.disputes_client_account_validation_supported() then
+      insert into disputes_post_rls_results
+      values (
+        'account_a_move_dispute_to_account_b_client_blocked',
+        'skipped when client schema is incompatible',
+        'validation_supported=false, account_b_client_id=' || coalesce(account_b_client_id::text, 'null'),
+        true,
+        'Production-safe policy does not compare incompatible clients.id and disputes.client_id types'
+      );
+      return;
+    end if;
 
     begin
       update disputes

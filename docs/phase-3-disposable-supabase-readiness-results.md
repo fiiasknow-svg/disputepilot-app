@@ -174,14 +174,16 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - test in disposable DB first: yes
 - after applying in disposable DB: rerun `supabase/tests/disputes-two-account-rls-readiness.sql` and `supabase/tests/disputes-post-rls-verification.sql`
 - production apply blocked until disposable post-RLS denial checks pass: yes
-- note: dispute insert/update checks also require any `client_id` to belong to the same `account_id` as the dispute
+- note: dispute insert/update checks use `account_id` as the primary tenant boundary. The apply migration now validates `client_id` against `clients.account_id` only when `disputes.client_id` and `clients.id` are schema-compatible.
+- note: production retry discovery on 2026-05-13 found `public.clients.id` is `uuid` while `public.disputes.client_id` appears to be `bigint`; the previous helper attempted `uuid = bigint` and failed before policies could be applied. The helper was changed to skip the client relationship comparison in that incompatible schema instead of over-blocking valid account-owned disputes.
+- note: the apply migration now provides both `bigint` and `uuid` overloads so policy creation can resolve safely in either schema shape; compatible schemas still require a matching client id and account id.
 - note: `dispute_letters` still require their own RLS; disputes RLS does not protect child letter rows by itself
 
 ### disputes post-RLS verification
 
 - verification script path: `supabase/tests/disputes-post-rls-verification.sql`
 - status: pending disposable DB run
-- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, clients, and invoices, with additional dispute/client account-match denial checks
+- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, clients, and invoices. It now records whether dispute/client account validation is schema-supported for compatible bigint or uuid schemas; cross-client denial checks run only when the schema can safely compare `disputes.client_id` to `clients.id`, while account membership denial checks always run.
 
 ## calendar_events
 

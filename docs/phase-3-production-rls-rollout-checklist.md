@@ -47,7 +47,7 @@ For each table:
 | 3 | `leads` | `supabase/migrations/20260511030000_enable_leads_rls.sql` | Verify leads list/search/add/edit workflows for an account member, and confirm cross-account/no-membership access is blocked. |
 | 4 | `clients` | `supabase/migrations/20260511040000_enable_clients_rls.sql` | Verify client list, add, edit, detail, search, and delete-safe workflows for an account member, and confirm cross-account/no-membership access is blocked. |
 | 5 | `invoices` | `supabase/migrations/20260511050000_enable_invoices_rls.sql` | Verify billing invoice pages load, account-member invoice writes work, and invoices cannot be written with another account's `account_id`. Also verify cross-client write denial only when production schema confirms `invoices.client_id` is compatible with `clients.id`. |
-| 6 | `disputes` | `supabase/migrations/20260511060000_enable_disputes_rls.sql` | Verify dispute list/detail/status workflows load, account-member dispute writes work, and disputes cannot be written with another account's `account_id` or `client_id`. |
+| 6 | `disputes` | `supabase/migrations/20260511060000_enable_disputes_rls.sql` | Verify dispute list/detail/status workflows load, account-member dispute writes work, and disputes cannot be written with another account's `account_id`. Also verify cross-client write denial only when production schema confirms `disputes.client_id` is compatible with `clients.id`. |
 | 7 | `calendar_events` | `supabase/migrations/20260511070000_enable_calendar_events_rls.sql` | Verify calendar events load and can be created for the account, and events cannot be written with another account's `account_id` or `client_id`. |
 | 8 | `dispute_letters` | `supabase/migrations/20260511080000_enable_dispute_letters_rls.sql` | Verify dispute letter workflows load for account-owned disputes, and letters cannot be written with another account's `account_id` or `dispute_id`. |
 | 9 | `affiliates` | `supabase/migrations/20260511090000_enable_affiliates_rls.sql` | Verify affiliate list/add/delete workflows for an account member, and confirm cross-account/no-membership access is blocked. |
@@ -67,6 +67,13 @@ For each table:
 - The invoices migration now keeps `account_id` membership as the required tenant boundary for SELECT/INSERT/UPDATE/DELETE and performs invoice/client account validation only when `clients.id` and `invoices.client_id` are schema-compatible. This avoids over-blocking valid account-owned invoices in the current production schema.
 - A later production retry resolved the policy call as `public.invoices_client_matches_account(uuid, uuid)`, so the migration now includes both `bigint` and `uuid` overloads. The uuid overload validates only a real `clients.id = p_client_id` and same `account_id` match.
 - Before retrying invoices RLS, confirm the migration file includes `public.invoices_client_account_validation_supported()` plus both PL/pgSQL helpers: `public.invoices_client_matches_account(bigint, uuid)` and `public.invoices_client_matches_account(uuid, uuid)`.
+
+## Production Disputes Checkpoint
+
+- Production disputes RLS apply failed on 2026-05-13 in `supabase/migrations/20260511060000_enable_disputes_rls.sql`.
+- Root cause: `public.clients.id` is `uuid` in production while `public.disputes.client_id` appears to be `bigint`; the original helper compared `clients.id = disputes.client_id`, producing `operator does not exist: uuid = bigint`.
+- The disputes migration now keeps `account_id` membership as the required tenant boundary for SELECT/INSERT/UPDATE/DELETE and performs dispute/client account validation only when `clients.id` and `disputes.client_id` are schema-compatible. This avoids over-blocking valid account-owned disputes in the current production schema.
+- Before retrying disputes RLS, confirm the migration file includes `public.disputes_client_account_validation_supported()` plus both PL/pgSQL helpers: `public.disputes_client_matches_account(bigint, uuid)` and `public.disputes_client_matches_account(uuid, uuid)`.
 
 ## App Workflow Checks
 

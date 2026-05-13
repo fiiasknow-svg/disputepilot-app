@@ -20,8 +20,12 @@
 -- Policy model:
 -- - A user can access a dispute only when disputes.account_id belongs to one
 --   of their account_memberships rows.
--- - If client_id is present, the referenced client must belong to the same
---   account_id as the dispute.
+-- - account_id is the primary tenant boundary.
+-- - If client_id is present and disputes.client_id is schema-compatible with
+--   clients.id, the referenced client must belong to the same account_id as
+--   the dispute. Production has been observed with clients.id as uuid while
+--   disputes.client_id appears to be bigint, so an apply migration must not
+--   compare incompatible columns directly.
 -- - account_memberships currently has role but no status column, so this draft
 --   treats any membership as active. If a membership status column is added,
 --   include "and account_memberships.status = 'active'" in each subquery.
@@ -51,15 +55,7 @@ with check (
     from account_memberships
     where user_id = auth.uid()
   )
-  and (
-    client_id is null
-    or exists (
-      select 1
-      from clients
-      where clients.id = disputes.client_id
-        and clients.account_id = disputes.account_id
-    )
-  )
+  and public.disputes_client_matches_account(client_id, account_id)
 );
 
 create policy "disputes_update_account_members"
@@ -79,15 +75,7 @@ with check (
     from account_memberships
     where user_id = auth.uid()
   )
-  and (
-    client_id is null
-    or exists (
-      select 1
-      from clients
-      where clients.id = disputes.client_id
-        and clients.account_id = disputes.account_id
-    )
-  )
+  and public.disputes_client_matches_account(client_id, account_id)
 );
 
 create policy "disputes_delete_account_members"
@@ -112,8 +100,13 @@ using (
 -- Missing or legacy client_id rows:
 -- - This draft allows disputes.client_id to remain null because legacy dispute
 --   rows may not have a durable client relationship yet.
--- - When client_id is present, insert and update policies require the client
---   to share the dispute account_id.
+-- - When client_id is present and schema-compatible with clients.id, insert
+--   and update policies require the client to share the dispute account_id.
+--   The apply migration should support both uuid and bigint overloads for
+--   public.disputes_client_matches_account.
+-- - When the schema is incompatible, do not compare clients.id to
+--   disputes.client_id. Keep account_id membership as the enforced tenant
+--   boundary until the legacy client relationship is repaired or mapped.
 -- - Before applying RLS, audit disputes with null client_id and decide whether
 --   they are valid account-level dispute rows, data needing repair, or rows to
 --   archive.
