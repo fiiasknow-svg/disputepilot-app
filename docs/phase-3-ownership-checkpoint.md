@@ -1,8 +1,8 @@
 # Phase 3 Ownership Checkpoint
 
-Date: 2026-05-09
+Date: 2026-05-13
 
-No RLS is enabled yet. No Phase 3 `account_id` column is enforced as `NOT NULL` yet.
+Phase 3 production RLS is enabled for the production tables that exist: `employees`, `leads`, `clients`, `invoices`, `disputes`, `calendar_events`, and `affiliates`. Production skipped `statuses` and `dispute_letters` because those tables do not exist in production. No Phase 3 `account_id` column is enforced as `NOT NULL` yet.
 
 Final disposable RLS completion audit: [docs/phase-3-rls-completion-audit.md](./phase-3-rls-completion-audit.md).
 
@@ -19,6 +19,52 @@ Final disposable RLS completion audit: [docs/phase-3-rls-completion-audit.md](./
 | `calendar_events` | yes | yes | calendar persisted read, insert, update, delete | yes | yes |
 | `dispute_letters` | yes | yes | dispute detail read path | yes | yes |
 | `affiliates` | yes | yes | affiliate page read, insert, delete | yes | yes |
+
+## Production RLS Rollout Result
+
+Production RLS applied and live-tested successfully:
+
+- `employees`
+- `leads`
+- `clients`
+- `invoices`
+- `disputes`
+- `calendar_events`
+- `affiliates`
+
+Production skipped because the tables do not exist:
+
+- `statuses`
+- `dispute_letters`
+
+Live pages verified after apply:
+
+- `/employees`
+- `/leads`
+- `/clients`
+- `/billing`
+- `/disputes`
+- `/disputes/status`
+- `/calendar`
+- `/leads/affiliates`
+
+Production data backfills performed:
+
+| Table | Rows backfilled |
+| --- | ---: |
+| `leads` | 50 |
+| `clients` | 8 |
+| `invoices` | 1 |
+| `disputes` | 5 |
+| `calendar_events` | 74 |
+| `affiliates` | 1 |
+
+Production issues found and fixed:
+
+- Employees app save needed production-safe columns.
+- Account/accounts membership read policies were needed.
+- Invoices, disputes, and calendar_events client_id compatibility needed production-safe helpers.
+- Affiliates page needed production schema support and row visibility after save.
 
 ## Final Pre-RLS Matrix
 
@@ -45,6 +91,8 @@ Final disposable RLS completion audit: [docs/phase-3-rls-completion-audit.md](./
 - `dp_auth` client-portal bridge: still present in `components/ClientPortalLayout.tsx` and `components/AuthLoginForm.tsx`; it is separate from business account membership and still needs a dedicated portal identity path.
 
 ## Known Gaps Before RLS
+
+The items below were the pre-production RLS checklist. The production rollout is now complete for existing production tables; keep this section as historical context plus guidance for any future private persisted table.
 
 - Run every `supabase/tests/*two-account-rls-readiness.sql` script against a disposable Supabase database.
 - Use [docs/phase-3-disposable-supabase-readiness-runbook.md](./phase-3-disposable-supabase-readiness-runbook.md) as the execution checklist and recording sheet.
@@ -149,6 +197,8 @@ Final disposable RLS completion audit: [docs/phase-3-rls-completion-audit.md](./
 
 ## Safest Next Tasks
 
-1. Close the remaining lead-derived unscoped reads in calendar and reports while preserving fallback behavior, then update the leads readiness notes if needed.
-2. Run the existing readiness SQL scripts in a disposable Supabase database and record audit results for null `account_id`, orphan child rows, and parent/child account mismatches before drafting any RLS apply migration.
-3. Decide whether `payments` and `services` should stay local-only or get their own ownership pilots before any billing persistence work.
+1. Define client portal policy separation before exposing portal-private data through business account membership policies.
+2. Harden or remove the `dp_auth` bridge after a dedicated portal identity path is in place.
+3. Resolve duplicate React key warnings separately from the RLS rollout.
+4. Run and record a final live smoke audit.
+5. Decide whether `payments` and `services` should stay local-only or get their own ownership pilots before any billing persistence work.

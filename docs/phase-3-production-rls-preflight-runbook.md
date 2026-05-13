@@ -1,8 +1,8 @@
 # Phase 3 Production RLS Preflight Runbook
 
-Date: 2026-05-12
+Date: 2026-05-13
 
-Use this runbook before applying any Phase 3 RLS migration to production.
+Use this runbook before applying any future Phase 3-style RLS migration to production. The original Phase 3 production rollout has completed for the production tables that exist.
 
 ## Warning
 
@@ -32,7 +32,15 @@ Based on the visible/exported production audit result provided by the operator:
 - Active private tables showed `0` total rows in the visible audit output.
 - Visible `blocks_rls` values were `false`.
 
-This note records the production preflight observation only. Production RLS apply remains a separate manual rollout decision and should not proceed without the required backup/restore checkpoint, rollout order review, and post-apply verification plan.
+This note records the production preflight observation that preceded the rollout. The rollout later completed for `employees`, `leads`, `clients`, `invoices`, `disputes`, `calendar_events`, and `affiliates`. Production skipped `statuses` and `dispute_letters` because those tables do not exist in production.
+
+## Production Rollout Completion Record
+
+- RLS applied and live-tested: `employees`, `leads`, `clients`, `invoices`, `disputes`, `calendar_events`, `affiliates`.
+- Skipped because table does not exist in production: `statuses`, `dispute_letters`.
+- Live pages verified: `/employees`, `/leads`, `/clients`, `/billing`, `/disputes`, `/disputes/status`, `/calendar`, `/leads/affiliates`.
+- Production backfills performed: leads 50 rows, clients 8 rows, invoices 1 row, disputes 5 rows, calendar_events 74 rows, affiliates 1 row.
+- Issues fixed during rollout: employees production-safe save columns, account/accounts membership read policies, invoices/disputes/calendar_events client_id compatibility helpers, affiliates production schema and row visibility.
 
 ## How to Run
 
@@ -47,7 +55,7 @@ This note records the production preflight observation only. Production RLS appl
 
 ## Safe to Proceed Criteria
 
-Production RLS can move to rollout planning only when all of these are true:
+Future production RLS can move to rollout planning only when all of these are true:
 
 - Every protected table has `null_account_id_rows = 0`, or every remaining null row is explicitly documented as intentionally hidden after RLS.
 - Orphan parent relationship counts are `0`.
@@ -91,17 +99,19 @@ For each row in the combined results table, record:
 
 ## Suggested Rollout Order After a Clean Audit
 
-Apply one production RLS migration at a time and stop after each table for verification.
+For future tables, apply one production RLS migration at a time and stop after each table for verification. The original Phase 3 rollout used the table-by-table approach and completed for the existing production tables.
 
-1. `statuses`
-2. `employees`
-3. `leads`
-4. `clients`
-5. `affiliates`
-6. `invoices`
-7. `disputes`
-8. `calendar_events`
-9. `dispute_letters`
+Original Phase 3 production result:
+
+1. `statuses`: skipped, missing production table
+2. `employees`: applied and verified
+3. `leads`: applied and verified
+4. `clients`: applied and verified
+5. `invoices`: applied and verified
+6. `disputes`: applied and verified
+7. `calendar_events`: applied and verified
+8. `dispute_letters`: skipped, missing production table
+9. `affiliates`: applied and verified
 
 ## Post-Apply Verification
 

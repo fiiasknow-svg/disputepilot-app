@@ -9,6 +9,43 @@ Disposable Supabase project / database: disposable Supabase DB via SQL Editor
 Fill this document only after running the disposable Supabase validation runbook.
 Record facts from the actual SQL output. Do not infer pass/fail.
 
+## Production Rollout Completion Note
+
+As of 2026-05-13, production RLS has been applied and live-tested successfully for `employees`, `leads`, `clients`, `invoices`, `disputes`, `calendar_events`, and `affiliates`.
+
+Production skipped `statuses` and `dispute_letters` because those tables do not exist in production.
+
+Production live pages verified after apply:
+
+- `/employees`
+- `/leads`
+- `/clients`
+- `/billing`
+- `/disputes`
+- `/disputes/status`
+- `/calendar`
+- `/leads/affiliates`
+
+Production data backfills performed:
+
+| Table | Rows backfilled |
+| --- | ---: |
+| `leads` | 50 |
+| `clients` | 8 |
+| `invoices` | 1 |
+| `disputes` | 5 |
+| `calendar_events` | 74 |
+| `affiliates` | 1 |
+
+Production issues found and fixed during rollout:
+
+- Employees app save needed production-safe columns.
+- Account/accounts membership read policies were needed so authenticated app sessions could resolve account context.
+- Invoices, disputes, and calendar_events client_id compatibility needed production-safe helpers.
+- Affiliates page needed production schema support and a row visibility fix after save.
+
+Remaining follow-up: client portal policy separation, `dp_auth` bridge hardening/removal, duplicate React key warnings, and a final live smoke audit.
+
 ## statuses
 
 - date run: 2026-05-11
@@ -274,13 +311,10 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 
 ## Final Go / No-Go Summary
 
-- Ready for first RLS apply candidate: yes
-- Safest first RLS candidate: statuses or employees
-- production preflight note: the read-only production RLS preflight audit was run on 2026-05-12 after the combined-output fix; based on the visible/exported operator-provided result, the combined output returned 29 rows, active private tables showed 0 total rows, and no blocker rows were observed. Production RLS apply remains a separate manual rollout decision.
+- Ready for first RLS apply candidate: completed for existing production tables
+- Safest first RLS candidate: completed; production skipped missing `statuses` and applied `employees` first
+- production preflight note: the read-only production RLS preflight audit was run on 2026-05-12 after the combined-output fix; based on the visible/exported operator-provided result, the combined output returned 29 rows, active private tables showed 0 total rows, and no blocker rows were observed. Production RLS then completed for the seven existing production tables listed above.
 - Blockers:
-  - actual RLS migrations not applied yet
-  - write-role semantics still need final decision
-  - null/orphan/cross-account production audits still needed before production RLS
-  - post-RLS denial checks must be rerun after enabling policies in disposable DB
-  - statuses apply migration must pass disposable DB post-RLS checks before production use
-  - statuses post-RLS verification must use the dedicated authenticated-user script, not the readiness script alone
+  - none for the completed seven-table production RLS rollout
+  - statuses and dispute_letters are not production blockers because the tables do not exist in production
+  - future persisted portal/letter/payment/service tables still require their own ownership and RLS work before production use

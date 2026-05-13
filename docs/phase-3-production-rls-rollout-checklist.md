@@ -1,8 +1,47 @@
 # Phase 3 Production RLS Rollout Checklist
 
-Date: 2026-05-12
+Date: 2026-05-13
 
-Use this checklist only after the production preflight audit is current and clean. This is a production-impacting rollout. Do not apply more than one table migration at a time, and stop immediately if any verification step fails.
+This checklist records the completed Phase 3 production RLS rollout. It remains useful as the incident/change log for what was applied, skipped, verified, and left for follow-up.
+
+## Final Rollout Status
+
+Production RLS was applied and live-tested successfully for:
+
+- `employees`
+- `leads`
+- `clients`
+- `invoices`
+- `disputes`
+- `calendar_events`
+- `affiliates`
+
+Production skipped:
+
+- `statuses`: table does not exist in production.
+- `dispute_letters`: table does not exist in production.
+
+Live pages verified after apply:
+
+- `/employees`
+- `/leads`
+- `/clients`
+- `/billing`
+- `/disputes`
+- `/disputes/status`
+- `/calendar`
+- `/leads/affiliates`
+
+Production data backfills performed:
+
+| Table | Rows backfilled |
+| --- | ---: |
+| `leads` | 50 |
+| `clients` | 8 |
+| `invoices` | 1 |
+| `disputes` | 5 |
+| `calendar_events` | 74 |
+| `affiliates` | 1 |
 
 ## Required Preflight
 
@@ -42,23 +81,30 @@ For each table:
 
 | Step | Table | Migration file | Post-apply smoke verification |
 | --- | --- | --- | --- |
-| 1 | `statuses` | `supabase/migrations/20260511010000_enable_statuses_rls.sql` | Verify statuses load where used by disputes/leads, account members can read their account statuses, and anon/no-membership users cannot read statuses. |
-| 2 | `employees` | `supabase/migrations/20260511020000_enable_employees_rls.sql` | Verify the employees page loads, account members can read and manage their account employees, and cross-account/no-membership access is blocked. |
-| 3 | `leads` | `supabase/migrations/20260511030000_enable_leads_rls.sql` | Verify leads list/search/add/edit workflows for an account member, and confirm cross-account/no-membership access is blocked. |
-| 4 | `clients` | `supabase/migrations/20260511040000_enable_clients_rls.sql` | Verify client list, add, edit, detail, search, and delete-safe workflows for an account member, and confirm cross-account/no-membership access is blocked. |
-| 5 | `invoices` | `supabase/migrations/20260511050000_enable_invoices_rls.sql` | Verify billing invoice pages load, account-member invoice writes work, and invoices cannot be written with another account's `account_id`. Also verify cross-client write denial only when production schema confirms `invoices.client_id` is compatible with `clients.id`. |
-| 6 | `disputes` | `supabase/migrations/20260511060000_enable_disputes_rls.sql` | Verify dispute list/detail/status workflows load, account-member dispute writes work, and disputes cannot be written with another account's `account_id`. Also verify cross-client write denial only when production schema confirms `disputes.client_id` is compatible with `clients.id`. |
-| 7 | `calendar_events` | `supabase/migrations/20260511070000_enable_calendar_events_rls.sql` | Verify calendar events load and can be created for the account, and events cannot be written with another account's `account_id`. Also verify cross-client write denial only when production schema confirms `calendar_events.client_id` is compatible with `clients.id`. |
-| 8 | `dispute_letters` | `supabase/migrations/20260511080000_enable_dispute_letters_rls.sql` | Verify dispute letter workflows load for account-owned disputes, and letters cannot be written with another account's `account_id` or `dispute_id`. |
-| 9 | `affiliates` | `supabase/migrations/20260511090000_enable_affiliates_rls.sql` | Verify affiliate list/add/delete workflows for an account member, and confirm cross-account/no-membership access is blocked. |
+| 1 | `statuses` | `supabase/migrations/20260511010000_enable_statuses_rls.sql` | Skipped in production because the table does not exist. |
+| 2 | `employees` | `supabase/migrations/20260511020000_enable_employees_rls.sql` | Applied; `/employees` live-tested successfully. |
+| 3 | `leads` | `supabase/migrations/20260511030000_enable_leads_rls.sql` | Applied; `/leads` live-tested successfully after 50-row ownership backfill. |
+| 4 | `clients` | `supabase/migrations/20260511040000_enable_clients_rls.sql` | Applied; `/clients` live-tested successfully after 8-row ownership backfill. |
+| 5 | `invoices` | `supabase/migrations/20260511050000_enable_invoices_rls.sql` | Applied; `/billing` live-tested successfully after 1-row ownership backfill and client_id compatibility helper fix. |
+| 6 | `disputes` | `supabase/migrations/20260511060000_enable_disputes_rls.sql` | Applied; `/disputes` and `/disputes/status` live-tested successfully after 5-row ownership backfill and client_id compatibility helper fix. |
+| 7 | `calendar_events` | `supabase/migrations/20260511070000_enable_calendar_events_rls.sql` | Applied; `/calendar` live-tested successfully after 74-row ownership backfill and client_id compatibility helper fix. |
+| 8 | `dispute_letters` | `supabase/migrations/20260511080000_enable_dispute_letters_rls.sql` | Skipped in production because the table does not exist. |
+| 9 | `affiliates` | `supabase/migrations/20260511090000_enable_affiliates_rls.sql` | Applied; `/leads/affiliates` live-tested successfully after 1-row ownership backfill and production schema UI fix. |
 
 ## Production Employees Checkpoint
 
 - Production employees RLS was applied first.
+- Employees app save needed production-safe columns before the production workflow was reliable.
 - Employee save initially required account foundation read policies because the app must resolve the signed-in user's `account_id` from `account_memberships` before inserting an employee row.
 - The account foundation read policy migration is `supabase/migrations/20260511100000_add_account_membership_read_policies.sql`.
 - The policies allow authenticated users to read only their own `account_memberships` rows and the `accounts` rows where they are members.
 - Employee save was verified in production after those read policies were applied manually.
+
+## Production Leads And Clients Checkpoint
+
+- Production leads RLS was applied and `/leads` was live-tested after 50 lead rows were backfilled with `account_id`.
+- Production clients RLS was applied and `/clients` was live-tested after 8 client rows were backfilled with `account_id`.
+- Account membership scoping remained the enforced tenant boundary.
 
 ## Production Invoices Checkpoint
 
@@ -82,6 +128,12 @@ For each table:
 - The calendar_events migration now keeps `account_id` membership as the required tenant boundary for SELECT/INSERT/UPDATE/DELETE and performs calendar event/client account validation only when `clients.id` and `calendar_events.client_id` are schema-compatible. This avoids over-blocking valid account-owned calendar events in the current production schema.
 - Before retrying calendar_events RLS, confirm the migration file includes `public.calendar_events_client_account_validation_supported()` plus both PL/pgSQL helpers: `public.calendar_events_client_matches_account(bigint, uuid)` and `public.calendar_events_client_matches_account(uuid, uuid)`.
 
+## Production Affiliates Checkpoint
+
+- Production affiliates RLS was applied and `/leads/affiliates` was live-tested after 1 affiliate row was backfilled with `account_id`.
+- The affiliates page needed production schema support after RLS because production uses `full_name`, `email`, `phone`, `company_name`, `referral_code`, `status`, `notes`, and `account_id`.
+- Affiliate save/delete behavior now preserves account_id scoping and visible errors while rendering saved rows with production fields.
+
 ## App Workflow Checks
 
 After each table migration, verify the relevant production UI as an authenticated account member:
@@ -95,7 +147,7 @@ After each table migration, verify the relevant production UI as an authenticate
 
 ## Final Verification
 
-After all nine table migrations pass post-apply smoke checks:
+After all applicable production table migrations pass post-apply smoke checks:
 
 1. Run `npm run build` locally against the production-bound code.
 2. Run the full Playwright suite: `npx playwright test --project=chromium --config=playwright.config.ts`.
@@ -108,6 +160,8 @@ After all nine table migrations pass post-apply smoke checks:
 9. Confirm live calendar checks.
 10. Confirm live settings/configuration checks.
 11. Record final go/no-go and any follow-up defects.
+
+Final rollout go/no-go: go for the seven existing production tables. `statuses` and `dispute_letters` remain skipped unless those tables are later introduced in production.
 
 ## Rollback Notes
 
@@ -123,3 +177,4 @@ After all nine table migrations pass post-apply smoke checks:
 - Define and implement client portal-specific policy separation.
 - Remove or harden the `dp_auth` bridge after production RLS behavior is proven.
 - Resolve duplicate React key warnings separately from the production RLS rollout.
+- Run and record a final live smoke audit.
