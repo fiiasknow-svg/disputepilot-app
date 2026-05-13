@@ -47,6 +47,26 @@ function affiliatePhone(affiliate: any) {
   return affiliate.phone || affiliate.cell_phone || affiliate.office_phone || "";
 }
 
+function affiliateStatus(affiliate: any) {
+  return affiliate.status || "Active";
+}
+
+function mergeAffiliates(primary: any[], secondary: any[]) {
+  const seen = new Set<string>();
+  const merged: any[] = [];
+
+  for (const affiliate of [...primary, ...secondary]) {
+    const key = affiliate.id
+      ? `id:${affiliate.id}`
+      : `affiliate:${affiliate.email || affiliate.referral_code || affiliate.full_name || affiliate.created_at}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(affiliate);
+  }
+
+  return merged;
+}
+
 export default function Page() {
   const [mainTab, setMainTab] = useState("Manage Affiliate");
   const [filterTab, setFilterTab] = useState("Active");
@@ -78,7 +98,7 @@ export default function Page() {
     return data?.account_id || null;
   }
 
-  async function load() {
+  async function load(preservedAffiliates: any[] = []) {
     setLoading(true);
     setError("");
     const localAffiliates = readLocalAffiliates();
@@ -96,10 +116,11 @@ export default function Page() {
 
         const scopedAffiliates = data || [];
         const scopedIds = new Set(scopedAffiliates.map((affiliate: any) => affiliate.id));
-        setAffiliates([
+        const visibleAffiliates = [
           ...localAffiliates.filter((affiliate: any) => !scopedIds.has(affiliate.id)),
           ...scopedAffiliates,
-        ]);
+        ];
+        setAffiliates(mergeAffiliates(preservedAffiliates, visibleAffiliates));
         setLoading(false);
         return;
       }
@@ -109,12 +130,13 @@ export default function Page() {
 
       const remoteAffiliates = data || [];
       const remoteIds = new Set(remoteAffiliates.map((affiliate: any) => affiliate.id));
-      setAffiliates([
+      const visibleAffiliates = [
         ...localAffiliates.filter((affiliate: any) => !remoteIds.has(affiliate.id)),
         ...remoteAffiliates,
-      ]);
+      ];
+      setAffiliates(mergeAffiliates(preservedAffiliates, visibleAffiliates));
     } catch (err: any) {
-      setAffiliates(localAffiliates);
+      setAffiliates(mergeAffiliates(preservedAffiliates, localAffiliates));
       setError(err?.message ? `Could not load affiliates: ${err.message}` : "Could not load affiliates.");
     }
 
@@ -148,7 +170,7 @@ export default function Page() {
       setNotice(`Saved affiliate: ${affiliateName(savedAffiliate)}`);
       setShowForm(false);
       setForm({ ...EMPTY_FORM });
-      await load();
+      await load([savedAffiliate]);
     } catch (err: any) {
       const localAffiliate = {
         ...basePayload,
@@ -193,7 +215,7 @@ export default function Page() {
     }
   }
 
-  const filtered = affiliates.filter(affiliate => affiliate.status === filterTab);
+  const filtered = affiliates.filter(affiliate => affiliateStatus(affiliate).toLowerCase() === filterTab.toLowerCase());
   const inp: React.CSSProperties = {
     width: "100%",
     padding: "9px 12px",
@@ -277,8 +299,8 @@ export default function Page() {
                       <td style={{ padding: "11px 14px", fontSize: 13, color: "#475569" }}>{affiliate.email || "-"}</td>
                       <td style={{ padding: "11px 14px", fontSize: 13, color: "#475569" }}>{affiliate.referral_code || "-"}</td>
                       <td style={{ padding: "11px 14px" }}>
-                        <span style={{ background: (STATUS_C[affiliate.status] || "#94a3b8") + "22", color: STATUS_C[affiliate.status] || "#64748b", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>
-                          {affiliate.status || "Active"}
+                        <span style={{ background: (STATUS_C[affiliateStatus(affiliate)] || "#94a3b8") + "22", color: STATUS_C[affiliateStatus(affiliate)] || "#64748b", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>
+                          {affiliateStatus(affiliate)}
                         </span>
                       </td>
                       <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b", maxWidth: 220, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{affiliate.notes || "-"}</td>
