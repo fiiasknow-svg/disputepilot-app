@@ -53,9 +53,23 @@ test('leads and affiliates page actions are usable without app error', async ({ 
   const affiliateModal = page.getByRole('heading', { name: 'Add New Affiliate' }).locator('xpath=..');
   await expect(affiliateModal).toBeVisible();
   await affiliateModal.locator('input').nth(0).fill(`Affiliate ${unique}`);
-  await affiliateModal.locator('input').nth(4).fill(`affiliate-${unique}@example.test`);
-  await affiliateModal.getByRole('button', { name: 'Cancel' }).click();
+  await affiliateModal.locator('input').nth(1).fill(`Referral Co ${unique}`);
+  await affiliateModal.locator('input').nth(2).fill('9047623840');
+  await affiliateModal.locator('input').nth(3).fill(`affiliate-${unique}@example.test`);
+  await affiliateModal.locator('input').nth(4).fill(`AFF-${unique}`);
+  await affiliateModal.getByRole('button', { name: 'Add Affiliate' }).click();
   await expect(affiliateModal).toHaveCount(0);
+  await expect(page.getByText(new RegExp(`Saved affiliate( locally)?: Affiliate ${unique}`))).toBeVisible();
+  await expect(page.locator('tbody').getByText(`Affiliate ${unique}`, { exact: true })).toBeVisible();
+  await expect(page.locator('tbody').getByText('9047623840', { exact: true })).toBeVisible();
+  await expect(page.locator('tbody').getByText(`AFF-${unique}`, { exact: true })).toBeVisible();
+
+  const saveError = page.getByRole('alert').filter({ hasText: /Affiliate save did not reach Supabase:/ });
+  if (await saveError.count()) {
+    await expect(saveError).toBeVisible();
+    await expect(saveError).not.toHaveText(/^Affiliate save did not reach Supabase:\s*$/);
+  }
+
   await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
 
   expect(pageErrors).toEqual([]);
