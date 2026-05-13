@@ -9,8 +9,11 @@
 -- - supabase/tests/invoices-post-rls-verification.sql passes in the
 --   disposable database after this migration is applied.
 -- - null invoices.account_id rows have been audited and intentionally handled.
--- - invoices with client_id have been audited so the client account matches
---   invoices.account_id.
+-- - invoices.account_id has been audited as the production tenant boundary.
+-- - invoices with client_id have been audited when invoices.client_id and
+--   clients.id are schema-compatible. Production has been observed with
+--   clients.id as uuid and invoices.client_id as bigint, so this migration
+--   must not assume those columns can always be compared.
 -- - payments, services/products, and portal invoice access are handled
 --   separately.
 
@@ -57,24 +60,85 @@ create or replace function public.invoices_client_matches_account(
   p_account_id uuid
 )
 returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_clients_id_type oid;
+  v_invoices_client_id_type oid;
+  v_matches boolean;
+begin
+  if p_client_id is null then
+    return true;
+  end if;
+
+  select a.atttypid
+  into v_clients_id_type
+  from pg_attribute a
+  where a.attrelid = 'public.clients'::regclass
+    and a.attname = 'id'
+    and not a.attisdropped;
+
+  select a.atttypid
+  into v_invoices_client_id_type
+  from pg_attribute a
+  where a.attrelid = 'public.invoices'::regclass
+    and a.attname = 'client_id'
+    and not a.attisdropped;
+
+  -- Production has been observed with public.clients.id as uuid and
+  -- public.invoices.client_id as bigint. In that shape there is no safe
+  -- client/account comparison to perform here, so account_id remains the
+  -- tenant boundary and client validation is intentionally skipped.
+  if v_clients_id_type is distinct from v_invoices_client_id_type
+    or v_clients_id_type is distinct from 'bigint'::regtype
+  then
+    return true;
+  end if;
+
+  execute
+    'select exists (
+       select 1
+       from public.clients c
+       where c.id = $1
+         and c.account_id = $2
+     )'
+  into v_matches
+  using p_client_id, p_account_id;
+
+  return coalesce(v_matches, false);
+end;
+$$;
+
+create or replace function public.invoices_client_account_validation_supported()
+returns boolean
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select p_client_id is null
-    or exists (
-      select 1
-      from public.clients c
-      where c.id = p_client_id
-        and c.account_id = p_account_id
-    );
+  select coalesce((
+    select clients_id.atttypid = invoices_client_id.atttypid
+      and clients_id.atttypid = 'bigint'::regtype
+    from pg_attribute clients_id
+    cross join pg_attribute invoices_client_id
+    where clients_id.attrelid = 'public.clients'::regclass
+      and clients_id.attname = 'id'
+      and not clients_id.attisdropped
+      and invoices_client_id.attrelid = 'public.invoices'::regclass
+      and invoices_client_id.attname = 'client_id'
+      and not invoices_client_id.attisdropped
+  ), false);
 $$;
 
 revoke all on function public.invoices_has_membership(uuid, text[]) from public;
 revoke all on function public.invoices_client_matches_account(bigint, uuid) from public;
+revoke all on function public.invoices_client_account_validation_supported() from public;
 grant execute on function public.invoices_has_membership(uuid, text[]) to authenticated;
 grant execute on function public.invoices_client_matches_account(bigint, uuid) to authenticated;
+grant execute on function public.invoices_client_account_validation_supported() to authenticated;
 
 create policy "invoices_select_account_members"
 on invoices

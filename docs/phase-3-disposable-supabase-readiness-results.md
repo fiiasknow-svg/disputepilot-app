@@ -144,13 +144,14 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - test in disposable DB first: yes
 - after applying in disposable DB: rerun `supabase/tests/invoices-two-account-rls-readiness.sql` and `supabase/tests/invoices-post-rls-verification.sql`
 - production apply blocked until disposable post-RLS denial checks pass: yes
-- note: invoice insert/update checks also require any `client_id` to belong to the same `account_id` as the invoice
+- note: invoice insert/update checks use `account_id` as the primary tenant boundary. The apply migration now validates `client_id` against `clients.account_id` only when `invoices.client_id` and `clients.id` are schema-compatible.
+- note: production retry discovery on 2026-05-13 found `public.clients.id` is `uuid` while `public.invoices.client_id` appears to be `bigint`; the previous helper attempted `uuid = bigint` and failed before policies could be applied. The helper was changed to skip the client relationship comparison in that incompatible schema instead of over-blocking valid account-owned invoices.
 
 ### invoices post-RLS verification
 
 - verification script path: `supabase/tests/invoices-post-rls-verification.sql`
 - status: pending disposable DB run
-- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, and clients, with additional invoice/client account-match denial checks
+- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, and clients. It now records whether invoice/client account validation is schema-supported; cross-client denial checks run only when the schema can safely compare `invoices.client_id` to `clients.id`, while account membership denial checks always run.
 
 ## disputes
 

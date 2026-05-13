@@ -46,7 +46,7 @@ For each table:
 | 2 | `employees` | `supabase/migrations/20260511020000_enable_employees_rls.sql` | Verify the employees page loads, account members can read and manage their account employees, and cross-account/no-membership access is blocked. |
 | 3 | `leads` | `supabase/migrations/20260511030000_enable_leads_rls.sql` | Verify leads list/search/add/edit workflows for an account member, and confirm cross-account/no-membership access is blocked. |
 | 4 | `clients` | `supabase/migrations/20260511040000_enable_clients_rls.sql` | Verify client list, add, edit, detail, search, and delete-safe workflows for an account member, and confirm cross-account/no-membership access is blocked. |
-| 5 | `invoices` | `supabase/migrations/20260511050000_enable_invoices_rls.sql` | Verify billing invoice pages load, account-member invoice writes work, and invoices cannot be written with another account's `account_id` or `client_id`. |
+| 5 | `invoices` | `supabase/migrations/20260511050000_enable_invoices_rls.sql` | Verify billing invoice pages load, account-member invoice writes work, and invoices cannot be written with another account's `account_id`. Also verify cross-client write denial only when production schema confirms `invoices.client_id` is compatible with `clients.id`. |
 | 6 | `disputes` | `supabase/migrations/20260511060000_enable_disputes_rls.sql` | Verify dispute list/detail/status workflows load, account-member dispute writes work, and disputes cannot be written with another account's `account_id` or `client_id`. |
 | 7 | `calendar_events` | `supabase/migrations/20260511070000_enable_calendar_events_rls.sql` | Verify calendar events load and can be created for the account, and events cannot be written with another account's `account_id` or `client_id`. |
 | 8 | `dispute_letters` | `supabase/migrations/20260511080000_enable_dispute_letters_rls.sql` | Verify dispute letter workflows load for account-owned disputes, and letters cannot be written with another account's `account_id` or `dispute_id`. |
@@ -59,6 +59,13 @@ For each table:
 - The account foundation read policy migration is `supabase/migrations/20260511100000_add_account_membership_read_policies.sql`.
 - The policies allow authenticated users to read only their own `account_memberships` rows and the `accounts` rows where they are members.
 - Employee save was verified in production after those read policies were applied manually.
+
+## Production Invoices Checkpoint
+
+- Production invoices RLS apply initially failed on 2026-05-13 in `supabase/migrations/20260511050000_enable_invoices_rls.sql`.
+- Root cause: `public.clients.id` is `uuid` in production while `public.invoices.client_id` appears to be `bigint`; the helper compared `clients.id = invoices.client_id`, producing `operator does not exist: uuid = bigint`.
+- The invoices migration now keeps `account_id` membership as the required tenant boundary for SELECT/INSERT/UPDATE/DELETE and performs invoice/client account validation only when `clients.id` and `invoices.client_id` are schema-compatible. This avoids over-blocking valid account-owned invoices in the current production schema.
+- Before retrying invoices RLS, confirm the migration file includes `public.invoices_client_account_validation_supported()` and the PL/pgSQL `public.invoices_client_matches_account(bigint, uuid)` helper.
 
 ## App Workflow Checks
 

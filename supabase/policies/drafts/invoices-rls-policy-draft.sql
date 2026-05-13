@@ -19,8 +19,12 @@
 -- Policy model:
 -- - A user can access an invoice only when invoices.account_id belongs to one
 --   of their account_memberships rows.
--- - If client_id is present, the referenced client must belong to the same
---   account_id as the invoice.
+-- - account_id is the primary tenant boundary.
+-- - If client_id is present and invoices.client_id is schema-compatible with
+--   clients.id, the referenced client must belong to the same account_id as
+--   the invoice. Production has been observed with clients.id as uuid and
+--   invoices.client_id as bigint, so an apply migration must not compare
+--   those columns directly unless compatibility is confirmed.
 -- - account_memberships currently has role but no status column, so this draft
 --   treats any membership as active. If a membership status column is added,
 --   include "and account_memberships.status = 'active'" in each subquery.
@@ -50,15 +54,7 @@ with check (
     from account_memberships
     where user_id = auth.uid()
   )
-  and (
-    client_id is null
-    or exists (
-      select 1
-      from clients
-      where clients.id = invoices.client_id
-        and clients.account_id = invoices.account_id
-    )
-  )
+  and public.invoices_client_matches_account(client_id, account_id)
 );
 
 create policy "invoices_update_account_members"
@@ -78,15 +74,7 @@ with check (
     from account_memberships
     where user_id = auth.uid()
   )
-  and (
-    client_id is null
-    or exists (
-      select 1
-      from clients
-      where clients.id = invoices.client_id
-        and clients.account_id = invoices.account_id
-    )
-  )
+  and public.invoices_client_matches_account(client_id, account_id)
 );
 
 create policy "invoices_delete_account_members"
@@ -111,8 +99,11 @@ using (
 -- Missing or legacy client_id rows:
 -- - This draft allows invoices.client_id to remain null because legacy invoice
 --   rows may not have a durable client relationship yet.
--- - When client_id is present, insert and update policies require the client
---   to share the invoice account_id.
+-- - When client_id is present and schema-compatible with clients.id, insert
+--   and update policies require the client to share the invoice account_id.
+-- - When the schema is incompatible, do not compare clients.id to
+--   invoices.client_id. Keep account_id membership as the enforced tenant
+--   boundary until the legacy client relationship is repaired or mapped.
 -- - Before applying RLS, audit invoices with null client_id and decide whether
 --   they are valid account-level billing rows, data needing repair, or rows to
 --   archive.
