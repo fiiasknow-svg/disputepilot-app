@@ -22,8 +22,13 @@
 -- Policy model:
 -- - A user can access a calendar event only when calendar_events.account_id
 --   belongs to one of their account_memberships rows.
--- - If client_id is present, the referenced client should belong to the same
---   account_id as the calendar event.
+-- - account_id is the primary tenant boundary.
+-- - If client_id is present and calendar_events.client_id is
+--   schema-compatible with clients.id, the referenced client should belong to
+--   the same account_id as the calendar event. Production has been observed
+--   with clients.id as uuid while calendar_events.client_id appears to be
+--   bigint, so an apply migration must not compare incompatible columns
+--   directly.
 -- - account_memberships currently has role but no status column, so this draft
 --   treats any membership as active. If a membership status column is added,
 --   include "and account_memberships.status = 'active'" in each subquery.
@@ -53,15 +58,7 @@ with check (
     from account_memberships
     where user_id = auth.uid()
   )
-  and (
-    client_id is null
-    or exists (
-      select 1
-      from clients
-      where clients.id = calendar_events.client_id
-        and clients.account_id = calendar_events.account_id
-    )
-  )
+  and public.calendar_events_client_matches_account(client_id, account_id)
 );
 
 create policy "calendar_events_update_account_members"
@@ -81,15 +78,7 @@ with check (
     from account_memberships
     where user_id = auth.uid()
   )
-  and (
-    client_id is null
-    or exists (
-      select 1
-      from clients
-      where clients.id = calendar_events.client_id
-        and clients.account_id = calendar_events.account_id
-    )
-  )
+  and public.calendar_events_client_matches_account(client_id, account_id)
 );
 
 create policy "calendar_events_delete_account_members"
@@ -114,8 +103,14 @@ using (
 
 -- Source-linked events:
 -- - The current app uses calendar_events.client_id for linked clients.
--- - This draft requires client_id, when present, to reference a client with the
---   same account_id as the calendar event on insert/update.
+-- - This draft requires client_id, when present and schema-compatible with
+--   clients.id, to reference a client with the same account_id as the calendar
+--   event on insert/update. The apply migration should support both uuid and
+--   bigint overloads for public.calendar_events_client_matches_account.
+-- - When the schema is incompatible, do not compare clients.id to
+--   calendar_events.client_id. Keep account_id membership as the enforced
+--   tenant boundary until the legacy client relationship is repaired or
+--   mapped.
 -- - If invoice_id, dispute_id, or other source columns are added later, extend
 --   insert/update WITH CHECK clauses so each source row belongs to the same
 --   account_id before applying RLS.

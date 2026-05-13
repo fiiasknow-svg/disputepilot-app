@@ -205,13 +205,15 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - test in disposable DB first: yes
 - after applying in disposable DB: rerun `supabase/tests/calendar-events-two-account-rls-readiness.sql` and `supabase/tests/calendar-events-post-rls-verification.sql`
 - production apply blocked until disposable post-RLS denial checks pass: yes
-- note: calendar event insert/update checks also require any `client_id` to belong to the same `account_id` as the calendar event
+- note: calendar event insert/update checks use `account_id` as the primary tenant boundary. The apply migration now validates `client_id` against `clients.account_id` only when `calendar_events.client_id` and `clients.id` are schema-compatible.
+- note: production retry discovery on 2026-05-13 found `public.clients.id` is `uuid` while `public.calendar_events.client_id` appears to be `bigint`; the previous helper attempted `uuid = bigint` and failed before policies could be applied. The helper was changed to skip the client relationship comparison in that incompatible schema instead of over-blocking valid account-owned calendar events.
+- note: the apply migration now provides both `bigint` and `uuid` overloads so policy creation can resolve safely in either schema shape; compatible schemas still require a matching client id and account id.
 
 ### calendar_events post-RLS verification
 
 - verification script path: `supabase/tests/calendar-events-post-rls-verification.sql`
 - status: pending disposable DB run
-- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, clients, invoices, and disputes, with additional calendar event/client account-match denial checks
+- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, clients, invoices, and disputes. It now records whether calendar event/client account validation is schema-supported for compatible bigint or uuid schemas; cross-client denial checks run only when the schema can safely compare `calendar_events.client_id` to `clients.id`, while account membership denial checks always run.
 
 ## dispute_letters
 
