@@ -10,8 +10,9 @@
 --   security-definer helper so policy checks can resolve membership without
 --   granting direct read access to account_memberships.
 -- - Invoice writes use account_id as the primary tenant boundary. When
---   invoices.client_id and clients.id are schema-compatible, writes also
---   require client_id to belong to the same account_id as the invoice.
+--   invoices.client_id and clients.id are schema-compatible as bigint or uuid,
+--   writes also require client_id to belong to the same account_id as the
+--   invoice.
 -- - This script assumes the invoices migration defines those helpers.
 -- - The actual verification must run with an authenticated session that
 --   resolves auth.uid() to the test user ids below.
@@ -286,10 +287,10 @@ begin;
   insert into invoices_post_rls_results (check_name, expected, actual, passed, notes)
   select
     'client_account_validation_mode',
-    'compatible schemas validate client/account; incompatible schemas skip safely',
+    'compatible uuid/bigint schemas validate client/account; incompatible schemas skip safely',
     'validation_supported=' || public.invoices_client_account_validation_supported()::text,
     true,
-    'When production has clients.id uuid and invoices.client_id bigint, this should be false and account_id remains the enforced tenant boundary';
+    'When clients.id and invoices.client_id have the same uuid or bigint type, this should be true; otherwise account_id remains the enforced tenant boundary';
 
   insert into invoices_post_rls_results (check_name, expected, actual, passed, notes)
   select

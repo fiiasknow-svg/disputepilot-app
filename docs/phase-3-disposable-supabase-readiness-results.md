@@ -146,12 +146,13 @@ Record facts from the actual SQL output. Do not infer pass/fail.
 - production apply blocked until disposable post-RLS denial checks pass: yes
 - note: invoice insert/update checks use `account_id` as the primary tenant boundary. The apply migration now validates `client_id` against `clients.account_id` only when `invoices.client_id` and `clients.id` are schema-compatible.
 - note: production retry discovery on 2026-05-13 found `public.clients.id` is `uuid` while `public.invoices.client_id` appears to be `bigint`; the previous helper attempted `uuid = bigint` and failed before policies could be applied. The helper was changed to skip the client relationship comparison in that incompatible schema instead of over-blocking valid account-owned invoices.
+- note: a later production retry resolved the policy call as `public.invoices_client_matches_account(uuid, uuid)`. The apply migration now provides both `bigint` and `uuid` overloads so policy creation can resolve safely in either schema shape; the uuid overload requires a matching client id and account id.
 
 ### invoices post-RLS verification
 
 - verification script path: `supabase/tests/invoices-post-rls-verification.sql`
 - status: pending disposable DB run
-- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, and clients. It now records whether invoice/client account validation is schema-supported; cross-client denial checks run only when the schema can safely compare `invoices.client_id` to `clients.id`, while account membership denial checks always run.
+- note: this script uses the same helper-based authenticated-user pattern as statuses, employees, leads, and clients. It now records whether invoice/client account validation is schema-supported for compatible bigint or uuid schemas; cross-client denial checks run only when the schema can safely compare `invoices.client_id` to `clients.id`, while account membership denial checks always run.
 
 ## disputes
 

@@ -65,7 +65,8 @@ For each table:
 - Production invoices RLS apply initially failed on 2026-05-13 in `supabase/migrations/20260511050000_enable_invoices_rls.sql`.
 - Root cause: `public.clients.id` is `uuid` in production while `public.invoices.client_id` appears to be `bigint`; the helper compared `clients.id = invoices.client_id`, producing `operator does not exist: uuid = bigint`.
 - The invoices migration now keeps `account_id` membership as the required tenant boundary for SELECT/INSERT/UPDATE/DELETE and performs invoice/client account validation only when `clients.id` and `invoices.client_id` are schema-compatible. This avoids over-blocking valid account-owned invoices in the current production schema.
-- Before retrying invoices RLS, confirm the migration file includes `public.invoices_client_account_validation_supported()` and the PL/pgSQL `public.invoices_client_matches_account(bigint, uuid)` helper.
+- A later production retry resolved the policy call as `public.invoices_client_matches_account(uuid, uuid)`, so the migration now includes both `bigint` and `uuid` overloads. The uuid overload validates only a real `clients.id = p_client_id` and same `account_id` match.
+- Before retrying invoices RLS, confirm the migration file includes `public.invoices_client_account_validation_supported()` plus both PL/pgSQL helpers: `public.invoices_client_matches_account(bigint, uuid)` and `public.invoices_client_matches_account(uuid, uuid)`.
 
 ## App Workflow Checks
 

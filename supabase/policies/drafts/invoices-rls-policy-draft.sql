@@ -22,9 +22,10 @@
 -- - account_id is the primary tenant boundary.
 -- - If client_id is present and invoices.client_id is schema-compatible with
 --   clients.id, the referenced client must belong to the same account_id as
---   the invoice. Production has been observed with clients.id as uuid and
---   invoices.client_id as bigint, so an apply migration must not compare
---   those columns directly unless compatibility is confirmed.
+--   the invoice. Production attempts have observed invoices.client_id policy
+--   resolution as both uuid and bigint across environments, so an apply
+--   migration should provide safe overloads for both compatible cases and must
+--   not compare incompatible columns directly.
 -- - account_memberships currently has role but no status column, so this draft
 --   treats any membership as active. If a membership status column is added,
 --   include "and account_memberships.status = 'active'" in each subquery.
@@ -101,6 +102,8 @@ using (
 --   rows may not have a durable client relationship yet.
 -- - When client_id is present and schema-compatible with clients.id, insert
 --   and update policies require the client to share the invoice account_id.
+--   The apply migration should support both uuid and bigint overloads for
+--   public.invoices_client_matches_account.
 -- - When the schema is incompatible, do not compare clients.id to
 --   invoices.client_id. Keep account_id membership as the enforced tenant
 --   boundary until the legacy client relationship is repaired or mapped.
