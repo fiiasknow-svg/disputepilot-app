@@ -79,7 +79,7 @@ const navGroups = [
       { label:"Dispute Playbook", href:"/disputes/dispute-playbook", icon:Icons.BarChart },
     ]
   },
-  { key:"bulk-print", label:"Bulk Print", href:"/bulk-print", icon:Icons.Printer, isSingle:true },
+  { entryKey:"bulk-print-secondary", key:"bulk-print", label:"Bulk Print", href:"/bulk-print", icon:Icons.Printer, isSingle:true },
   {
     key:"letters", label:"Letters", icon:Icons.FileText,
     items:[
@@ -154,6 +154,14 @@ const navGroups = [
   },
 ];
 
+function getNavGroupEntryKey(group: (typeof navGroups)[number]) {
+  const explicitEntryKey = (group as any).entryKey;
+  const singleHref = (group as any).href;
+  const childHrefs = (group as any).items?.map((item: any) => item.href).join("|");
+
+  return explicitEntryKey || `${group.key}:${singleHref || childHrefs || group.label}`;
+}
+
 export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -223,10 +231,11 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
         <nav style={{ flex:1, padding:"8px 0" }}>
           {navGroups.map((group) => {
             const GroupIcon = group.icon;
+            const navGroupEntryKey = getNavGroupEntryKey(group);
             if ((group as any).isSingle) {
               const active = isActive((group as any).href);
               return (
-                <Link key={group.key} href={(group as any).href} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"9px 16px", color:active?"#fff":"#94a3b8", backgroundColor:active?"#3b82f6":"transparent", textDecoration:"none", borderLeft:active?"3px solid #60a5fa":"3px solid transparent" }}>
+                <Link key={navGroupEntryKey} href={(group as any).href} style={{ display:"flex", alignItems:"center", gap:"12px", padding:"9px 16px", color:active?"#fff":"#94a3b8", backgroundColor:active?"#3b82f6":"transparent", textDecoration:"none", borderLeft:active?"3px solid #60a5fa":"3px solid transparent" }}>
                   <GroupIcon /><span style={{ flex:1 }}>{group.label}</span>
                 </Link>
               );
@@ -234,7 +243,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
             const isExpanded = expanded.includes(group.key);
             const hasActiveChild = (group as any).items?.some((item: any) => isActive(item.href));
             return (
-              <div key={group.key}>
+              <div key={navGroupEntryKey}>
                 <button onClick={() => toggleExpand(group.key)} style={{ width:"100%", display:"flex", alignItems:"center", gap:"12px", padding:"9px 16px", color:hasActiveChild?"#fff":"#94a3b8", backgroundColor:hasActiveChild?"#3b82f6":"transparent", border:"none", borderLeft:hasActiveChild?"3px solid #60a5fa":"3px solid transparent", cursor:"pointer", fontSize:"13px", textAlign:"left" as const }}>
                   <GroupIcon /><span style={{ flex:1 }}>{group.label}</span>
                   {isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight />}
