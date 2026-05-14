@@ -1,0 +1,124 @@
+-- Draft only: client portal user mapping and portal-specific RLS plan.
+--
+-- This file is intentionally outside supabase/migrations and must not be
+-- applied automatically. It documents the intended schema and policy shapes
+-- for Phase 4 review.
+--
+-- Do not apply until:
+-- - production clients.id type has been verified;
+-- - child table client relationship types have been verified;
+-- - a disposable Supabase verification script proves mapped, cross-client,
+--   unmapped authenticated, and anon behavior;
+-- - server-side portal context exists and is separate from business account
+--   context;
+-- - dp_auth is removed or blocked from authorizing portal data.
+
+-- Proposed schema, assuming public.clients.id is uuid in the target database.
+-- If production clients.id is not uuid, change client_portal_users.client_id
+-- to the matching type before applying any migration.
+--
+-- create table public.client_portal_users (
+--   id uuid primary key default gen_random_uuid(),
+--   account_id uuid not null references public.accounts(id) on delete cascade,
+--   client_id uuid not null references public.clients(id) on delete cascade,
+--   user_id uuid not null references auth.users(id) on delete cascade,
+--   status text not null default 'active',
+--   created_at timestamptz not null default now(),
+--   updated_at timestamptz not null default now(),
+--   constraint client_portal_users_status_check
+--     check (status in ('active', 'disabled', 'invited', 'revoked')),
+--   constraint client_portal_users_account_client_user_unique
+--     unique (account_id, client_id, user_id)
+-- );
+--
+-- create index client_portal_users_user_id_idx
+--   on public.client_portal_users(user_id);
+--
+-- create index client_portal_users_account_client_idx
+--   on public.client_portal_users(account_id, client_id);
+
+-- Mapping table RLS:
+--
+-- alter table public.client_portal_users enable row level security;
+-- alter table public.client_portal_users force row level security;
+--
+-- Portal users may read only their own active mapping rows. Business-side
+-- management policies for invites should be added separately and should use
+-- account_memberships roles.
+--
+-- create policy "client_portal_users_select_self_active"
+-- on public.client_portal_users
+-- for select
+-- to authenticated
+-- using (
+--   user_id = auth.uid()
+--   and status = 'active'
+-- );
+
+-- Clients portal read policy:
+--
+-- This policy is intentionally separate from the existing clients business
+-- account_memberships policies. It grants only mapped portal users access to
+-- their own client row. The portal_access flag is an enable/disable gate only;
+-- it is not identity proof.
+--
+-- create policy "clients_select_active_portal_user"
+-- on public.clients
+-- for select
+-- to authenticated
+-- using (
+--   coalesce(portal_access, false) = true
+--   and exists (
+--     select 1
+--     from public.client_portal_users cpu
+--     where cpu.user_id = auth.uid()
+--       and cpu.status = 'active'
+--       and cpu.account_id = clients.account_id
+--       and cpu.client_id = clients.id
+--   )
+-- );
+
+-- Child table portal read policy shape:
+--
+-- Apply this only to tables whose client_id type is verified to be compatible
+-- with client_portal_users.client_id. Unlike the Phase 3 business RLS
+-- compatibility helpers, portal child-table access must fail closed when the
+-- client relationship cannot be proven.
+--
+-- create policy "<table>_select_active_portal_user"
+-- on public.<table>
+-- for select
+-- to authenticated
+-- using (
+--   exists (
+--     select 1
+--     from public.client_portal_users cpu
+--     where cpu.user_id = auth.uid()
+--       and cpu.status = 'active'
+--       and cpu.account_id = <table>.account_id
+--       and cpu.client_id = <table>.client_id
+--   )
+-- );
+
+-- Candidate child tables after production type verification:
+-- - invoices: portal-safe invoice summary fields only.
+-- - disputes: portal-safe dispute status fields only.
+-- - calendar_events: only explicitly portal-visible, client-specific events.
+-- - future documents/messages: only after dedicated tables and policies exist.
+
+-- Anonymous users:
+-- - No anon policies should be added.
+-- - auth.uid() is null for anon users, so the predicates above do not match.
+
+-- Unmapped authenticated users:
+-- - Users with no active client_portal_users row receive no portal data.
+
+-- Business users:
+-- - Business users keep their existing account_memberships policies.
+-- - Do not add customer portal users to account_memberships.
+
+-- Rollback notes for a future migration that applies these policies:
+-- drop policy if exists "clients_select_active_portal_user" on public.clients;
+-- drop policy if exists "client_portal_users_select_self_active" on public.client_portal_users;
+-- alter table public.client_portal_users disable row level security;
+-- drop table if exists public.client_portal_users;
