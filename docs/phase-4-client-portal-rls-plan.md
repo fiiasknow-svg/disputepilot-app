@@ -25,8 +25,11 @@ The Phase 4 isolation audit found that `/client-login` uses the same Supabase Au
 - Schema migration: `supabase/migrations/20260514010000_add_client_portal_users.sql`
 - Disposable schema verification: `supabase/tests/client-portal-users-schema-readiness.sql`
 - Draft policy plan: `supabase/policies/drafts/client-portal-users-rls-policy-draft.sql`
+- Server-side portal context helper: `lib/client-portal-context.ts`
 
 The migration is schema-only. It creates `public.client_portal_users`, indexes, constraints, and comments, but it does not enable RLS and does not wire the app to the table.
+
+The portal context helper is unused by routes for now. It verifies the current Supabase Auth user server-side, reads only `client_portal_users`, returns one active `{ accountId, clientId, userId, status }` mapping, and returns `null` for logged-out, unmapped, inactive, or query-error cases. It does not read `account_memberships` and does not use `dp_auth`.
 
 ## Current Git Checkpoint
 
@@ -157,6 +160,7 @@ If a production child table cannot safely prove that its row belongs to the mapp
    - Resolve only `client_portal_users` mappings.
    - Return `account_id`, `client_id`, `user_id`, and mapping status.
    - Keep this separate from `getCurrentAccountContext()`.
+   - Current helper path: `lib/client-portal-context.ts`.
 
 4. Portal routes/pages.
    - Implement `/portal` and child routes server-first.
@@ -214,6 +218,14 @@ The readiness script is schema-tolerant for `public.clients` seed rows. It dynam
 - Business users keep existing `account_memberships` access to business tables.
 - Business RLS policies still pass the existing post-RLS verification scripts.
 - Portal policies fail closed when child `client_id` type or relationship is not verified.
+
+Manual helper verification until portal routes exist:
+
+- With no Supabase session, `getCurrentClientPortalContext()` should return `null`.
+- With a signed-in user and no active `client_portal_users` row, it should return `null`.
+- With one active mapping row, it should return `{ accountId, clientId, userId, status: "active" }`.
+- With only disabled, invited, or revoked mappings, it should return `null`.
+- Confirm no test or route grants portal access via `dp_auth` alone.
 
 ## Risks
 
