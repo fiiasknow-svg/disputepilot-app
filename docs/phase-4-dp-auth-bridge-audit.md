@@ -4,7 +4,7 @@ Date: 2026-05-14
 
 ## Scope
 
-This audit records where the temporary `dp_auth` bridge is still used and recommends the safest hardening/removal path. It does not change runtime behavior, migrations, tests, or production configuration.
+This audit records where the temporary `dp_auth` bridge is still used, the applied production route hardening, and the remaining removal path. It does not change migrations, database/RLS behavior, or production configuration.
 
 Current checkpoint:
 
@@ -65,8 +65,9 @@ c55dfd2 Fix affiliates page for production schema
 
 - `proxy.ts`
   - `hasAuthBridgeCookie()` checks whether `dp_auth=1`.
-  - Private route access is allowed when Supabase SSR auth verifies successfully, or when `dp_auth=1`, or when the non-production `x-disputepilot-test-auth: 1` header is present.
-  - The private route list includes both business routes and `/portal`, so the bridge can currently allow navigation to both business and portal route surfaces.
+  - Production private route access is allowed only when Supabase SSR auth verifies successfully.
+  - In non-production only, `dp_auth=1` can still support local/demo route navigation unless the request explicitly disables test auth with `x-disputepilot-test-auth: 0`.
+  - The private route list includes both business routes and `/portal`, so production portal and business route shells no longer accept `dp_auth` as route authorization.
 
 `dp_auth` is not used for API/database authorization:
 
@@ -82,24 +83,25 @@ c55dfd2 Fix affiliates page for production schema
 1. If the route is public, it allows the request.
 2. If the route is private, it tries `supabase.auth.getUser()` through the SSR cookie client when Supabase auth cookies are present.
 3. If Supabase verification succeeds, the route is allowed.
-4. If Supabase verification fails, `dp_auth=1` still allows the route.
-5. In non-production, `x-disputepilot-test-auth: 1` also allows the route.
-6. Otherwise the user is redirected to `/login?next=<path>`.
+4. If Supabase verification fails in production, `dp_auth=1` is ignored.
+5. If Supabase verification fails in non-production, `dp_auth=1` can still allow the route unless the request has `x-disputepilot-test-auth: 0`.
+6. In non-production, `x-disputepilot-test-auth: 1` also allows the route.
+7. Otherwise the user is redirected to `/login?next=<path>`.
 
-This means `dp_auth` is currently a route-navigation bridge, not a database permission. RLS and API helpers still need server-verified Supabase identity.
+This means `dp_auth` is now a non-production route-navigation bridge only, not a production route gate and not a database permission. RLS and API helpers still need server-verified Supabase identity.
 
 ## Risk Summary
 
-Current risk level: medium for route access, lower for database/API access.
+Current risk level: lower for production route access and lower for database/API access.
 
-The main risk is that `dp_auth` is a client-set cookie. If it is present without a valid Supabase session, `proxy.ts` still allows access to private pages. The pages may still fail to read protected Supabase data because RLS and API helpers do not trust `dp_auth`, but the application shell and any client-side fallback/demo behavior can still be reached.
+The main remaining risk is local/demo compatibility drift. `dp_auth` is still set and cleared by the app, and in non-production it can still support route-shell navigation. In production, `proxy.ts` ignores the cookie and requires verified Supabase SSR auth for private routes.
 
-Portal-specific risk is higher than business route risk because `/portal` must eventually enforce a narrower per-client boundary. `dp_auth` must not be accepted as proof of portal identity.
+Portal-specific production route risk is reduced because `/portal` now requires verified Supabase SSR auth at the proxy. Portal data must still be gated by `getCurrentClientPortalContext()` and `client_portal_users` once routes exist.
 
 Immediate removal risk:
 
-- Real login/logout flows might break if production browser login is still relying on `dp_auth` because Supabase SSR cookies are not consistently available to `proxy.ts` after `signInWithPassword()`.
-- Existing Playwright full-suite access should mostly continue because tests use `x-disputepilot-test-auth: 1` in non-production, but production-like manual login should be verified before removal.
+- Real login/logout flows might break if production browser login was still relying on `dp_auth` because Supabase SSR cookies were not consistently available to `proxy.ts` after `signInWithPassword()`. Production login should be live-smoked after this hardening.
+- Existing Playwright full-suite access should continue because tests use `x-disputepilot-test-auth: 1` in non-production, while production-like auth-disabled tests use `x-disputepilot-test-auth: 0`.
 - `/client-login` currently has no portal-specific redirect, and no `/portal` routes exist yet, so removing `dp_auth` before portal routes are built would not prove portal isolation by itself.
 
 ## Required Rules
@@ -115,14 +117,14 @@ Immediate removal risk:
 
 Short-term safe changes:
 
-- Add tests that prove a request with `dp_auth=1` but no Supabase session does not authorize API access.
-- Add a route-protection test that documents current behavior before changing it.
+- Added `tests/auth-foundation.spec.ts` coverage proving `dp_auth=1` with no Supabase session does not authorize `/api/send-email`, `/api/analyze-credit`, or `/api/rewrite-letter`.
+- Added `tests/auth-foundation.spec.ts` coverage proving `dp_auth=1` with no Supabase session redirects away from `/dashboard` when test auth is disabled.
+- Hardened `proxy.ts` so `dp_auth` is ignored in production route protection.
 - Add a production-like login smoke test that signs in through Supabase and verifies private route access without depending on `dp_auth`.
-- Once Supabase SSR cookie verification is proven reliable after login, change `proxy.ts` so `dp_auth` is ignored in production.
 
-Code-only improvement to consider, but not applied in this audit:
+Hardening applied:
 
-- Restrict `hasAuthBridgeCookie(request)` to non-production in `proxy.ts`, matching the existing test-header guard. This is a narrow hardening step, but it should wait until production login has been live-smoked with Supabase SSR cookies only.
+- `hasAuthBridgeCookie(request)` now returns true only when `NODE_ENV !== "production"`, the request has not disabled test auth with `x-disputepilot-test-auth: 0`, and `dp_auth=1` is present.
 
 Final removal plan:
 
@@ -131,7 +133,7 @@ Final removal plan:
    - private business route behavior after hardening;
    - `/portal` route behavior after portal pages exist;
    - API routes still return 401.
-3. Change `proxy.ts` to ignore `dp_auth` in production.
+3. Keep `proxy.ts` ignoring `dp_auth` in production.
 4. Remove `setAuthCookie()` from `components/AuthLoginForm.tsx` after production login is confirmed stable without the bridge.
 5. Remove `dp_auth` clear logic from layouts after the cookie is no longer set.
 6. Keep the non-production `x-disputepilot-test-auth` bypass limited to Playwright/local tests unless it is replaced with a stronger test auth fixture.
@@ -140,8 +142,8 @@ Final removal plan:
 
 - Business login succeeds and redirects to `/dashboard` with only Supabase cookies.
 - Logged-out `/dashboard` redirects to `/login?next=%2Fdashboard`.
-- `dp_auth=1` without Supabase session cannot authorize API routes.
-- After hardening, `dp_auth=1` without Supabase session cannot authorize production private routes.
+- `dp_auth=1` without Supabase session cannot authorize API routes. Covered for `/api/send-email`, `/api/analyze-credit`, and `/api/rewrite-letter`.
+- `dp_auth=1` without Supabase session cannot authorize production-like private route access when test auth is disabled. Covered for `/dashboard`.
 - Customer login does not grant business dashboard access unless the user has business `account_memberships`.
 - Portal route tests, once `/portal` exists:
   - mapped portal user can access portal pages;
@@ -152,6 +154,6 @@ Final removal plan:
 
 ## Recommended Next 3 Tasks
 
-1. Add targeted auth tests for `dp_auth=1` without Supabase session across API routes and private route access.
-2. Live-smoke production business login with Supabase SSR cookies only, then harden `proxy.ts` to ignore `dp_auth` in production.
+1. Live-smoke production business login with Supabase SSR cookies only after deploying the proxy hardening.
+2. Remove `setAuthCookie()` and layout `dp_auth` clearing after production login remains stable without the bridge.
 3. Build `/portal` routes server-first with `getCurrentClientPortalContext()` and add portal isolation tests before any production portal RLS apply.

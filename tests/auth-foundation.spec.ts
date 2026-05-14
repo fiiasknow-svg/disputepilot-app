@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
+const SENSITIVE_API_ROUTES = ['/api/send-email', '/api/analyze-credit', '/api/rewrite-letter'];
 
 test('logged-out dashboard redirects to login', async ({ browser }) => {
   const context = await browser.newContext({
@@ -82,7 +83,7 @@ test('sensitive API routes reject logged-out requests', async ({ browser }) => {
     },
   });
 
-  for (const route of ['/api/send-email', '/api/analyze-credit', '/api/rewrite-letter']) {
+  for (const route of SENSITIVE_API_ROUTES) {
     const response = await context.request.post(`${BASE_URL}${route}`, {
       data: {},
     });
@@ -90,6 +91,58 @@ test('sensitive API routes reject logged-out requests', async ({ browser }) => {
     expect(response.status(), route).toBe(401);
     await expect(response.json(), route).resolves.toEqual({ error: 'Authentication required' });
   }
+
+  await context.close();
+});
+
+test('dp_auth bridge alone does not authorize sensitive API routes', async ({ browser }) => {
+  const context = await browser.newContext({
+    extraHTTPHeaders: {
+      'x-disputepilot-test-auth': '0',
+    },
+  });
+
+  await context.addCookies([
+    {
+      name: 'dp_auth',
+      value: '1',
+      url: BASE_URL,
+      sameSite: 'Lax',
+    },
+  ]);
+
+  for (const route of SENSITIVE_API_ROUTES) {
+    const response = await context.request.post(`${BASE_URL}${route}`, {
+      data: {},
+    });
+
+    expect(response.status(), route).toBe(401);
+    await expect(response.json(), route).resolves.toEqual({ error: 'Authentication required' });
+  }
+
+  await context.close();
+});
+
+test('dp_auth bridge alone does not authorize private route shell in production-like auth context', async ({ browser }) => {
+  const context = await browser.newContext({
+    extraHTTPHeaders: {
+      'x-disputepilot-test-auth': '0',
+    },
+  });
+  await context.addCookies([
+    {
+      name: 'dp_auth',
+      value: '1',
+      url: BASE_URL,
+      sameSite: 'Lax',
+    },
+  ]);
+  const page = await context.newPage();
+
+  await page.goto(`${BASE_URL}/dashboard`);
+
+  await expect(page).toHaveURL(new RegExp(`${BASE_URL}/login\\?next=%2Fdashboard`));
+  await expect(page.getByRole('heading', { name: 'Business Login' })).toBeVisible();
 
   await context.close();
 });

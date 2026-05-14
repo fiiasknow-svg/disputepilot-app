@@ -59,7 +59,9 @@ function hasSupabaseAuthCookie(request: NextRequest) {
 }
 
 function hasAuthBridgeCookie(request: NextRequest) {
-  return request.cookies.get(AUTH_COOKIE)?.value === "1";
+  return process.env.NODE_ENV !== "production"
+    && request.headers.get(TEST_AUTH_HEADER) !== "0"
+    && request.cookies.get(AUTH_COOKIE)?.value === "1";
 }
 
 function hasTestAuth(request: NextRequest) {
