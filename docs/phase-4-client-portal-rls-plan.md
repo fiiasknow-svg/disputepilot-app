@@ -229,6 +229,25 @@ Limitations:
 - It does not require `clients.portal_access` or `client_portal_access` because disposable/prod-like client schemas differ. The production policy must add the confirmed portal enablement flag check before apply.
 - If business `clients` RLS policies are also present in a disposable database, business users may still read clients through business policies. That is separate from portal mapping access and must be tested independently before production.
 
+## Disposable Verification Result
+
+Disposable Supabase project `disputepilot-rls-test` passed the staged client portal verification sequence:
+
+- `supabase/migrations/20260514010000_add_client_portal_users.sql` applied successfully.
+- `supabase/tests/client-portal-users-schema-readiness.sql` passed.
+- `supabase/tests/client-portal-users-post-rls-verification.sql` passed with `passed = true` for all checks.
+
+Verified behavior:
+
+- mapped portal user isolation passed;
+- cross-client denial passed;
+- unmapped authenticated user denial passed;
+- anon denial passed;
+- `dp_auth` alone was not accepted as database authorization;
+- business `account_memberships` alone were not accepted as portal authorization.
+
+This confirms the disposable policy shape is ready for the next design step. It does not authorize production apply. Production portal policy apply should wait until portal routes/pages exist and the portal enablement column is confirmed.
+
 ## Tests Needed
 
 - Mapped portal user can see their own client row.
@@ -264,6 +283,6 @@ Create a dedicated `client_portal_users` identity mapping and keep portal polici
 
 ## Recommended Next 3 Tasks
 
-1. Run `client-portal-users-post-rls-verification.sql` in disposable Supabase and confirm every result row passes.
-2. Draft a production migration for portal SELECT policies only after confirming the production portal enablement column.
-3. Implement `/portal` server-first behind `getCurrentClientPortalContext()` after portal RLS is verified.
+1. Review and harden or remove the `dp_auth` route access bridge so portal routes rely on server-verified Supabase Auth.
+2. Implement `/portal` server-first behind `getCurrentClientPortalContext()` after the bridge review is complete.
+3. Decide on production portal schema/RLS apply only after portal routes/pages exist and the production portal enablement column is confirmed.

@@ -24,8 +24,9 @@ Follow-up staged artifacts added after this audit:
 - `supabase/policies/drafts/client-portal-users-rls-policy-draft.sql`
 - `supabase/migrations/20260514010000_add_client_portal_users.sql`
 - `supabase/tests/client-portal-users-schema-readiness.sql`
+- `supabase/tests/client-portal-users-post-rls-verification.sql`
 
-The staged migration is schema-only and must be verified in disposable Supabase before any production apply. It does not enable RLS or change runtime app behavior.
+The staged migration is schema-only and does not enable RLS or change runtime app behavior. In disposable Supabase project `disputepilot-rls-test`, the staged migration applied successfully, schema readiness passed, and the disposable portal RLS verifier passed with `passed = true` for all checks.
 
 ## Git Checkpoint
 
@@ -148,6 +149,8 @@ Recommended separation:
 - If future portal pages reuse dashboard queries, a portal user with business membership could inherit broader access than intended.
 - Tests currently verify login page rendering, route redirects, business app access, API auth denial, and company portal configuration UI. They do not verify portal user isolation or cross-client denial.
 
+Disposable portal RLS verification has now confirmed the intended database policy shape for mapped portal user isolation, cross-client denial, unmapped authenticated denial, anon denial, `dp_auth` not being database authorization, and `account_memberships` not being portal authorization. The remaining risk is application routing and session enforcement: production portal apply should wait until `/portal` routes/pages exist and the `dp_auth` bridge has been hardened or removed.
+
 ## Safest Implementation Plan
 
 1. Define the portal identity model before exposing portal data.
@@ -193,6 +196,6 @@ Use `account_memberships` only for internal dashboard users. Use a dedicated `cl
 
 ## Recommended Next 3 Tasks
 
-1. Add a schema-only `client_portal_users` design draft and RLS policy draft, without applying it to production.
-2. Add a server helper design for portal context resolution that is separate from `getCurrentAccountContext()`.
-3. Add failing-first isolation tests for mapped portal user, unmapped authenticated user, cross-client denial, anon denial, and `dp_auth` bridge behavior.
+1. Review and harden or remove the `dp_auth` route access bridge.
+2. Implement `/portal` server-first behind `getCurrentClientPortalContext()`.
+3. Make the production portal apply decision only after portal routes/pages exist and the production portal enablement column is confirmed.
