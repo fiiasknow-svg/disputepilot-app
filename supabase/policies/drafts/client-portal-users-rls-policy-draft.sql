@@ -59,6 +59,14 @@
 --   and status = 'active'
 -- );
 
+-- Disposable verification:
+-- - supabase/tests/client-portal-users-post-rls-verification.sql creates the
+--   two SELECT policies above in a disposable database, verifies mapped,
+--   cross-client, unmapped authenticated, anon, dp_auth-not-database-auth, and
+--   account_memberships-not-portal-auth behavior, then drops the policies.
+-- - Keep production migrations unchanged until that verifier passes and the
+--   production clients.id/client_portal_users.client_id types are audited.
+
 -- Clients portal read policy:
 --
 -- This policy is intentionally separate from the existing clients business
@@ -81,6 +89,13 @@
 --       and cpu.client_id = clients.id
 --   )
 -- );
+
+-- Before production apply, decide whether clients.portal_access or
+-- client_portal_access is the canonical portal enablement flag in production.
+-- The disposable verifier does not require either column because not every
+-- disposable/prod-like clients schema has the same optional portal flag. The
+-- production policy should add the enablement flag check once the column name
+-- is confirmed.
 
 -- Child table portal read policy shape:
 --

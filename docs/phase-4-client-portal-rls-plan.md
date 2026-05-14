@@ -24,6 +24,7 @@ The Phase 4 isolation audit found that `/client-login` uses the same Supabase Au
 
 - Schema migration: `supabase/migrations/20260514010000_add_client_portal_users.sql`
 - Disposable schema verification: `supabase/tests/client-portal-users-schema-readiness.sql`
+- Disposable portal RLS verification: `supabase/tests/client-portal-users-post-rls-verification.sql`
 - Draft policy plan: `supabase/policies/drafts/client-portal-users-rls-policy-draft.sql`
 - Server-side portal context helper: `lib/client-portal-context.ts`
 
@@ -206,6 +207,28 @@ If a production child table cannot safely prove that its row belongs to the mapp
 
 The readiness script is schema-tolerant for `public.clients` seed rows. It dynamically inserts only safe columns that exist in the target disposable schema, such as `first_name`, `last_name`, `full_name`, `email`, `phone`, `status`, `assigned_agent`, `notes`, and `account_id`; it does not require optional columns like `client_type`.
 
+## Disposable Portal RLS Verification
+
+`supabase/tests/client-portal-users-post-rls-verification.sql` is disposable/test only. It temporarily enables RLS and creates draft SELECT policies for `client_portal_users` and `clients`, seeds two accounts, two clients, two mapped portal users, one unmapped authenticated user, and one business-membership-only user, then records PASS/FAIL rows and drops the draft policies.
+
+It proves:
+
+- mapped portal user A reads only user A's active mapping;
+- mapped portal user B reads only user B's active mapping;
+- mapped portal user A reads only client A;
+- mapped portal user A cannot read client B;
+- an unmapped authenticated user reads no portal mappings or portal client rows;
+- anon reads no portal mappings or portal client rows;
+- `dp_auth` is not database authorization because the RLS predicates use `auth.uid()` and `client_portal_users`;
+- `account_memberships` alone does not grant portal mapping access.
+
+Limitations:
+
+- It is not a production migration and must not be run against production.
+- It verifies only `client_portal_users` and `clients` portal reads, not invoices, disputes, calendar events, documents, messages, or route protection.
+- It does not require `clients.portal_access` or `client_portal_access` because disposable/prod-like client schemas differ. The production policy must add the confirmed portal enablement flag check before apply.
+- If business `clients` RLS policies are also present in a disposable database, business users may still read clients through business policies. That is separate from portal mapping access and must be tested independently before production.
+
 ## Tests Needed
 
 - Mapped portal user can see their own client row.
@@ -241,6 +264,6 @@ Create a dedicated `client_portal_users` identity mapping and keep portal polici
 
 ## Recommended Next 3 Tasks
 
-1. Run the staged schema migration and `client-portal-users-schema-readiness.sql` against a disposable Supabase database.
-2. Draft and test a server-side portal context helper that never falls back to `account_memberships`.
-3. Add disposable database RLS verification for portal read policies before implementing live portal pages.
+1. Run `client-portal-users-post-rls-verification.sql` in disposable Supabase and confirm every result row passes.
+2. Draft a production migration for portal SELECT policies only after confirming the production portal enablement column.
+3. Implement `/portal` server-first behind `getCurrentClientPortalContext()` after portal RLS is verified.
