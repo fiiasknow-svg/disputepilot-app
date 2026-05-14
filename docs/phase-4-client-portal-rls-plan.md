@@ -200,6 +200,8 @@ If a production child table cannot safely prove that its row belongs to the mapp
 - Duplicate `(account_id, client_id, user_id)` mappings are blocked.
 - Fixed test rows are cleaned up before returning the result table.
 
+The readiness script is schema-tolerant for `public.clients` seed rows. It dynamically inserts only safe columns that exist in the target disposable schema, such as `first_name`, `last_name`, `full_name`, `email`, `phone`, `status`, `assigned_agent`, `notes`, and `account_id`; it does not require optional columns like `client_type`.
+
 ## Tests Needed
 
 - Mapped portal user can see their own client row.
