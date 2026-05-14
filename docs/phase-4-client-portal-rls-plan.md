@@ -1,10 +1,10 @@
 # Phase 4 Client Portal RLS Plan
 
-Date: 2026-05-13
+Date: 2026-05-14
 
 ## Scope
 
-This is a draft-only plan. It does not apply production changes, create active migrations, change runtime behavior, or weaken the Phase 3 business RLS policies.
+This is a staged draft-only plan. It does not apply production changes, change runtime behavior, or weaken the Phase 3 business RLS policies.
 
 Phase 3 production business RLS is complete for:
 
@@ -19,6 +19,14 @@ Phase 3 production business RLS is complete for:
 `statuses` and `dispute_letters` were skipped in production because those tables do not exist there.
 
 The Phase 4 isolation audit found that `/client-login` uses the same Supabase Auth flow as business login, no root `app/client-portal` or `app/portal` route implementation exists, no `client_portal_users` mapping exists, and `clients.portal_access` is not an authorization boundary.
+
+## Staged Artifacts
+
+- Schema migration: `supabase/migrations/20260514010000_add_client_portal_users.sql`
+- Disposable schema verification: `supabase/tests/client-portal-users-schema-readiness.sql`
+- Draft policy plan: `supabase/policies/drafts/client-portal-users-rls-policy-draft.sql`
+
+The migration is schema-only. It creates `public.client_portal_users`, indexes, constraints, and comments, but it does not enable RLS and does not wire the app to the table.
 
 ## Current Git Checkpoint
 
@@ -60,7 +68,7 @@ Intended columns:
 | --- | --- | --- |
 | `id` | `uuid primary key default gen_random_uuid()` | Stable mapping id. |
 | `account_id` | `uuid not null references public.accounts(id) on delete cascade` | Business tenant that owns the client. |
-| `client_id` | `uuid not null` by default | Client row visible to this portal user. Must match the real production `clients.id` type before apply. |
+| `client_id` | same type as `public.clients.id` at migration runtime | Client row visible to this portal user. Must match the real production `clients.id` type before apply. |
 | `user_id` | `uuid not null references auth.users(id) on delete cascade` | Supabase Auth customer user. |
 | `status` | `text not null default 'active'` | Mapping state. Only active mappings authorize portal reads. |
 | `created_at` | `timestamptz not null default now()` | Audit timestamp. |
@@ -73,7 +81,7 @@ Draft constraints and indexes:
 - index on `(account_id, client_id)`
 - optional status check: `status in ('active', 'disabled', 'invited', 'revoked')`
 
-Production caveat: `client_id` must use the actual production `clients.id` type. If production `clients.id` is `uuid`, use `uuid`. If it differs, the schema and all policies must be adjusted before apply.
+Production caveat: `client_id` must use the actual production `clients.id` type. The staged migration detects `public.clients.id` and creates `client_portal_users.client_id` with that same type, then adds a foreign key to `public.clients(id)`. Production notes currently indicate `clients.id` is `uuid`, but production apply still requires a fresh column-type audit immediately before running the migration.
 
 ## Portal Access Rules
 
@@ -133,46 +141,64 @@ If a production child table cannot safely prove that its row belongs to the mapp
 
 ## Implementation Order
 
-1. Draft schema migration.
+1. Apply schema migration in disposable only.
    - Create `client_portal_users`.
    - Add indexes and constraints.
    - Do not add `NOT NULL` to existing production tables.
-   - Confirm `clients.id` production type before choosing `client_portal_users.client_id`.
+   - Confirm the migration creates `client_portal_users.client_id` with the same type as `clients.id`.
 
-2. Server-side portal context helper.
+2. Run disposable schema verification.
+   - Run `supabase/tests/client-portal-users-schema-readiness.sql`.
+   - Confirm required columns, indexes, unique constraint behavior, two-account/two-client/two-user mapping representation, and cleanup.
+   - Do not treat this as portal RLS proof; it only verifies the staged schema.
+
+3. Server-side portal context helper.
    - Verify Supabase Auth server-side.
    - Resolve only `client_portal_users` mappings.
    - Return `account_id`, `client_id`, `user_id`, and mapping status.
    - Keep this separate from `getCurrentAccountContext()`.
 
-3. Portal routes/pages.
+4. Portal routes/pages.
    - Implement `/portal` and child routes server-first.
    - Use the portal context helper.
    - Avoid broad client-side Supabase table queries.
    - Never trust browser-provided `account_id` or `client_id`.
 
-4. Portal-specific RLS policies.
+5. Portal-specific RLS policies.
    - Add RLS for `client_portal_users`.
    - Add portal read policies to `clients`.
    - Add child-table portal read policies only after production relationship types are proven compatible.
    - Preserve existing business account-membership policies.
 
-5. Tests.
+6. Tests.
    - Add database-level RLS tests for mapped, cross-client, unmapped, and anon cases.
    - Add Playwright tests for portal login/route behavior after pages exist.
    - Add API tests for any portal data endpoints.
 
-6. Production audit.
+7. Production audit.
    - Confirm production table existence and column types.
    - Confirm no customer users are present in `account_memberships`.
    - Confirm `clients.portal_access` values for intended portal clients.
    - Confirm initial invite/mapping data source.
 
-7. Production apply.
+8. Production apply.
    - Apply schema first.
    - Backfill or insert explicit portal mappings only after confirmation.
    - Apply RLS only after disposable verification passes.
    - Live-test mapped, unmapped, anon, and business-user paths.
+
+## Disposable Verification
+
+`supabase/tests/client-portal-users-schema-readiness.sql` is disposable/test oriented and does not enable production RLS. It verifies:
+
+- `public.client_portal_users` exists.
+- Required columns exist.
+- `client_portal_users.client_id` matches `public.clients.id`.
+- The unique mapping constraint exists.
+- Expected indexes exist.
+- Two accounts, two clients, and two auth users can represent user A to client A and user B to client B.
+- Duplicate `(account_id, client_id, user_id)` mappings are blocked.
+- Fixed test rows are cleaned up before returning the result table.
 
 ## Tests Needed
 
@@ -201,6 +227,6 @@ Create a dedicated `client_portal_users` identity mapping and keep portal polici
 
 ## Recommended Next 3 Tasks
 
-1. Draft a non-applied schema migration for `client_portal_users` after confirming production `clients.id` type.
+1. Run the staged schema migration and `client-portal-users-schema-readiness.sql` against a disposable Supabase database.
 2. Draft and test a server-side portal context helper that never falls back to `account_memberships`.
-3. Add disposable database RLS verification for portal mapping before implementing live portal pages.
+3. Add disposable database RLS verification for portal read policies before implementing live portal pages.

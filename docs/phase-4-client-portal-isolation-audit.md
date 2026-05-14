@@ -1,6 +1,6 @@
 # Phase 4 Client Portal Isolation Audit
 
-Date: 2026-05-13
+Date: 2026-05-14
 
 ## Scope
 
@@ -17,6 +17,15 @@ This audit reviews the current client portal authentication and data access mode
 Production skipped `statuses` and `dispute_letters` because those tables do not exist in production.
 
 No runtime behavior, migrations, production data, or tests were changed for this audit.
+
+Follow-up staged artifacts added after this audit:
+
+- `docs/phase-4-client-portal-rls-plan.md`
+- `supabase/policies/drafts/client-portal-users-rls-policy-draft.sql`
+- `supabase/migrations/20260514010000_add_client_portal_users.sql`
+- `supabase/tests/client-portal-users-schema-readiness.sql`
+
+The staged migration is schema-only and must be verified in disposable Supabase before any production apply. It does not enable RLS or change runtime app behavior.
 
 ## Git Checkpoint
 
@@ -102,7 +111,7 @@ No portal page currently reads `clients`, `invoices`, `disputes`, documents, mes
 
 ## Client User Mapping
 
-No portal-user mapping table or helper was found.
+No portal-user mapping table or helper was found at the time of this audit.
 
 Missing pieces:
 
@@ -112,6 +121,8 @@ Missing pieces:
 - `clients.portal_access` is only a business-side flag today; it does not authenticate a client or grant scoped row access.
 
 Because of that, portal users are not currently tied to client rows in a way RLS can enforce.
+
+The next staged migration path is `supabase/migrations/20260514010000_add_client_portal_users.sql`. It creates `public.client_portal_users` with a `client_id` column matching the target database `public.clients.id` type, plus mapping indexes and uniqueness. The migration intentionally leaves RLS and app wiring for later steps.
 
 ## Account Membership Reuse Risk
 
@@ -142,6 +153,7 @@ Recommended separation:
 1. Define the portal identity model before exposing portal data.
    - Add a `client_portal_users` ownership table with `account_id`, `client_id`, `user_id`, `status`, timestamps, and unique constraints for active mappings.
    - Do not infer mappings from matching email addresses without an explicit invite or confirmation flow.
+   - Verify `supabase/tests/client-portal-users-schema-readiness.sql` in disposable before production apply.
 
 2. Add server-side portal context resolution.
    - Create a helper that verifies the Supabase session and returns only the mapped portal client context.

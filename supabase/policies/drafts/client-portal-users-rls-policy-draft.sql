@@ -13,14 +13,18 @@
 --   context;
 -- - dp_auth is removed or blocked from authorizing portal data.
 
--- Proposed schema, assuming public.clients.id is uuid in the target database.
--- If production clients.id is not uuid, change client_portal_users.client_id
--- to the matching type before applying any migration.
+-- Proposed schema is now staged in:
+-- supabase/migrations/20260514010000_add_client_portal_users.sql
+--
+-- That schema migration detects public.clients.id at migration runtime and
+-- creates client_portal_users.client_id with the same type. Production notes
+-- currently indicate clients.id is uuid, but production apply still requires
+-- a fresh column-type audit before running the staged migration.
 --
 -- create table public.client_portal_users (
 --   id uuid primary key default gen_random_uuid(),
 --   account_id uuid not null references public.accounts(id) on delete cascade,
---   client_id uuid not null references public.clients(id) on delete cascade,
+--   client_id <same type as public.clients.id> not null references public.clients(id) on delete cascade,
 --   user_id uuid not null references auth.users(id) on delete cascade,
 --   status text not null default 'active',
 --   created_at timestamptz not null default now(),
