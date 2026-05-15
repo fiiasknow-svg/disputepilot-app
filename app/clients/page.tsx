@@ -373,6 +373,11 @@ export default function Page() {
     };
   }
 
+  function clientSupabasePayload(client: Record<string, any>) {
+    const { client_type, type, category, savedStamp, ...payload } = client;
+    return payload;
+  }
+
   async function saveNew() {
     if (!form.first_name && !form.last_name) return;
     setSaving(true);
@@ -412,7 +417,7 @@ export default function Page() {
     void (async () => {
       try {
         const accountId = await getAccountId();
-        const payload = accountId ? { ...sanitizeClient(form), full_name, account_id: accountId } : { ...sanitizeClient(form), full_name };
+        const payload = clientSupabasePayload(accountId ? { ...sanitizeClient(form), full_name, account_id: accountId } : { ...sanitizeClient(form), full_name });
         const { error } = await supabase.from("clients").insert([payload]);
         if (error) throw error;
         setNotice(`Saved client: ${full_name} - ${form.email || "no-email"} - ${form.phone || "no-phone"} - ${savedStamp}`);
@@ -437,7 +442,7 @@ export default function Page() {
     let remoteError = "";
     try {
       const accountId = await getAccountId();
-      const payload = accountId ? { ...sanitizeClient(form), full_name, account_id: accountId } : { ...sanitizeClient(form), full_name };
+      const payload = clientSupabasePayload(accountId ? { ...sanitizeClient(form), full_name, account_id: accountId } : { ...sanitizeClient(form), full_name });
       const updateQuery = supabase.from("clients").update(payload).eq("id", editing.id);
       const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
       if (error) throw error;
@@ -619,7 +624,7 @@ export default function Page() {
         });
         try {
           const accountId = await getAccountId();
-          const payload = rows.map(({ id, ...row }: any) => accountId ? { ...row, account_id: accountId } : row);
+          const payload = rows.map(({ id, ...row }: any) => clientSupabasePayload(accountId ? { ...row, account_id: accountId } : row));
           const { error } = await supabase.from("clients").insert(payload);
           if (error) throw error;
           setNotice(`Imported ${rows.length} client${rows.length === 1 ? "" : "s"} from CSV.`);
