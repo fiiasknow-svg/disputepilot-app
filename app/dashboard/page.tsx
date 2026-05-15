@@ -107,6 +107,22 @@ export default function Page() {
               <label style={{display:"block",fontSize:11,color:"rgba(255,255,255,.6)",fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Total Revenue</label>
               <p style={{margin:"8px 0 0",fontSize:36,fontWeight:800,color:"#10b981"}}>$0</p>
             </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginTop:12}}>
+              {[
+                ["Credit Cards","$0"],
+                ["Customer Checks","$0"],
+                ["Customer Cash","$0"],
+                ["Paid Invoices","$0"],
+                ["Past due Invoices","$0"],
+                ["Commissions Due","$0"],
+              ].map(([label,value])=>(
+                <div key={label} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:10}}>
+                  <div style={{fontSize:11,color:"#64748b",fontWeight:700}}>{label}</div>
+                  <div style={{fontSize:18,color:"#1e293b",fontWeight:800,marginTop:3}}>{value}</div>
+                  <div style={{fontSize:10,color:"#94a3b8"}}>0% From Last 30 Days</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Training links */}
@@ -117,8 +133,8 @@ export default function Page() {
                 {label:"Claim Your Free Gifts",href:"/billing"},
                 {label:"Your First Dispute",href:"/disputes"},
                 {label:"Full Walkthrough",href:"/academy/credit-repair"},
-                {label:"1 to 1 Training",href:"/academy/credit-repair"},
-                {label:"Group Training",href:"/academy/credit-repair"},
+            {label:"1 to 1",href:"/academy/credit-repair"},
+            {label:"Group Training",href:"/academy/credit-repair"},
                 {label:"Help Center",href:"/academy/credit-repair"},
                 {label:"Task",href:"/dashboard"},
                 {label:"Start-Run-Grow Training",href:"/get-customers/start-run-grow"},
@@ -127,6 +143,48 @@ export default function Page() {
               ))}
             </div>
           </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
+          <section style={{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+            <h3 style={{margin:"0 0 14px",fontSize:15,fontWeight:700,color:"#1e293b"}}>Customer Overview</h3>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+              {[
+                ["1","Active Clients"],
+                ["1","No Portal"],
+                ["0","Current Leads"],
+                ["0","Follow Up"],
+                ["1","Past Due"],
+                ["0","Completed"],
+                ["0","Cancelled"],
+              ].map(([value,label])=>(
+                <div key={label} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:10,textAlign:"center"}}>
+                  <div style={{fontSize:22,fontWeight:800,color:"#1e3a5f"}}>{value}</div>
+                  <div style={{fontSize:11,color:"#64748b",fontWeight:700}}>{label}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section style={{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+            <h3 style={{margin:"0 0 14px",fontSize:15,fontWeight:700,color:"#1e293b"}}>Dispute Process Overview</h3>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+              {[
+                ["0","Bureau Disputes"],
+                ["0","Bureau Items Repaired"],
+                ["0","Bureau Items Deleted"],
+                ["0","Accounts In-Dispute"],
+                ["0","Negative Accounts"],
+                ["0","Creditor In-Dispute"],
+                ["0","Collector In-Dispute"],
+              ].map(([value,label])=>(
+                <div key={label} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:10,textAlign:"center"}}>
+                  <div style={{fontSize:22,fontWeight:800,color:"#1e3a5f"}}>{value}</div>
+                  <div style={{fontSize:11,color:"#64748b",fontWeight:700}}>{label}</div>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
 
         {/* Customer Search + Quick Lead + Messages + Calendar/Reminders */}

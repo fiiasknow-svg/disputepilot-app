@@ -5,7 +5,7 @@ const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 test('client filter tabs work without app error', async ({ page }) => {
   await page.goto(`${BASE_URL}/clients`);
 
-  await expect(page.getByRole('heading', { name: /Clients/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Customers/i })).toBeVisible();
 
   const filters = [/All/i, /Current/i, /Leads/i, /Archive/i];
 
@@ -16,6 +16,6 @@ test('client filter tabs work without app error', async ({ page }) => {
     await button.click();
 
     await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: /Clients/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Customers/i })).toBeVisible();
   }
 });

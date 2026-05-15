@@ -11,7 +11,7 @@ test('clients workflow is usable end to end', async ({ page }) => {
   const email = `flow.${stamp}@example.com`;
 
   await page.goto(`${BASE_URL}/clients`, { waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('heading', { name: /^Clients$/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Customers$/i })).toBeVisible();
   await expect(page.locator('tbody tr').first()).toBeVisible();
   await page.waitForTimeout(1000);
 

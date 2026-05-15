@@ -8,6 +8,12 @@ function cleanText(item: string) {
   return item
     .replace(/\s+/g, ' ')
     .trim()
+    .replace(/^(Get Support)(Submit a support ticket)$/i, '$1 $2')
+    .replace(/^(Help Center)(Browse all help articles)$/i, '$1 $2')
+    .replace(/^(FAQ)(Quick answers to common questions)$/i, '$1 $2')
+    .replace(/^(Success Path)(Step-by-step system walkthrough)$/i, '$1 $2')
+    .replace(/^(1-on-1 Coaching)(Schedule a session)$/i, '$1 $2')
+    .replace(/^(AI Credit Coach)(Get instant guidance)$/i, '$1 $2')
     .replace(/^\d+\s+Days Left in The Trial$/i, 'Days Left in The Trial');
 }
 

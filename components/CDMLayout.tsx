@@ -5,8 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
-const T13 = "\t\t\t\t\t\t\t\t\t\t\t\t\t";
-const T14 = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 // CDM trial end: derived from observed countdown (35h at ~12:45 UTC Apr 29, 2026)
 const CDM_TRIAL_END = 1777594500000;
 const AUTH_COOKIE = "dp_auth";
@@ -65,10 +63,7 @@ const navGroups = [
   },
   { key: "customers", label: "Customers", href: "/clients", icon: Icons.Users, isSingle: true },
   { key: "credit-analysis", label: "Credit Analysis/Analyzer", href: "/credit-analysis", icon: Icons.BarChart, isSingle: true },
-  { key: "dispute-manager", label: "Dispute Manager", href: "/disputes", icon: Icons.FileText, isSingle: true },
   { key: "bulk-print", label: "Bulk Print", href: "/bulk-print", icon: Icons.Printer, isSingle: true },
-  { key: "billing", label: "Billing", href: "/billing", icon: Icons.DollarSign, isSingle: true },
-  { key: "leads", label: "Leads/Affiliates", href: "/leads", icon: Icons.Mail, isSingle: true },
   {
     key:"dispute-manager", label:"Dispute Manager", icon:Icons.FileText,
     items:[
@@ -204,13 +199,13 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
           <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:8 }}>
             <div style={{ width:"36px", height:"36px", backgroundColor:"#3b82f6", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:"bold", color:"#fff", fontSize:"16px" }}>DP</div>
             <div>
-              <div style={{ color:"#fff", fontWeight:"600", fontSize:"15px" }}>DisputePilot</div>
+              <div style={{ color:"#fff", fontWeight:"600", fontSize:"15px" }}>Client Dispute Manager</div>
               <h3 style={{ color:"#64748b", fontSize:"10px", margin:0, fontWeight:400 }}>Client Dispute Manager Software.</h3>
             </div>
           </div>
           {/* Trial notice */}
           <div style={{ background:"#f59e0b22", borderRadius:6, padding:"6px 10px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <a href="/billing" style={{ color:"#f59e0b", fontSize:"11px", fontWeight:600, textDecoration:"none" }}>29 Days Left in The Trial</a>
+            <a href="/billing" style={{ color:"#f59e0b", fontSize:"11px", fontWeight:600, textDecoration:"none" }}>14 Days Left in The Trial</a>
             <button onClick={() => setActivateOpen(true)} style={{ background:"#f59e0b", color:"#fff", border:"none", borderRadius:4, padding:"2px 8px", fontSize:"11px", fontWeight:700, cursor:"pointer" }}>Activate</button>
           </div>
         </div>
@@ -271,28 +266,28 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setHelpOpen(o => !o)} style={{ width:"100%", padding:"12px 16px", backgroundColor:"#f59e0b", color:"#fff", border:"none", fontSize:"13px", fontWeight:"600", cursor:"pointer", textAlign:"left" as const }}>
             Help
           </button>
-          {/* Always in DOM for test matching */}
           <div style={{ backgroundColor:"#0f172a", display: helpOpen ? "block" : "none" }}>
-            <a href="mailto:support@clientdisputemanager.com" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`Get Support\n${T13}Submit a support ticket`}</a>
-            <a href="https://help.clientdisputemanager.com" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`Help Center\n${T13}Browse all help articles`}</a>
-            <a href="https://clientdisputemanager.com/faq" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`FAQ\n${T13}Quick answers to common questions`}</a>
-            <a href="https://clientdisputemanager.com/success-path" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`Success Path\n${T13}Step-by-step system walkthrough`}</a>
-            <a href="https://clientdisputemanager.com/coaching" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>{`1-on-1 Coaching\n${T13}Schedule a session`}</a>
-            <a href="/academy/credit-repair" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px" }}>{`AI Credit Coach\n${T14}Get instant guidance`}</a>
-          </div>
-          {/* Hidden but always rendered for Playwright */}
-          <div style={{ position:"absolute", left:"-9999px", width:"1px", height:"1px", overflow:"hidden" }}>
-            <a href="mailto:support@clientdisputemanager.com">{`Get Support\n${T13}Submit a support ticket`}</a>
-            <a href="#">{`Help Center\n${T13}Browse all help articles`}</a>
-            <a href="#">{`FAQ\n${T13}Quick answers to common questions`}</a>
-            <a href="#">{`Success Path\n${T13}Step-by-step system walkthrough`}</a>
-            <a href="#">{`1-on-1 Coaching\n${T13}Schedule a session`}</a>
-            <a href="#">{`AI Credit Coach\n${T14}Get instant guidance`}</a>
+            <a href="mailto:support@clientdisputemanager.com" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Get Support<br /><span style={{ color:"#64748b" }}>Submit a support ticket</span></a>
+            <a href="https://help.clientdisputemanager.com" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Help Center<br /><span style={{ color:"#64748b" }}>Browse all help articles</span></a>
+            <a href="https://clientdisputemanager.com/faq" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>FAQ<br /><span style={{ color:"#64748b" }}>Quick answers to common questions</span></a>
+            <a href="https://clientdisputemanager.com/success-path" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Success Path<br /><span style={{ color:"#64748b" }}>Step-by-step system walkthrough</span></a>
+            <a href="https://clientdisputemanager.com/coaching" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>1-on-1 Coaching<br /><span style={{ color:"#64748b" }}>Schedule a session</span></a>
+            <a href="/academy/credit-repair" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px" }}>AI Credit Coach<br /><span style={{ color:"#64748b" }}>Get instant guidance</span></a>
           </div>
         </div>
       </aside>
 
-      <main style={{ flex:1, marginLeft:"280px", minHeight:"100vh" }}>{children}</main>
+      <main style={{ flex:1, marginLeft:"280px", minHeight:"100vh" }}>
+        <div style={{ background:"#fff", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center", gap:16, padding:"10px 24px", fontSize:13, color:"#475569", flexWrap:"wrap" }}>
+          <button onClick={() => setHelpOpen(o => !o)} style={{ background:"none", border:"none", color:"#2563eb", fontWeight:700, cursor:"pointer", padding:0 }}>Need Help?</button>
+          <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+            <span>Leslie Sabek</span>
+            <span style={{ fontWeight:800, color:"#1e293b" }}>NO COMPANY</span>
+            <button onClick={() => setActivateOpen(true)} style={{ background:"#22c55e", color:"#fff", border:"none", borderRadius:20, padding:"7px 14px", fontSize:12, fontWeight:800, cursor:"pointer" }}>ACTIVATE MEMBERSHIP</button>
+          </div>
+        </div>
+        {children}
+      </main>
 
       {/* Activate modal */}
       {activateOpen && (

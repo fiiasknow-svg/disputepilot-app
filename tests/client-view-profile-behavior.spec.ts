@@ -5,7 +5,7 @@ const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 test('client view action opens usable client profile without app error', async ({ page }) => {
   await page.goto(`${BASE_URL}/clients`);
 
-  await expect(page.getByRole('heading', { name: /Clients/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Customers/i })).toBeVisible();
 
   const viewButton = page
     .locator('main')

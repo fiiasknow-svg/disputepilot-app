@@ -237,7 +237,7 @@ test("manual workflow audit", async ({ context }) => {
 
     await attempt(routeReport, "/clients", "Client tabs and filters remain usable", async () => {
       if (!savedStamp) throw auditError("Saved client marker missing from previous step");
-      await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Customers", exact: true })).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^All\b/i }).first()).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^Current\b/i }).first()).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^Leads\b/i }).first()).toBeVisible();
@@ -246,11 +246,11 @@ test("manual workflow audit", async ({ context }) => {
       await page.locator("main").getByRole("button", { name: /^Current\b/i }).first().click();
       await expect(page.locator("main").getByText(String(savedStamp)).first()).toBeVisible();
       await page.locator("main").getByRole("button", { name: /^Archive\b/i }).first().click();
-      await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Customers", exact: true })).toBeVisible();
       await page.locator("main").getByRole("button", { name: /^All\b/i }).first().click();
 
       await page.getByRole("combobox").first().selectOption("lead");
-      await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Customers", exact: true })).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^All\b/i }).first()).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^Current\b/i }).first()).toBeVisible();
       await expect(page.locator("main").getByRole("button", { name: /^Leads\b/i }).first()).toBeVisible();

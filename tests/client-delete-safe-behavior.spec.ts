@@ -12,5 +12,5 @@ test('clients delete action asks for confirmation or keeps page safe', async ({ 
 
   await page.getByRole('button', { name: '🗑' }).first().click();
 
-  await expect(page.getByRole('heading', { name: /Clients/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Customers/i })).toBeVisible();
 });
