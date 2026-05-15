@@ -128,6 +128,8 @@ export default function Page() {
   const [inviteSent, setInviteSent] = useState(false);
   const [form, setForm] = useState({...EMPTY_FORM});
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
 
@@ -172,11 +174,13 @@ export default function Page() {
 
   async function load() {
     setLoading(true);
+    setErrorMessage("");
     try {
       const accountId = await getAccountId();
 
       if(accountId){
-        const { data } = await supabase.from("employees").select("*").eq("account_id",accountId).order("created_at",{ascending:false});
+        const { data, error } = await supabase.from("employees").select("*").eq("account_id",accountId).order("created_at",{ascending:false});
+        if(error) throw error;
 
         if(data?.length){
           setEmployees(data);
@@ -185,10 +189,12 @@ export default function Page() {
         }
       }
 
-      const { data } = await supabase.from("employees").select("*").order("created_at",{ascending:false});
+      const { data, error } = await supabase.from("employees").select("*").order("created_at",{ascending:false});
+      if(error) throw error;
       setEmployees(data||[]);
-    } catch {
+    } catch (error) {
       setEmployees([]);
+      setErrorMessage(`Could not load employees from Supabase. ${formatSaveError(error)}`);
     }
     setLoading(false);
   }
@@ -214,6 +220,8 @@ export default function Page() {
   async function save() {
     if(!form.first_name||!form.email) return;
     setSaving(true);
+    setNotice("");
+    setErrorMessage("");
     setSaveError("");
     let accountId: string | null = null;
     let operation: "insert" | "update" = editing ? "update" : "insert";
@@ -236,7 +244,9 @@ export default function Page() {
         if(error) throw error;
       }
 
-      setSaving(false); setShowForm(false); setEditing(null); setForm({...EMPTY_FORM}); load();
+      setSaving(false); setShowForm(false); setEditing(null); setForm({...EMPTY_FORM});
+      setNotice(editing ? `Updated employee: ${form.first_name} ${form.last_name}`.trim() : `Added employee: ${form.first_name} ${form.last_name}`.trim());
+      load();
     } catch (error) {
       logEmployeeSaveFailure({
         accountIdResolved: Boolean(accountId),
@@ -245,6 +255,7 @@ export default function Page() {
         error,
       });
       setSaveError(formatSaveError(error));
+      setErrorMessage(`Employee could not be saved: ${formatSaveError(error)}`);
       setSaving(false);
     }
   }
@@ -258,50 +269,79 @@ export default function Page() {
   }
 
   async function del(id:string) {
+    setNotice("");
+    setErrorMessage("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const deleteQuery = supabase.from("employees").delete().eq("id",id);
-      if(accountId) await deleteQuery.eq("account_id",accountId);
-      else await deleteQuery;
-    } catch {}
+      const { error } = accountId ? await deleteQuery.eq("account_id",accountId) : await deleteQuery;
+      if(error) throw error;
+    } catch (error) {
+      remoteError = formatSaveError(error);
+    }
     setDeleteId(null); setEmployees(e=>e.filter(x=>x.id!==id)); setSelected(s=>{const n=new Set(s);n.delete(id);return n;});
+    setNotice(remoteError ? "Removed employee locally." : "Removed employee.");
+    if(remoteError) setErrorMessage(`Supabase delete failed: ${remoteError}`);
   }
 
   async function bulkDelete() {
     const ids=[...selected];
+    setNotice("");
+    setErrorMessage("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const deleteQuery = supabase.from("employees").delete().in("id",ids);
-      if(accountId) await deleteQuery.eq("account_id",accountId);
-      else await deleteQuery;
-    } catch {}
+      const { error } = accountId ? await deleteQuery.eq("account_id",accountId) : await deleteQuery;
+      if(error) throw error;
+    } catch (error) {
+      remoteError = formatSaveError(error);
+    }
     setEmployees(e=>e.filter(x=>!ids.includes(x.id))); setSelected(new Set());
+    setNotice(remoteError ? `Removed ${ids.length} employee${ids.length === 1 ? "" : "s"} locally.` : `Removed ${ids.length} employee${ids.length === 1 ? "" : "s"}.`);
+    if(remoteError) setErrorMessage(`Supabase bulk delete failed: ${remoteError}`);
   }
 
   async function bulkSetStatus(status:string) {
     const ids=[...selected];
+    setNotice("");
+    setErrorMessage("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const updateQuery = supabase.from("employees").update({status}).in("id",ids);
-      if(accountId) await updateQuery.eq("account_id",accountId);
-      else await updateQuery;
-    } catch {}
+      const { error } = accountId ? await updateQuery.eq("account_id",accountId) : await updateQuery;
+      if(error) throw error;
+    } catch (error) {
+      remoteError = formatSaveError(error);
+    }
     setEmployees(e=>e.map(x=>ids.includes(x.id)?{...x,status}:x));
     setSelected(new Set()); setBulkStatusOpen(false);
+    setNotice(remoteError ? `Updated ${ids.length} employee${ids.length === 1 ? "" : "s"} locally.` : `Updated ${ids.length} employee${ids.length === 1 ? "" : "s"}.`);
+    if(remoteError) setErrorMessage(`Supabase bulk status update failed: ${remoteError}`);
   }
 
   async function toggleStatus(id:string, cur:string) {
     const status=cur==="active"?"inactive":"active";
+    setNotice("");
+    setErrorMessage("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const updateQuery = supabase.from("employees").update({status}).eq("id",id);
-      if(accountId) await updateQuery.eq("account_id",accountId);
-      else await updateQuery;
-    } catch {}
+      const { error } = accountId ? await updateQuery.eq("account_id",accountId) : await updateQuery;
+      if(error) throw error;
+    } catch (error) {
+      remoteError = formatSaveError(error);
+    }
     setEmployees(e=>e.map(x=>x.id===id?{...x,status}:x));
+    setNotice(remoteError ? "Updated employee status locally." : "Updated employee status.");
+    if(remoteError) setErrorMessage(`Supabase status update failed: ${remoteError}`);
   }
 
   function sendInvite() {
+    setNotice("Invite queued locally. Email delivery is not connected yet.");
     setInviteSent(true);
     setTimeout(()=>{ setInviteSent(false); setShowInvite(false); setInviteEmail(""); setInviteRole("Dispute Specialist"); },2000);
   }
@@ -341,6 +381,17 @@ export default function Page() {
             <button onClick={()=>{setEditing(null);setSaveError("");setForm({...EMPTY_FORM});setShowForm(true);}} style={{background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14}}>+ Add Employee</button>
           </div>
         </div>
+
+        {notice&&(
+          <div role="status" aria-live="polite" style={{background:"#ecfdf5",border:"1px solid #bbf7d0",color:"#166534",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,fontWeight:600}}>
+            {notice}
+          </div>
+        )}
+        {errorMessage&&(
+          <div role="alert" style={{background:"#fef2f2",border:"1px solid #fecaca",color:"#991b1b",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,fontWeight:600}}>
+            {errorMessage}
+          </div>
+        )}
 
         {/* Stat Cards */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>

@@ -18,6 +18,10 @@ type Status = {id?:string;name:string;color:string;type?:string;account_id?:stri
 type Plan = {id:number;name:string;price:number;interval:"monthly"|"quarterly"|"annual";features:string;active:boolean};
 type Tag = {id:number;name:string;color:string};
 
+function actionErrorMessage(error: any) {
+  return error?.message || error?.code || "Unknown Supabase error";
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 const inp: React.CSSProperties={width:"100%",padding:"9px 12px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:14,boxSizing:"border-box",background:"#fff"};
 const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",marginBottom:16,overflow:"hidden"};
@@ -90,6 +94,8 @@ export default function Page() {
   ]);
   const [tagInput, setTagInput] = useState("");
   const [tagColor, setTagColor] = useState("#3b82f6");
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
 
   async function getAccountId() {
     const { data: userData } = await supabase.auth.getUser();
@@ -109,12 +115,14 @@ export default function Page() {
 
   async function loadStatuses() {
     setLoadingSt(true);
+    setError("");
 
     try {
       const accountId = await getAccountId();
 
       if (accountId) {
-        const { data } = await supabase.from("statuses").select("*").eq("account_id", accountId).order("name");
+        const { data, error } = await supabase.from("statuses").select("*").eq("account_id", accountId).order("name");
+        if (error) throw error;
 
         if (data?.length) {
           setStatuses(data);
@@ -123,10 +131,12 @@ export default function Page() {
         }
       }
 
-      const { data } = await supabase.from("statuses").select("*").order("name");
+      const { data, error } = await supabase.from("statuses").select("*").order("name");
+      if (error) throw error;
       setStatuses(data || []);
-    } catch {
+    } catch (err: any) {
       setStatuses([]);
+      setError(`Could not load custom statuses from Supabase. ${actionErrorMessage(err)}`);
     }
 
     setLoadingSt(false);
@@ -137,52 +147,66 @@ export default function Page() {
   async function addStatus(){
     if(!sfForm.name)return;
     setSavingSt(true);
+    setNotice("");
+    setError("");
     let accountId = null;
     try {
       accountId = await getAccountId();
-    } catch {}
+    } catch (err: any) {
+      setError(`No account context was available. Status will be kept locally. ${actionErrorMessage(err)}`);
+    }
     const payload = accountId ? {...sfForm, account_id: accountId} : sfForm;
     const fallbackStatus: Status = {...payload,id:`local-status-${Date.now()}`};
 
     try {
-      const {data}=await supabase.from("statuses").insert([payload]).select().single();
+      const {data,error}=await supabase.from("statuses").insert([payload]).select().single();
+      if(error) throw error;
       setStatuses(s=>[...s,(data&&!Array.isArray(data)?data as Status:fallbackStatus)]);
-    } catch {
+      setNotice(`Added status: ${sfForm.name}`);
+    } catch (err: any) {
       setStatuses(s=>[...s,fallbackStatus]);
+      setNotice(`Added status locally: ${sfForm.name}`);
+      setError(`Supabase status save failed: ${actionErrorMessage(err)}`);
     }
 
     setSavingSt(false); setShowSF(null); setSfForm({name:"",color:"#3b82f6",type:"client"});
   }
   async function delStatus(id:string){
+    setNotice("");
+    setError("");
+    let remoteError = "";
     if(!id.startsWith("local-status-")){
       try {
         const accountId = await getAccountId();
         const deleteQuery = supabase.from("statuses").delete().eq("id",id);
 
-        if(accountId){
-          await deleteQuery.eq("account_id",accountId);
-        } else {
-          await deleteQuery;
-        }
-      } catch {}
+        const { error } = accountId ? await deleteQuery.eq("account_id",accountId) : await deleteQuery;
+        if(error) throw error;
+      } catch (err: any) {
+        remoteError = actionErrorMessage(err);
+      }
     }
     setStatuses(s=>s.filter(x=>x.id!==id));
+    setNotice(remoteError ? "Removed status locally." : "Removed status.");
+    if(remoteError) setError(`Supabase status delete failed: ${remoteError}`);
   }
 
-  function saveGen(){setSavingGen(true);setTimeout(()=>{setSavingGen(false);setSavedGen(true);setTimeout(()=>setSavedGen(false),3000);},500);}
-  function saveRound(){setSavingR(true);setTimeout(()=>{setSavingR(false);setSavedR(true);setTimeout(()=>setSavedR(false),3000);},500);}
-  function saveNotifs(){setSavingN(true);setTimeout(()=>{setSavingN(false);setSavedN(true);setTimeout(()=>setSavedN(false),3000);},500);}
-  function savePortal(){setSavingP(true);setTimeout(()=>{setSavingP(false);setSavedP(true);setTimeout(()=>setSavedP(false),3000);},500);}
+  function saveGen(){setNotice("");setError("");setSavingGen(true);setTimeout(()=>{setSavingGen(false);setSavedGen(true);setNotice("General settings saved for this session. Supabase persistence is not connected yet.");setTimeout(()=>setSavedGen(false),3000);},500);}
+  function saveRound(){setNotice("");setError("");setSavingR(true);setTimeout(()=>{setSavingR(false);setSavedR(true);setNotice("Round settings saved for this session. Supabase persistence is not connected yet.");setTimeout(()=>setSavedR(false),3000);},500);}
+  function saveNotifs(){setNotice("");setError("");setSavingN(true);setTimeout(()=>{setSavingN(false);setSavedN(true);setNotice("Notification settings saved for this session. Supabase persistence is not connected yet.");setTimeout(()=>setSavedN(false),3000);},500);}
+  function savePortal(){setNotice("");setError("");setSavingP(true);setTimeout(()=>{setSavingP(false);setSavedP(true);setNotice("Portal settings saved for this session. Production portal persistence is not connected yet.");setTimeout(()=>setSavedP(false),3000);},500);}
 
   function addPlan(){
     if(!planForm.name)return;
     setPlans(p=>[...p,{...planForm,id:Date.now()}]);
+    setNotice(`Added service plan locally: ${planForm.name}`);
     setPlanForm({name:"",price:0,interval:"monthly",features:"",active:true});
     setShowPlanForm(false);
   }
   function addTag(){
     if(!tagInput.trim())return;
     setTags(t=>[...t,{id:Date.now(),name:tagInput.trim(),color:tagColor}]);
+    setNotice(`Added tag locally: ${tagInput.trim()}`);
     setTagInput("");
   }
 
@@ -216,6 +240,17 @@ export default function Page() {
       <div style={{padding:24,maxWidth:900}}>
         <h1 style={{fontSize:22,fontWeight:800,margin:"0 0 4px",color:"#1e293b"}}>Configuration</h1>
         <p style={{color:"#64748b",fontSize:14,marginBottom:20}}>Manage system settings, statuses, plans, and integrations.</p>
+
+        {notice&&(
+          <div role="status" aria-live="polite" style={{background:"#ecfdf5",border:"1px solid #bbf7d0",color:"#166534",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,fontWeight:600}}>
+            {notice}
+          </div>
+        )}
+        {error&&(
+          <div role="alert" style={{background:"#fef2f2",border:"1px solid #fecaca",color:"#991b1b",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,fontWeight:600}}>
+            {error}
+          </div>
+        )}
 
         {/* Tabs */}
         <div style={{display:"flex",borderBottom:"2px solid #f1f5f9",marginBottom:24,overflowX:"auto"}}>

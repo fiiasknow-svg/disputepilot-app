@@ -34,6 +34,9 @@ function writeLocalEvents(events: any[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(LOCAL_EVENTS_KEY, JSON.stringify(events));
 }
+function actionErrorMessage(error: any) {
+  return error?.message || error?.code || "Unknown Supabase error";
+}
 function eventSignature(e: any) {
   return [
     e.title || "",
@@ -63,6 +66,8 @@ export default function Page() {
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any|null>(null);
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
   const [hoveredEvent, setHoveredEvent] = useState<string|null>(null);
   const EMPTY_FORM = { title:"", description:"", date:selectedDate, start_time:"09:00", end_time:"10:00", all_day:true, type:"reminder", client_id:"", assigned_agent:"", location:"", recurrence:"none", reminder:"none", color:"" };
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -87,65 +92,77 @@ export default function Page() {
   }
 
   async function load() {
+    setError("");
     let accountId = null;
     try {
       accountId = await getAccountId();
-    } catch {}
+    } catch (err: any) {
+      setError(`No account context was available. Showing any readable calendar data plus local events. ${actionErrorMessage(err)}`);
+    }
     const [leads] = await Promise.all([
       supabase.from("leads").select("id,first_name,last_name,follow_up_date").not("follow_up_date","is",null),
     ]);
+    if (leads.error) setError(`Could not load lead follow-up events. ${actionErrorMessage(leads.error)}`);
     let eventRows: any[] = [];
     if (accountId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("calendar_events")
         .select("*")
         .eq("account_id", accountId)
         .order("date")
         .order("start_time");
+      if (error) setError(`Could not load account calendar events. ${actionErrorMessage(error)}`);
       eventRows = data || [];
     }
     if (!eventRows.length) {
-      const { data } = await supabase.from("calendar_events").select("*").order("date").order("start_time");
+      const { data, error } = await supabase.from("calendar_events").select("*").order("date").order("start_time");
+      if (error) setError(`Could not load calendar events. ${actionErrorMessage(error)}`);
       eventRows = data || [];
     }
     let disputeRows: any[] = [];
     if (accountId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("disputes")
         .select("id,account_name,bureau,status")
         .eq("account_id", accountId)
         .neq("status","resolved");
+      if (error) setError(`Could not load dispute calendar items. ${actionErrorMessage(error)}`);
       disputeRows = data || [];
     }
     if (!disputeRows.length) {
-      const { data } = await supabase.from("disputes").select("id,account_name,bureau,status").neq("status","resolved");
+      const { data, error } = await supabase.from("disputes").select("id,account_name,bureau,status").neq("status","resolved");
+      if (error) setError(`Could not load dispute calendar items. ${actionErrorMessage(error)}`);
       disputeRows = data || [];
     }
     let invoiceRows: any[] = [];
     if (accountId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("invoices")
         .select("id,amount,due_date,status,clients(first_name,last_name)")
         .eq("account_id", accountId)
         .eq("status","pending")
         .not("due_date","is",null);
+      if (error) setError(`Could not load invoice due dates. ${actionErrorMessage(error)}`);
       invoiceRows = data || [];
     }
     if (!invoiceRows.length) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("invoices")
         .select("id,amount,due_date,status,clients(first_name,last_name)")
         .eq("status","pending")
         .not("due_date","is",null);
+      if (error) setError(`Could not load invoice due dates. ${actionErrorMessage(error)}`);
       invoiceRows = data || [];
     }
     let clientRows: any[] = [];
     if (accountId) {
-      const { data } = await supabase.from("clients").select("id,first_name,last_name,dob").eq("account_id", accountId);
+      const { data, error } = await supabase.from("clients").select("id,first_name,last_name,dob").eq("account_id", accountId);
+      if (error) setError(`Could not load client calendar items. ${actionErrorMessage(error)}`);
       clientRows = data || [];
     }
     if (!clientRows.length) {
-      const { data } = await supabase.from("clients").select("id,first_name,last_name,dob");
+      const { data, error } = await supabase.from("clients").select("id,first_name,last_name,dob");
+      if (error) setError(`Could not load client calendar items. ${actionErrorMessage(error)}`);
       clientRows = data || [];
     }
     const local = readLocalEvents();
@@ -222,18 +239,28 @@ export default function Page() {
   async function save() {
     if(!form.title||!form.date) return;
     setSaving(true);
+    setNotice("");
+    setError("");
     const accountId = await getAccountId().catch(() => null);
     const payload={...form, color:form.color||(EVENT_COLORS[form.type]||"#3b82f6"), client_id: form.client_id || null};
     const remotePayload = accountId ? { ...payload, account_id: accountId } : payload;
     const nextEvent = editingEvent ? { ...editingEvent, ...payload } : { ...payload, id: `local-${Date.now()}`, auto: false };
+    let remoteError = "";
     if(editingEvent && !String(editingEvent.id).startsWith("local-")) {
       try {
         const updateQuery = supabase.from("calendar_events").update(payload).eq("id",editingEvent.id);
-        if (accountId) await updateQuery.eq("account_id", accountId);
-        else await updateQuery;
-      } catch {}
+        const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+        if (error) throw error;
+      } catch (err: any) {
+        remoteError = actionErrorMessage(err);
+      }
     } else if (!editingEvent) {
-      try { await supabase.from("calendar_events").insert([remotePayload]); } catch {}
+      try {
+        const { error } = await supabase.from("calendar_events").insert([remotePayload]);
+        if (error) throw error;
+      } catch (err: any) {
+        remoteError = actionErrorMessage(err);
+      }
     }
     setEvents(prev => {
       const next = editingEvent
@@ -244,18 +271,27 @@ export default function Page() {
       writeLocalEvents(localOnly);
       return next;
     });
+    setNotice(remoteError
+      ? `${editingEvent ? "Updated" : "Saved"} event locally: ${form.title}`
+      : `${editingEvent ? "Updated" : "Saved"} event: ${form.title}`);
+    if(remoteError) setError(`Supabase calendar sync failed: ${remoteError}`);
     setSaving(false); setShowForm(false); setEditingEvent(null); setForm({...EMPTY_FORM});
   }
 
   async function deleteEvent(id: string) {
     const target = [...events, ...autoEvents].find(e => e.id === id);
+    setNotice("");
+    setError("");
+    let remoteError = "";
     if (target && !String(id).startsWith("local-")) {
       try {
         const accountId = await getAccountId().catch(() => null);
         const deleteQuery = supabase.from("calendar_events").delete().eq("id",id);
-        if (accountId) await deleteQuery.eq("account_id", accountId);
-        else await deleteQuery;
-      } catch {}
+        const { error } = accountId ? await deleteQuery.eq("account_id", accountId) : await deleteQuery;
+        if (error) throw error;
+      } catch (err: any) {
+        remoteError = actionErrorMessage(err);
+      }
     }
     setEvents(e => {
       const next = e.filter(x=>x.id!==id);
@@ -264,6 +300,8 @@ export default function Page() {
       writeLocalEvents(localOnly);
       return next;
     });
+    setNotice(remoteError ? "Removed event locally." : "Removed event.");
+    if(remoteError) setError(`Supabase calendar delete failed: ${remoteError}`);
   }
 
   function exportIcal() {
@@ -344,6 +382,17 @@ export default function Page() {
             <button onClick={()=>openAdd()} style={{ background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, padding:"9px 20px", cursor:"pointer", fontWeight:700, fontSize:14 }}>+ Add Event</button>
           </div>
         </div>
+
+        {notice&&(
+          <div role="status" aria-live="polite" style={{ background:"#ecfdf5", border:"1px solid #bbf7d0", color:"#166534", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:13, fontWeight:600 }}>
+            {notice}
+          </div>
+        )}
+        {error&&(
+          <div role="alert" style={{ background:"#fef2f2", border:"1px solid #fecaca", color:"#991b1b", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:13, fontWeight:600 }}>
+            {error}
+          </div>
+        )}
 
         {/* View + Nav controls */}
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, flexWrap:"wrap", gap:10 }}>

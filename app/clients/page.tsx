@@ -104,6 +104,10 @@ function writeLocalClients(clients: any[]) {
   window.localStorage.setItem(LOCAL_CLIENTS_KEY, JSON.stringify(clients));
 }
 
+function actionErrorMessage(error: any) {
+  return error?.message || error?.code || "Unknown Supabase error";
+}
+
 const inp: React.CSSProperties = { width: "100%", padding: "8px 11px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" };
 const sel: React.CSSProperties = { padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, background: "#fff" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 3 };
@@ -253,6 +257,7 @@ export default function Page() {
   const [bulkEmailBody, setBulkEmailBody] = useState("");
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
   const [recentSavedClient, setRecentSavedClient] = useState<any>(null);
 
   async function getAccountId() {
@@ -274,28 +279,33 @@ export default function Page() {
   // ── Load ──
   async function load() {
     setLoading(true);
+    setError("");
     const localClients = readLocalClients();
     try {
       const accountId = await getAccountId();
       let remoteClients: any[] = [];
 
       if (accountId) {
-        const { data } = await supabase.from("clients").select("*").eq("account_id", accountId).order("created_at", { ascending: false });
+        const { data, error } = await supabase.from("clients").select("*").eq("account_id", accountId).order("created_at", { ascending: false });
+        if (error) throw error;
         remoteClients = data || [];
       }
 
       if (!remoteClients.length) {
-        const { data } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
+        const { data, error } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
         remoteClients = data || [];
       }
 
       let disputeRows: any[] = [];
       if (accountId) {
-        const { data } = await supabase.from("disputes").select("client_id").eq("account_id", accountId);
+        const { data, error } = await supabase.from("disputes").select("client_id").eq("account_id", accountId);
+        if (error) throw error;
         disputeRows = data || [];
       }
       if (!disputeRows.length) {
-        const { data } = await supabase.from("disputes").select("client_id");
+        const { data, error } = await supabase.from("disputes").select("client_id");
+        if (error) throw error;
         disputeRows = data || [];
       }
       const remoteIds = new Set(remoteClients.map((c: any) => c.id));
@@ -303,9 +313,10 @@ export default function Page() {
       const counts: Record<string, number> = {};
       for (const d of disputeRows) counts[d.client_id] = (counts[d.client_id] || 0) + 1;
       setDisputeCounts(counts);
-    } catch {
+    } catch (err: any) {
       setClients(localClients.length ? localClients : SAMPLE_CLIENTS);
       setDisputeCounts({});
+      setError(`Could not load clients from Supabase. Showing local/demo clients. ${actionErrorMessage(err)}`);
     }
     setLoading(false);
   }
@@ -365,6 +376,8 @@ export default function Page() {
   async function saveNew() {
     if (!form.first_name && !form.last_name) return;
     setSaving(true);
+    setNotice("");
+    setError("");
     const full_name = `${form.first_name} ${form.last_name}`.trim();
     const savedStamp = Date.now();
     const now = new Date().toISOString();
@@ -394,15 +407,17 @@ export default function Page() {
     setSaving(false);
     setShowForm(false);
     setForm({ ...EMPTY_FORM });
-    setNotice(`Saved client: ${full_name} - ${form.email || "no-email"} - ${form.phone || "no-phone"} - ${savedStamp}`);
+    setNotice(`Saved client: ${full_name} - ${form.email || "no-email"} - ${form.phone || "no-phone"} - ${savedStamp} (local row visible; syncing to Supabase)`);
     setRecentSavedClient(newClient);
     void (async () => {
       try {
         const accountId = await getAccountId();
         const payload = accountId ? { ...sanitizeClient(form), full_name, account_id: accountId } : { ...sanitizeClient(form), full_name };
-        await supabase.from("clients").insert([payload]);
-      } catch {
-        // Keep local UI working even if the remote insert fails.
+        const { error } = await supabase.from("clients").insert([payload]);
+        if (error) throw error;
+        setNotice(`Saved client: ${full_name} - ${form.email || "no-email"} - ${form.phone || "no-phone"} - ${savedStamp}`);
+      } catch (err: any) {
+        setError(`Supabase save failed: ${actionErrorMessage(err)}`);
       }
     })();
   }
@@ -410,6 +425,8 @@ export default function Page() {
   async function saveEdit() {
     if (!editing) return;
     setSaving(true);
+    setNotice("");
+    setError("");
     const full_name = `${form.first_name} ${form.last_name}`.trim();
     const updatedClient = { ...editing, ...sanitizeClient(form), full_name, updated_at: new Date().toISOString() };
     setClients(cs => {
@@ -417,19 +434,21 @@ export default function Page() {
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
       return next;
     });
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const payload = accountId ? { ...sanitizeClient(form), full_name, account_id: accountId } : { ...sanitizeClient(form), full_name };
       const updateQuery = supabase.from("clients").update(payload).eq("id", editing.id);
-      if (accountId) await updateQuery.eq("account_id", accountId);
-      else await updateQuery;
-    } catch {
-      // Keep local UI working even if the remote update fails.
+      const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
     }
     setSaving(false);
     setEditing(null);
     setForm({ ...EMPTY_FORM });
-    setNotice(`Updated client: ${full_name}`);
+    setNotice(remoteError ? `Updated client: ${full_name} (local row visible; Supabase sync failed)` : `Updated client: ${full_name}`);
+    if (remoteError) setError(`Supabase update failed: ${remoteError}`);
     setRecentSavedClient(updatedClient);
   }
 
@@ -453,13 +472,16 @@ export default function Page() {
   async function confirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
+    setNotice("");
+    setError("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const deleteQuery = supabase.from("clients").delete().eq("id", deleteTarget.id);
-      if (accountId) await deleteQuery.eq("account_id", accountId);
-      else await deleteQuery;
-    } catch {
-      // Keep local UI working even if the remote delete fails.
+      const { error } = accountId ? await deleteQuery.eq("account_id", accountId) : await deleteQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
     }
     setDeleting(false);
     setDeleteTarget(null);
@@ -469,33 +491,43 @@ export default function Page() {
       return next;
     });
     setSelected(s => { const n = new Set(s); n.delete(deleteTarget.id); return n; });
+    setNotice(remoteError ? "Removed client locally." : "Removed client.");
+    if (remoteError) setError(`Supabase delete failed: ${remoteError}`);
   }
 
   async function updateStatus(id: string, status: string) {
+    setNotice("");
+    setError("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const updateQuery = supabase.from("clients").update({ status }).eq("id", id);
-      if (accountId) await updateQuery.eq("account_id", accountId);
-      else await updateQuery;
-    } catch {
-      // Keep local UI working even if the remote update fails.
+      const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
     }
     setClients(cs => {
       const next = cs.map(c => c.id === id ? { ...c, status, updated_at: new Date().toISOString() } : c);
       writeLocalClients(next.filter(c => String(c.id).startsWith("local-")));
       return next;
     });
+    setNotice(remoteError ? "Updated client status locally." : "Updated client status.");
+    if (remoteError) setError(`Supabase status update failed: ${remoteError}`);
   }
 
   async function bulkUpdateStatus() {
     const ids = Array.from(selected);
+    setNotice("");
+    setError("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const updateQuery = supabase.from("clients").update({ status: bulkStatus }).in("id", ids);
-      if (accountId) await updateQuery.eq("account_id", accountId);
-      else await updateQuery;
-    } catch {
-      // Keep local UI working even if the remote update fails.
+      const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
     }
     setClients(cs => {
       const next = cs.map(c => selected.has(c.id) ? { ...c, status: bulkStatus, updated_at: new Date().toISOString() } : c);
@@ -503,17 +535,22 @@ export default function Page() {
       return next;
     });
     setSelected(new Set()); setBulkStatusOpen(false);
+    setNotice(remoteError ? `Updated ${ids.length} client${ids.length === 1 ? "" : "s"} locally.` : `Updated ${ids.length} client${ids.length === 1 ? "" : "s"}.`);
+    if (remoteError) setError(`Supabase bulk status update failed: ${remoteError}`);
   }
 
   async function bulkDelete() {
     const ids = Array.from(selected);
+    setNotice("");
+    setError("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const deleteQuery = supabase.from("clients").delete().in("id", ids);
-      if (accountId) await deleteQuery.eq("account_id", accountId);
-      else await deleteQuery;
-    } catch {
-      // Keep local UI working even if the remote delete fails.
+      const { error } = accountId ? await deleteQuery.eq("account_id", accountId) : await deleteQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
     }
     setClients(cs => {
       const next = cs.filter(c => !selected.has(c.id));
@@ -521,6 +558,8 @@ export default function Page() {
       return next;
     });
     setSelected(new Set());
+    setNotice(remoteError ? `Removed ${ids.length} client${ids.length === 1 ? "" : "s"} locally.` : `Removed ${ids.length} client${ids.length === 1 ? "" : "s"}.`);
+    if (remoteError) setError(`Supabase bulk delete failed: ${remoteError}`);
   }
 
   function toggleSelect(id: string) {
@@ -555,6 +594,8 @@ export default function Page() {
   async function importCSV() {
     if (!importText.trim()) return;
     setSaving(true);
+    setNotice("");
+    setError("");
     try {
       const lines = importText.trim().split("\n");
       const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase().replace(/\s+/g, "_"));
@@ -579,13 +620,17 @@ export default function Page() {
         try {
           const accountId = await getAccountId();
           const payload = rows.map(({ id, ...row }: any) => accountId ? { ...row, account_id: accountId } : row);
-          await supabase.from("clients").insert(payload);
-        } catch {
-          // Keep local UI working even if the remote import insert fails.
+          const { error } = await supabase.from("clients").insert(payload);
+          if (error) throw error;
+          setNotice(`Imported ${rows.length} client${rows.length === 1 ? "" : "s"} from CSV.`);
+        } catch (err: any) {
+          setNotice(`Imported ${rows.length} client${rows.length === 1 ? "" : "s"} from CSV. Local rows are visible; Supabase sync failed.`);
+          setError(`Supabase import failed: ${actionErrorMessage(err)}`);
         }
-        setNotice(`Imported ${rows.length} client${rows.length === 1 ? "" : "s"} from CSV.`);
       }
-    } catch { }
+    } catch (err: any) {
+      setError(`Client import failed: ${actionErrorMessage(err)}`);
+    }
     setSaving(false);
     setShowImport(false);
     setImportText("");
@@ -651,6 +696,11 @@ export default function Page() {
                 {recentSavedClient.savedStamp ? ` — ${recentSavedClient.savedStamp}` : ""}
               </div>
             )}
+          </div>
+        )}
+        {error && (
+          <div role="alert" style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
+            {error}
           </div>
         )}
 

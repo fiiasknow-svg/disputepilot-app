@@ -50,6 +50,10 @@ function writeLocalLeads(leads: any[]) {
   window.localStorage.setItem(LOCAL_LEADS_KEY, JSON.stringify(leads));
 }
 
+function actionErrorMessage(error: any) {
+  return error?.message || error?.code || "Unknown Supabase error";
+}
+
 const inp: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 };
 const sel: React.CSSProperties = { ...inp, background: "#fff" };
@@ -147,6 +151,7 @@ export default function Page() {
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -190,12 +195,14 @@ export default function Page() {
 
   async function load() {
     setLoading(true);
+    setError("");
     const localLeads = readLocalLeads();
     try {
       const accountId = await getAccountId();
 
       if (accountId) {
-        const { data } = await supabase.from("leads").select("*").eq("account_id", accountId).order("created_at", { ascending: false });
+        const { data, error } = await supabase.from("leads").select("*").eq("account_id", accountId).order("created_at", { ascending: false });
+        if (error) throw error;
         const scopedLeads = data || [];
 
         if (scopedLeads.length) {
@@ -206,12 +213,14 @@ export default function Page() {
         }
       }
 
-      const { data } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
       const remoteLeads = data || [];
       const remoteIds = new Set(remoteLeads.map((lead: any) => lead.id));
       setLeads([...localLeads.filter((lead: any) => !remoteIds.has(lead.id)), ...remoteLeads]);
-    } catch {
+    } catch (err: any) {
       setLeads(localLeads);
+      setError(`Could not load leads from Supabase. Showing local leads only. ${actionErrorMessage(err)}`);
     }
     setLoading(false);
   }
@@ -264,6 +273,8 @@ export default function Page() {
   async function save() {
     if (!form.first_name || !form.last_name) return;
     setSaving(true);
+    setNotice("");
+    setError("");
     const full_name = `${form.first_name} ${form.last_name}`.trim();
     const now = new Date().toISOString();
     const payload = {
@@ -276,8 +287,11 @@ export default function Page() {
     let accountId = null;
     try {
       accountId = await getAccountId();
-    } catch {}
+    } catch (err: any) {
+      setError(`No account context was available. Lead will be kept locally. ${actionErrorMessage(err)}`);
+    }
     const remotePayload = accountId ? { ...sanitizeLead(form), account_id: accountId } : sanitizeLead(form);
+    let remoteError = "";
     if (editing) {
       setLeads(current => {
         const next = current.map(lead => lead.id === editing.id ? { ...lead, ...payload } : lead);
@@ -286,10 +300,10 @@ export default function Page() {
       });
       try {
         const updateQuery = supabase.from("leads").update(remotePayload).eq("id", editing.id);
-        if (accountId) await updateQuery.eq("account_id", accountId);
-        else await updateQuery;
-      } catch {
-        // Keep local UI working even if the backend update fails.
+        const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+        if (error) throw error;
+      } catch (err: any) {
+        remoteError = actionErrorMessage(err);
       }
     } else {
       setLeads(current => {
@@ -298,16 +312,20 @@ export default function Page() {
         return next;
       });
       try {
-        await supabase.from("leads").insert([remotePayload]);
-      } catch {
-        // Keep local UI working even if the backend insert fails.
+        const { error } = await supabase.from("leads").insert([remotePayload]);
+        if (error) throw error;
+      } catch (err: any) {
+        remoteError = actionErrorMessage(err);
       }
     }
     setSaving(false);
     setShowForm(false);
     setEditing(null);
     setForm({ ...EMPTY_FORM });
-    setNotice(editing ? `Updated lead: ${full_name}` : `Saved lead: ${full_name}`);
+    setNotice(remoteError
+      ? `${editing ? "Updated" : "Saved"} lead: ${full_name} (local row visible; Supabase sync failed)`
+      : editing ? `Updated lead: ${full_name}` : `Saved lead: ${full_name}`);
+    if (remoteError) setError(`Supabase sync failed: ${remoteError}`);
   }
 
   function openEdit(lead: any) {
@@ -336,13 +354,16 @@ export default function Page() {
   }
 
   async function deleteLead(id: string) {
+    setNotice("");
+    setError("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const deleteQuery = supabase.from("leads").delete().eq("id", id);
-      if (accountId) await deleteQuery.eq("account_id", accountId);
-      else await deleteQuery;
-    } catch {
-      // Keep local UI working even if the backend delete fails.
+      const { error } = accountId ? await deleteQuery.eq("account_id", accountId) : await deleteQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
     }
     setLeads(l => {
       const next = l.filter(x => x.id !== id);
@@ -350,17 +371,22 @@ export default function Page() {
       return next;
     });
     setDeleteTarget(null);
+    setNotice(remoteError ? "Removed lead locally." : "Removed lead.");
+    if (remoteError) setError(`Supabase delete failed: ${remoteError}`);
   }
 
   async function bulkDelete() {
     const ids = [...selected];
+    setNotice("");
+    setError("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const deleteQuery = supabase.from("leads").delete().in("id", ids);
-      if (accountId) await deleteQuery.eq("account_id", accountId);
-      else await deleteQuery;
-    } catch {
-      // Keep local UI working even if the backend bulk delete fails.
+      const { error } = accountId ? await deleteQuery.eq("account_id", accountId) : await deleteQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
     }
     setLeads(l => {
       const next = l.filter(x => !ids.includes(x.id));
@@ -368,17 +394,22 @@ export default function Page() {
       return next;
     });
     setSelected(new Set());
+    setNotice(remoteError ? `Removed ${ids.length} lead${ids.length === 1 ? "" : "s"} locally.` : `Removed ${ids.length} lead${ids.length === 1 ? "" : "s"}.`);
+    if (remoteError) setError(`Supabase bulk delete failed: ${remoteError}`);
   }
 
   async function bulkUpdateStatus(status: string) {
     const ids = [...selected];
+    setNotice("");
+    setError("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const updateQuery = supabase.from("leads").update({ status }).in("id", ids);
-      if (accountId) await updateQuery.eq("account_id", accountId);
-      else await updateQuery;
-    } catch {
-      // Keep local UI working even if the backend update fails.
+      const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
     }
     setLeads(l => {
       const next = l.map(x => ids.includes(x.id) ? { ...x, status } : x);
@@ -387,30 +418,41 @@ export default function Page() {
     });
     setSelected(new Set());
     setBulkStatusOpen(false);
+    setNotice(remoteError ? `Updated ${ids.length} lead${ids.length === 1 ? "" : "s"} locally.` : `Updated ${ids.length} lead${ids.length === 1 ? "" : "s"}.`);
+    if (remoteError) setError(`Supabase bulk status update failed: ${remoteError}`);
   }
 
   async function updateStatus(id: string, status: string) {
+    setNotice("");
+    setError("");
+    let remoteError = "";
     try {
       const accountId = await getAccountId();
       const updateQuery = supabase.from("leads").update({ status }).eq("id", id);
-      if (accountId) await updateQuery.eq("account_id", accountId);
-      else await updateQuery;
-    } catch {
-      // Keep local UI working even if the backend update fails.
+      const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
     }
     setLeads(l => {
       const next = l.map(x => x.id === id ? { ...x, status } : x);
       writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
       return next;
     });
+    setNotice(remoteError ? "Updated lead status locally." : "Updated lead status.");
+    if (remoteError) setError(`Supabase status update failed: ${remoteError}`);
   }
 
   async function convertToClient(lead: any) {
     setConverting(lead.id);
+    setNotice("");
+    setError("");
     let accountId = null;
     try {
       accountId = await getAccountId();
-    } catch {}
+    } catch (err: any) {
+      setError(`No account context was available for conversion. ${actionErrorMessage(err)}`);
+    }
     try {
       const clientPayload = {
         first_name: lead.first_name, last_name: lead.last_name,
@@ -419,16 +461,17 @@ export default function Page() {
         address: lead.address, city: lead.city, state: lead.state, zip: lead.zip,
         credit_score: lead.credit_score, assigned_agent: lead.assigned_agent,
       };
-      await supabase.from("clients").insert([accountId ? { ...clientPayload, account_id: accountId } : clientPayload]);
-    } catch {
-      // Keep local UI working even if the client insert fails.
+      const { error } = await supabase.from("clients").insert([accountId ? { ...clientPayload, account_id: accountId } : clientPayload]);
+      if (error) throw error;
+    } catch (err: any) {
+      setError(`Client record was not created in Supabase: ${actionErrorMessage(err)}`);
     }
     try {
       const updateQuery = supabase.from("leads").update({ status: "converted" }).eq("id", lead.id);
-      if (accountId) await updateQuery.eq("account_id", accountId);
-      else await updateQuery;
-    } catch {
-      // Keep local UI working even if the lead conversion update fails.
+      const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+      if (error) throw error;
+    } catch (err: any) {
+      setError(`Lead was marked converted locally, but Supabase update failed: ${actionErrorMessage(err)}`);
     }
     setLeads(current => current.map(item => item.id === lead.id ? { ...item, status: "converted" } : item));
     setConverting(null);
@@ -525,6 +568,11 @@ export default function Page() {
         {notice && (
           <div role="status" aria-live="polite" style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#166534", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
             {notice}
+          </div>
+        )}
+        {error && (
+          <div role="alert" style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
+            {error}
           </div>
         )}
         {/* Page tabs: Leads / Affiliates */}
