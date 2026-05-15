@@ -255,7 +255,6 @@ export default function Page() {
         error,
       });
       setSaveError(formatSaveError(error));
-      setErrorMessage(`Employee could not be saved: ${formatSaveError(error)}`);
       setSaving(false);
     }
   }
