@@ -28,12 +28,26 @@ test('configuration can edit and save practical settings', async ({ page }) => {
 test('configuration custom client status can be created and deleted', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page);
 
+  await page.route('**/rest/v1/statuses*', async route => {
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        code: 'PGRST205',
+        message: "Could not find the table 'public.statuses' in the schema cache",
+      }),
+    });
+  });
+
   await page.goto(`${BASE_URL}/settings/configuration`);
 
   await expect(page.getByRole('heading', { name: 'Configuration', exact: true })).toBeVisible();
+  await expect(page.getByText(/Could not load custom statuses from Supabase/i)).toHaveCount(0);
+  await expect(page.getByText(/Could not find the table 'public\.statuses'/i)).toHaveCount(0);
   await page.getByRole('button', { name: 'Client Statuses' }).click();
   await expect(page.getByText('Default Client Statuses')).toBeVisible();
   await expect(page.getByText(/Loading/)).toBeHidden();
+  await expect(page.getByRole('status').filter({ hasText: /Custom statuses are not connected yet/i })).toBeVisible();
 
   const statusName = `Playwright Status ${Date.now()}`;
   await page.getByRole('button', { name: '+ Add Status' }).click();
@@ -43,6 +57,8 @@ test('configuration custom client status can be created and deleted', async ({ p
 
   const statusRow = page.locator(`xpath=//span[normalize-space()="${statusName}"]/ancestor::div[button][1]`).first();
   await expect(statusRow).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: /Added status locally/i })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: /statuses|schema cache/i })).toHaveCount(0);
   await statusRow.getByRole('button').click();
   await expect(statusRow).toBeHidden();
 

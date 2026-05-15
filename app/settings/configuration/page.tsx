@@ -22,6 +22,20 @@ function actionErrorMessage(error: any) {
   return error?.message || error?.code || "Unknown Supabase error";
 }
 
+function isMissingStatusesTableError(error: any) {
+  const code = String(error?.code || "");
+  const message = String(error?.message || error?.details || "");
+  return (
+    code === "PGRST205" ||
+    code === "42P01" ||
+    (message.toLowerCase().includes("schema cache") && message.toLowerCase().includes("public.statuses")) ||
+    message.toLowerCase().includes('relation "public.statuses" does not exist') ||
+    message.toLowerCase().includes("table 'public.statuses'")
+  );
+}
+
+const STATUSES_NOT_CONNECTED_NOTICE = "Custom statuses are not connected yet. Using default/session statuses.";
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 const inp: React.CSSProperties={width:"100%",padding:"9px 12px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:14,boxSizing:"border-box",background:"#fff"};
 const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",marginBottom:16,overflow:"hidden"};
@@ -135,8 +149,12 @@ export default function Page() {
       if (error) throw error;
       setStatuses(data || []);
     } catch (err: any) {
-      setStatuses([]);
-      setError(`Could not load custom statuses from Supabase. ${actionErrorMessage(err)}`);
+      setStatuses(current => current.filter(status => String(status.id || "").startsWith("local-status-")));
+      if (isMissingStatusesTableError(err)) {
+        setNotice(STATUSES_NOT_CONNECTED_NOTICE);
+      } else {
+        setError(`Could not load custom statuses from Supabase. ${actionErrorMessage(err)}`);
+      }
     }
 
     setLoadingSt(false);
@@ -166,7 +184,7 @@ export default function Page() {
     } catch (err: any) {
       setStatuses(s=>[...s,fallbackStatus]);
       setNotice(`Added status locally: ${sfForm.name}`);
-      setError(`Supabase status save failed: ${actionErrorMessage(err)}`);
+      if (!isMissingStatusesTableError(err)) setError(`Supabase status save failed: ${actionErrorMessage(err)}`);
     }
 
     setSavingSt(false); setShowSF(null); setSfForm({name:"",color:"#3b82f6",type:"client"});
@@ -183,7 +201,7 @@ export default function Page() {
         const { error } = accountId ? await deleteQuery.eq("account_id",accountId) : await deleteQuery;
         if(error) throw error;
       } catch (err: any) {
-        remoteError = actionErrorMessage(err);
+        if (!isMissingStatusesTableError(err)) remoteError = actionErrorMessage(err);
       }
     }
     setStatuses(s=>s.filter(x=>x.id!==id));
