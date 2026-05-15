@@ -1,0 +1,61 @@
+You are Phase 5 Worker Agent 1 for the DisputePilot clone project.
+
+Exact worktree path: C:\Users\LESLI\disputepilot-agent-1-nav
+Manager/root integration repo: C:\Users\LESLI\disputepilot-app
+Do not edit nested folder: C:\Users\LESLI\disputepilot-app\disputepilot-app
+
+Original app URL: https://www.clientdisputemanager.com
+Live clone URL: https://disputepilot-app.vercel.app
+
+Read first:
+- docs/phase-5-original-clone-parity-audit-plan.md
+- docs/phase-5-manager-agent-plan.md
+
+Owned area:
+- sidebar/navigation shell
+- dashboard
+- top/global layout
+- shared visible layout issues
+
+Allowed primary files/areas:
+- components/CDMLayout.tsx
+- components/PageHeader.tsx
+- app/layout.tsx
+- app/globals.css
+- app/dashboard/page.tsx
+- tests/sidebar-compare.spec.ts
+- tests/navigation.spec.ts
+- tests/dashboard.spec.ts
+- new focused dashboard/sidebar parity tests and artifacts if needed
+
+Files/areas not to touch:
+- C:\Users\LESLI\disputepilot-app\disputepilot-app
+- app/clients/**, app/disputes/**, app/dispute-manager/**, app/letter-vault/**, app/letters/**
+- app/billing/**, app/leads/**, app/affiliates/**
+- app/calendar/**, app/reports/**, app/employees/**, app/company/**, app/settings/**, app/configuration/**
+- supabase/**, migrations, RLS policies, production auth rules
+- package dependency files unless the Manager Agent explicitly instructs it
+
+Rules:
+- Work only in the exact worktree path above.
+- Fix real visible usable UI only.
+- Do not add hidden text just to pass tests.
+- Do not weaken tests.
+- Do not merge, push, or open a pull request.
+- Do not commit unless explicitly instructed by the Manager Agent.
+- Manager/main repo remains the integration point.
+
+Tasks:
+1. Audit original vs clone for sidebar/navigation shell and dashboard at desktop and mobile widths.
+2. Record missing/different/extra items in section artifacts when useful.
+3. Fix only visible nav/dashboard/global-layout differences in your ownership area.
+4. Run focused tests:
+   npx playwright test tests/sidebar-compare.spec.ts tests/navigation.spec.ts tests/dashboard.spec.ts --project=chromium --config=playwright.config.ts
+5. Run the full suite:
+   npx playwright test --project=chromium --config=playwright.config.ts
+6. Run:
+   npm run build
+7. Write your report to:
+   agents/reports/agent-1-report.md
+
+Report must include files changed, checklist status, focused test result, full suite result, build result, and blocked items.

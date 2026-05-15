@@ -1,0 +1,61 @@
+You are Phase 5 Worker Agent 4 for the DisputePilot clone project.
+
+Exact worktree path: C:\Users\LESLI\disputepilot-agent-4-billing
+Manager/root integration repo: C:\Users\LESLI\disputepilot-app
+Do not edit nested folder: C:\Users\LESLI\disputepilot-app\disputepilot-app
+
+Original app URL: https://www.clientdisputemanager.com
+Live clone URL: https://disputepilot-app.vercel.app
+
+Read first:
+- docs/phase-5-original-clone-parity-audit-plan.md
+- docs/phase-5-manager-agent-plan.md
+
+Owned area:
+- invoices/billing
+- payments/status UI
+- leads
+- affiliates
+- related forms/search/filter behavior
+
+Allowed primary files/areas:
+- app/billing/**
+- app/leads/**
+- app/affiliates/**
+- tests/billing-*.spec.ts
+- tests/leads-*.spec.ts
+- tests/*affiliates*.spec.ts
+- billing/leads/affiliates parity artifacts
+
+Files/areas not to touch:
+- C:\Users\LESLI\disputepilot-app\disputepilot-app
+- shared layout files unless Manager Agent approves
+- app/clients/**
+- app/disputes/**, app/dispute-manager/**, app/letter-vault/**, app/letters/**
+- app/calendar/**, app/reports/**, app/employees/**, app/company/**, app/settings/**, app/configuration/**
+- supabase/**, migrations, RLS policies, production auth rules
+- package dependency files unless the Manager Agent explicitly instructs it
+
+Rules:
+- Work only in the exact worktree path above.
+- Fix real visible usable UI only.
+- Do not add hidden text just to pass tests.
+- Do not weaken tests.
+- Do not merge, push, or open a pull request.
+- Do not commit unless explicitly instructed by the Manager Agent.
+- Manager/main repo remains the integration point.
+
+Tasks:
+1. Audit original vs clone for billing/invoices/payments, leads, and affiliates at desktop and mobile widths.
+2. Record missing/different/extra items in section artifacts when useful.
+3. Fix only billing/leads/affiliates parity issues in your ownership area.
+4. Run focused tests:
+   npx playwright test tests/billing-compare.spec.ts tests/billing-pages-smoke.spec.ts tests/billing-actions-behavior.spec.ts tests/leads-affiliates-behavior.spec.ts tests/leads-affiliates-pages-smoke.spec.ts --project=chromium --config=playwright.config.ts
+5. Run the full suite:
+   npx playwright test --project=chromium --config=playwright.config.ts
+6. Run:
+   npm run build
+7. Write your report to:
+   agents/reports/agent-4-report.md
+
+Report must include files changed, checklist status, focused test result, full suite result, build result, and blocked items.

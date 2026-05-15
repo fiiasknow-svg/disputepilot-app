@@ -1,0 +1,61 @@
+You are Phase 5 Worker Agent 2 for the DisputePilot clone project.
+
+Exact worktree path: C:\Users\LESLI\disputepilot-agent-2-clients
+Manager/root integration repo: C:\Users\LESLI\disputepilot-app
+Do not edit nested folder: C:\Users\LESLI\disputepilot-app\disputepilot-app
+
+Original app URL: https://www.clientdisputemanager.com
+Live clone URL: https://disputepilot-app.vercel.app
+
+Read first:
+- docs/phase-5-original-clone-parity-audit-plan.md
+- docs/phase-5-manager-agent-plan.md
+
+Owned area:
+- clients/customers list
+- add/edit client
+- client profile
+- client documents attached to profile
+- client save/edit/delete behavior
+
+Allowed primary files/areas:
+- app/clients/page.tsx
+- app/clients/[id]/page.tsx
+- client-related helpers imported by those pages
+- tests/client-*.spec.ts
+- tests/clients*.spec.ts
+- client/client-profile parity artifacts
+
+Files/areas not to touch:
+- C:\Users\LESLI\disputepilot-app\disputepilot-app
+- shared layout files such as components/CDMLayout.tsx, components/PageHeader.tsx, app/layout.tsx, app/globals.css unless Manager Agent approves
+- app/disputes/**, app/dispute-manager/**, app/letter-vault/**, app/letters/**
+- app/billing/**, app/leads/**, app/affiliates/**
+- app/calendar/**, app/reports/**, app/employees/**, app/company/**, app/settings/**, app/configuration/**
+- supabase/**, migrations, RLS policies, production auth rules
+- package dependency files unless the Manager Agent explicitly instructs it
+
+Rules:
+- Work only in the exact worktree path above.
+- Preserve the production client-save fix that strips unsupported Supabase fields before insert/update/import.
+- Fix real visible usable UI only.
+- Do not add hidden text just to pass tests.
+- Do not weaken tests.
+- Do not merge, push, or open a pull request.
+- Do not commit unless explicitly instructed by the Manager Agent.
+- Manager/main repo remains the integration point.
+
+Tasks:
+1. Audit original vs clone for clients/customers list and client profile at desktop and mobile widths.
+2. Record missing/different/extra items in section artifacts when useful.
+3. Fix only client/client-profile parity issues in your ownership area.
+4. Run focused tests:
+   npx playwright test tests/client-add-save-behavior.spec.ts tests/client-delete-safe-behavior.spec.ts tests/client-edit-action-behavior.spec.ts tests/client-view-profile-behavior.spec.ts tests/clients-customers-parity.spec.ts tests/clients-workflow-real.spec.ts --project=chromium --config=playwright.config.ts
+5. Run the full suite:
+   npx playwright test --project=chromium --config=playwright.config.ts
+6. Run:
+   npm run build
+7. Write your report to:
+   agents/reports/agent-2-report.md
+
+Report must include files changed, checklist status, focused test result, full suite result, build result, and blocked items.
