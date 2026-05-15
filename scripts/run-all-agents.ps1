@@ -12,31 +12,31 @@ New-Item -ItemType Directory -Force -Path $ReportDir | Out-Null
 $agents = @(
   @{
     Number = 1
-    Worktree = "C:\Users\LESLI\disputepilot-agent-1-nav"
+    Worktree = "C:\Users\LESLI\disputepilot-agent-letters"
     Prompt = Join-Path $PromptDir "agent-1-nav-dashboard.txt"
     Report = "agents\reports\agent-1-report.md"
   },
   @{
     Number = 2
-    Worktree = "C:\Users\LESLI\disputepilot-agent-2-clients"
+    Worktree = "C:\Users\LESLI\disputepilot-agent-clients"
     Prompt = Join-Path $PromptDir "agent-2-clients-profile.txt"
     Report = "agents\reports\agent-2-report.md"
   },
   @{
     Number = 3
-    Worktree = "C:\Users\LESLI\disputepilot-agent-3-disputes"
+    Worktree = "C:\Users\LESLI\disputepilot-agent-disputes"
     Prompt = Join-Path $PromptDir "agent-3-disputes-letters.txt"
     Report = "agents\reports\agent-3-report.md"
   },
   @{
     Number = 4
-    Worktree = "C:\Users\LESLI\disputepilot-agent-4-billing"
+    Worktree = "C:\Users\LESLI\disputepilot-agent-billing"
     Prompt = Join-Path $PromptDir "agent-4-billing-leads.txt"
     Report = "agents\reports\agent-4-report.md"
   },
   @{
     Number = 5
-    Worktree = "C:\Users\LESLI\disputepilot-agent-5-more"
+    Worktree = "C:\Users\LESLI\disputepilot-agent-company"
     Prompt = Join-Path $PromptDir "agent-5-calendar-settings.txt"
     Report = "agents\reports\agent-5-report.md"
   }

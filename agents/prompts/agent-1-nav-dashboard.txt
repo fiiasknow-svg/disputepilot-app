@@ -1,6 +1,6 @@
 You are Phase 5 Worker Agent 1 for the DisputePilot clone project.
 
-Exact worktree path: C:\Users\LESLI\disputepilot-agent-1-nav
+Exact worktree path: C:\Users\LESLI\disputepilot-agent-letters
 Manager/root integration repo: C:\Users\LESLI\disputepilot-app
 Do not edit nested folder: C:\Users\LESLI\disputepilot-app\disputepilot-app
 

@@ -31,18 +31,15 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 $logPath = Join-Path $logDir "agent-$AgentNumber.log"
 $exitPath = Join-Path $logDir "agent-$AgentNumber.exitcode"
-$promptContent = Get-Content -LiteralPath $resolvedPrompt -Raw
-
-Set-Location -LiteralPath $resolvedWorktree
 
 "Starting Agent $AgentNumber at $(Get-Date -Format o)" | Set-Content -LiteralPath $logPath
 "Worktree: $resolvedWorktree" | Add-Content -LiteralPath $logPath
 "Prompt: $resolvedPrompt" | Add-Content -LiteralPath $logPath
-"Command: codex exec <prompt file content>" | Add-Content -LiteralPath $logPath
+"Command: Get-Content $resolvedPrompt -Raw | codex exec -C $resolvedWorktree -" | Add-Content -LiteralPath $logPath
 "" | Add-Content -LiteralPath $logPath
 
 try {
-  & codex exec $promptContent *>> $logPath
+  Get-Content -LiteralPath $resolvedPrompt -Raw | & codex exec -C $resolvedWorktree - *>> $logPath
   $exitCode = $LASTEXITCODE
 } catch {
   $_ | Out-String | Add-Content -LiteralPath $logPath

@@ -6,24 +6,24 @@ Agents must not auto-merge to `main`. Agents must not push unless that is explic
 
 ## Worktrees
 
-Create the five worker worktrees from the manager root:
+The five worker worktrees already exist and should be used by default:
+
+| Agent | Worktree | Branch |
+| --- | --- | --- |
+| 1 | `C:\Users\LESLI\disputepilot-agent-letters` | `agent/letters` |
+| 2 | `C:\Users\LESLI\disputepilot-agent-clients` | `agent/clients` |
+| 3 | `C:\Users\LESLI\disputepilot-agent-disputes` | `agent/disputes` |
+| 4 | `C:\Users\LESLI\disputepilot-agent-billing` | `agent/billing` |
+| 5 | `C:\Users\LESLI\disputepilot-agent-company` | `agent/company` |
+
+Do not run `create-agent-worktrees.ps1` for the normal Phase 5 flow. Use it only when intentionally creating a new, separate set of worktrees.
 
 ```powershell
 cd C:\Users\LESLI\disputepilot-app
 .\scripts\create-agent-worktrees.ps1
 ```
 
-The script refuses to run if the manager root worktree is dirty. It also refuses to overwrite existing worktree paths or existing agent branches.
-
-Created worktrees and branches:
-
-| Agent | Worktree | Branch |
-| --- | --- | --- |
-| 1 | `C:\Users\LESLI\disputepilot-agent-1-nav` | `agent-1-nav-dashboard` |
-| 2 | `C:\Users\LESLI\disputepilot-agent-2-clients` | `agent-2-clients-profile` |
-| 3 | `C:\Users\LESLI\disputepilot-agent-3-disputes` | `agent-3-disputes-letters` |
-| 4 | `C:\Users\LESLI\disputepilot-agent-4-billing` | `agent-4-billing-leads` |
-| 5 | `C:\Users\LESLI\disputepilot-agent-5-more` | `agent-5-calendar-settings` |
+The creation script refuses to run if the manager root worktree is dirty. It also refuses to overwrite existing worktree paths or existing agent branches.
 
 ## Run One Agent
 
@@ -31,10 +31,10 @@ Example for Agent 1:
 
 ```powershell
 cd C:\Users\LESLI\disputepilot-app
-.\scripts\run-agent.ps1 -AgentNumber 1 -WorktreePath C:\Users\LESLI\disputepilot-agent-1-nav -PromptPath .\agents\prompts\agent-1-nav-dashboard.txt
+.\scripts\run-agent.ps1 -AgentNumber 1 -WorktreePath C:\Users\LESLI\disputepilot-agent-letters -PromptPath .\agents\prompts\agent-1-nav-dashboard.txt
 ```
 
-The script changes into the worker worktree, runs `codex exec` with the prompt file content, writes the log to `agents\logs\agent-1.log` in the manager root, and writes the exit code to `agents\logs\agent-1.exitcode`.
+The script runs `Get-Content $PromptPath -Raw | codex exec -C $WorktreePath -`, writes the log to `agents\logs\agent-1.log` in the manager root, and writes the exit code to `agents\logs\agent-1.exitcode`.
 
 ## Run All Agents
 
@@ -57,14 +57,14 @@ Get-Content .\agents\logs\agent-1.exitcode
 Check each worker report:
 
 ```powershell
-Get-Content C:\Users\LESLI\disputepilot-agent-1-nav\agents\reports\agent-1-report.md
+Get-Content C:\Users\LESLI\disputepilot-agent-letters\agents\reports\agent-1-report.md
 ```
 
 Inspect each branch before integration:
 
 ```powershell
-git -C C:\Users\LESLI\disputepilot-agent-1-nav status --short
-git -C C:\Users\LESLI\disputepilot-agent-1-nav diff
+git -C C:\Users\LESLI\disputepilot-agent-letters status --short
+git -C C:\Users\LESLI\disputepilot-agent-letters diff
 ```
 
 ## Manager Integration
@@ -77,7 +77,7 @@ Recommended flow from the manager root:
 cd C:\Users\LESLI\disputepilot-app
 git status --short
 git fetch --all --prune
-git merge --no-ff agent-1-nav-dashboard
+git merge --no-ff agent/letters
 npm run build
 npx playwright test --project=chromium --config=playwright.config.ts
 ```
@@ -92,8 +92,8 @@ Remove a failed worktree and branch:
 
 ```powershell
 cd C:\Users\LESLI\disputepilot-app
-git worktree remove C:\Users\LESLI\disputepilot-agent-1-nav
-git branch -D agent-1-nav-dashboard
+git worktree remove C:\Users\LESLI\disputepilot-agent-letters
+git branch -D agent/letters
 ```
 
 If the bad branch was already merged into the manager root, use a normal reviewed revert commit rather than rewriting shared history.
