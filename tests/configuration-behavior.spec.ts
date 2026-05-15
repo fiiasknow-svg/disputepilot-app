@@ -12,16 +12,37 @@ function collectRuntimeErrors(page: import('@playwright/test').Page) {
 
 test('configuration can edit and save practical settings', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page);
+  const companyName = `Config Company ${Date.now()}`;
 
   await page.goto(`${BASE_URL}/settings/configuration`);
+  await page.evaluate(() => window.localStorage.removeItem('dp_configuration_general_settings'));
+  await page.reload();
 
-  await page.getByPlaceholder('Your Company Name').fill(`Config Company ${Date.now()}`);
+  await page.getByPlaceholder('Your Company Name').fill(companyName);
   await page.getByPlaceholder('info@yourcompany.com').fill('config@example.com');
   await page.getByPlaceholder('(555) 000-0000').fill('(212) 555-0144');
+  await page.getByPlaceholder('123 Main St, City, State 00000').fill('123 Test Ave, Chicago, IL 60601');
   await page.locator('select').first().selectOption('America/Chicago');
+  await page.locator('select').nth(1).selectOption('YYYY-MM-DD');
+  await page.locator('select').nth(2).selectOption('CAD');
+  await page.locator('input[type="color"]').fill('#0f766e');
 
   await page.getByRole('button', { name: /Save General Settings/i }).click();
   await expect(page.getByRole('button', { name: /Saved/i })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: /General settings saved locally on this device/i })).toBeVisible();
+
+  await page.reload();
+
+  await expect(page.getByPlaceholder('Your Company Name')).toHaveValue(companyName);
+  await expect(page.getByPlaceholder('info@yourcompany.com')).toHaveValue('config@example.com');
+  await expect(page.getByPlaceholder('(555) 000-0000')).toHaveValue('(212) 555-0144');
+  await expect(page.getByPlaceholder('123 Main St, City, State 00000')).toHaveValue('123 Test Ave, Chicago, IL 60601');
+  await expect(page.locator('select').first()).toHaveValue('America/Chicago');
+  await expect(page.locator('select').nth(1)).toHaveValue('YYYY-MM-DD');
+  await expect(page.locator('select').nth(2)).toHaveValue('CAD');
+  await expect(page.locator('input[type="color"]')).toHaveValue('#0f766e');
+
+  await expect(page.getByRole('alert').filter({ hasText: /General settings could not be saved|Application error|Runtime Error/i })).toHaveCount(0);
   expect(runtimeErrors).toEqual([]);
 });
 

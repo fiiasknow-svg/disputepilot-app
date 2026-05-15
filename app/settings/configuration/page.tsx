@@ -15,8 +15,25 @@ const TABS = ["General","Client Statuses","Dispute Statuses","Round Settings","N
 const TIMEZONES = ["America/New_York","America/Chicago","America/Denver","America/Los_Angeles","America/Phoenix","America/Anchorage","Pacific/Honolulu"];
 
 type Status = {id?:string;name:string;color:string;type?:string;account_id?:string|null};
+type GeneralSettings = {
+  company_name: string;
+  company_email: string;
+  company_phone: string;
+  company_address: string;
+  timezone: string;
+  date_format: string;
+  currency: string;
+  primary_color: string;
+};
 type Plan = {id:number;name:string;price:number;interval:"monthly"|"quarterly"|"annual";features:string;active:boolean};
 type Tag = {id:number;name:string;color:string};
+
+const GENERAL_SETTINGS_STORAGE_KEY = "dp_configuration_general_settings";
+const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
+  company_name:"", company_email:"", company_phone:"", company_address:"",
+  timezone:"America/New_York", date_format:"MM/DD/YYYY", currency:"USD",
+  primary_color:"#1e3a5f",
+};
 
 function actionErrorMessage(error: any) {
   return error?.message || error?.code || "Unknown Supabase error";
@@ -57,11 +74,7 @@ export default function Page() {
   const [savingSt,    setSavingSt]    = useState(false);
 
   // ── general settings ──────────────────────────────────────────────────────
-  const [gen, setGen] = useState({
-    company_name:"", company_email:"", company_phone:"", company_address:"",
-    timezone:"America/New_York", date_format:"MM/DD/YYYY", currency:"USD",
-    primary_color:"#1e3a5f",
-  });
+  const [gen, setGen] = useState<GeneralSettings>(DEFAULT_GENERAL_SETTINGS);
   const [savingGen, setSavingGen] = useState(false);
   const [savedGen,  setSavedGen]  = useState(false);
 
@@ -160,7 +173,19 @@ export default function Page() {
     setLoadingSt(false);
   }
 
-  useEffect(()=>{ loadStatuses(); },[]);
+  useEffect(()=>{
+    try {
+      const savedGeneralSettings = window.localStorage.getItem(GENERAL_SETTINGS_STORAGE_KEY);
+      if (savedGeneralSettings) {
+        const parsed = JSON.parse(savedGeneralSettings) as Partial<GeneralSettings>;
+        setGen({...DEFAULT_GENERAL_SETTINGS,...parsed});
+      }
+    } catch (err: any) {
+      setError(`Could not load locally saved general settings. ${actionErrorMessage(err)}`);
+    }
+
+    loadStatuses();
+  },[]);
 
   async function addStatus(){
     if(!sfForm.name)return;
@@ -209,7 +234,20 @@ export default function Page() {
     if(remoteError) setError(`Supabase status delete failed: ${remoteError}`);
   }
 
-  function saveGen(){setNotice("");setError("");setSavingGen(true);setTimeout(()=>{setSavingGen(false);setSavedGen(true);setNotice("General settings saved for this session. Supabase persistence is not connected yet.");setTimeout(()=>setSavedGen(false),3000);},500);}
+  function saveGen(){
+    setNotice("");
+    setError("");
+    setSavingGen(true);
+    try {
+      window.localStorage.setItem(GENERAL_SETTINGS_STORAGE_KEY,JSON.stringify(gen));
+      setSavedGen(true);
+      setNotice("General settings saved locally on this device.");
+      setTimeout(()=>setSavedGen(false),3000);
+    } catch (err: any) {
+      setError(`General settings could not be saved locally. ${actionErrorMessage(err)}`);
+    }
+    setSavingGen(false);
+  }
   function saveRound(){setNotice("");setError("");setSavingR(true);setTimeout(()=>{setSavingR(false);setSavedR(true);setNotice("Round settings saved for this session. Supabase persistence is not connected yet.");setTimeout(()=>setSavedR(false),3000);},500);}
   function saveNotifs(){setNotice("");setError("");setSavingN(true);setTimeout(()=>{setSavingN(false);setSavedN(true);setNotice("Notification settings saved for this session. Supabase persistence is not connected yet.");setTimeout(()=>setSavedN(false),3000);},500);}
   function savePortal(){setNotice("");setError("");setSavingP(true);setTimeout(()=>{setSavingP(false);setSavedP(true);setNotice("Portal settings saved for this session. Production portal persistence is not connected yet.");setTimeout(()=>setSavedP(false),3000);},500);}
