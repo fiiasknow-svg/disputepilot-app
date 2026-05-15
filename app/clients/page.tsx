@@ -673,7 +673,7 @@ export default function Page() {
         {/* ── Header ── */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Clients</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Customers</h1>
             <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>Customers</p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -801,6 +801,7 @@ export default function Page() {
 
         {/* ── Sort / View ── */}
         <div style={{ display: "flex", gap: 8, padding: "12px 0 10px", flexWrap: "wrap" as const, alignItems: "center" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>Type</span>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={sel}>
             <option value="all">All Types</option>
             <option value="client">Client</option>
@@ -809,6 +810,7 @@ export default function Page() {
             <option value="past client">Past Client</option>
             <option value="partner referral">Partner Referral</option>
           </select>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>Sort</span>
           <select value={sort} onChange={e => setSort(e.target.value)} style={sel}>
             <option value="date">Newest First</option>
             <option value="name">Name A–Z</option>

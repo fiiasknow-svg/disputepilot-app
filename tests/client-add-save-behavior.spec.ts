@@ -32,7 +32,7 @@ test('add client form can save without app error', async ({ page }) => {
 
   await page.goto(`${BASE_URL}/clients`);
 
-  await expect(page.getByRole('heading', { name: /Clients/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Customers/i })).toBeVisible();
   await expect(page.getByText(/Loading/i)).toHaveCount(0);
 
   await page.getByRole('button', { name: /Add New Customer|\+ Add Client|Add Client/i }).first().click();
@@ -52,5 +52,5 @@ test('add client form can save without app error', async ({ page }) => {
   await expect.poll(() => sawClientInsert).toBe(true);
   await expect(page.getByText(/client_type|schema cache/i)).toHaveCount(0);
   await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: /Clients/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Customers/i })).toBeVisible();
 });
