@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "Email service is not configured. Missing RESEND_API_KEY." },
+      { error: "Email service is not configured." },
       { status: 500 }
     );
   }
