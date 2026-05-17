@@ -45,6 +45,62 @@ function writeLocalClient(client: any) {
   window.localStorage.setItem(LOCAL_CLIENTS_KEY, JSON.stringify(next));
 }
 
+function clientRecordToForm(d: any) {
+  const parts = (d.full_name || "").split(" ");
+
+  return {
+    ...d,
+    first_name: d.first_name || parts[0] || "",
+    middle_name: d.middle_name || "",
+    last_name: d.last_name || parts.slice(1).join(" ") || "",
+    mobile_phone: d.mobile_phone || d.phone || "",
+    portal_access: Boolean(d.portal_access ?? d.client_portal_access ?? false),
+    comments: d.comments || d.notes || "",
+    cc_number: d.cc_number || d.credit_card_number || "",
+    cc_cvv: d.cc_cvv || d.cvv || "",
+    cc_expiry: d.cc_expiry || d.expiration_date || "",
+    cm_username: d.cm_username || d.credit_monitoring_username || "",
+    cm_password: d.cm_password || d.credit_monitoring_password || "",
+    cm_last4: d.cm_last4 || d.credit_monitoring_ssn4 || "",
+    cm_provider: d.cm_provider || d.credit_monitoring_provider || "",
+  };
+}
+
+function clientProfileSupabasePayload(form: Record<string, any>, fullName: string, accountId: string | null) {
+  return {
+    ...(accountId ? { account_id: accountId } : {}),
+    first_name: form.first_name || "",
+    middle_name: form.middle_name || "",
+    last_name: form.last_name || "",
+    full_name: fullName,
+    ssn: form.ssn || "",
+    street_address: form.street_address || "",
+    city: form.city || "",
+    state: form.state || "",
+    zip: form.zip || "",
+    mobile_phone: form.mobile_phone || "",
+    phone: form.mobile_phone || "",
+    home_phone: form.home_phone || "",
+    work_phone: form.work_phone || "",
+    email: form.email || "",
+    status: form.status || "active",
+    assign_to: form.assign_to || "",
+    assigned_agent: form.assign_to || "",
+    registration_date: form.registration_date || null,
+    end_date: form.end_date || null,
+    portal_access: Boolean(form.portal_access),
+    client_portal_access: Boolean(form.portal_access),
+    notes: form.comments || "",
+    credit_card_number: form.cc_number || "",
+    cvv: form.cc_cvv || "",
+    expiration_date: form.cc_expiry || "",
+    credit_monitoring_username: form.cm_username || "",
+    credit_monitoring_password: form.cm_password || "",
+    credit_monitoring_ssn4: form.cm_last4 || "",
+    credit_monitoring_provider: form.cm_provider || "",
+  };
+}
+
 type Note = { id: number; text: string; date: string; author: string };
 type Doc  = { name: string; size: string; date: string };
 type Act  = { icon: string; label: string; date: string };
@@ -155,18 +211,16 @@ export default function Page() {
       }
       if (cr.data) {
         const d = cr.data;
-        const parts = (d.full_name||"").split(" ");
-        setForm(f => ({...f, ...d, first_name:d.first_name||parts[0]||"", middle_name:d.middle_name||"", last_name:d.last_name||parts.slice(1).join(" ")||""}));
+        setForm(f => ({...f, ...clientRecordToForm(d)}));
         setActivity([
           {icon:"👤",label:"Client profile created",date:d.created_at||new Date().toISOString()},
-          ...(d.portal_access?[{icon:"🔑",label:"Portal access enabled",date:d.updated_at||d.created_at||new Date().toISOString()}]:[]),
+          ...((d.portal_access ?? d.client_portal_access) ? [{icon:"🔑",label:"Portal access enabled",date:d.updated_at||d.created_at||new Date().toISOString()}] : []),
         ]);
       }
       if (!cr.data) {
         const d = readLocalClients().find((c: any) => c.id === id);
         if (d) {
-          const parts = (d.full_name||"").split(" ");
-          setForm(f => ({...f, ...d, first_name:d.first_name||parts[0]||"", middle_name:d.middle_name||"", last_name:d.last_name||parts.slice(1).join(" ")||"", mobile_phone:d.mobile_phone||d.phone||"", comments:d.comments||d.notes||""}));
+          setForm(f => ({...f, ...clientRecordToForm(d)}));
           setActivity([{icon:"Profile",label:"Client profile loaded from saved data",date:d.updated_at||d.created_at||new Date().toISOString()}]);
         }
       }
@@ -185,7 +239,7 @@ export default function Page() {
     writeLocalClient({...form,id,full_name:full,phone:form.mobile_phone,notes:form.comments,updated_at:new Date().toISOString()});
     try {
       const accountId = await getAccountId();
-      const payload = accountId ? {...form,full_name:full,account_id:accountId} : {...form,full_name:full};
+      const payload = clientProfileSupabasePayload(form, full, accountId);
       const updateQuery = supabase.from("clients").update(payload).eq("id",id);
       if (accountId) await updateQuery.eq("account_id", accountId);
       else await updateQuery;
