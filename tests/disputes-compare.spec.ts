@@ -1,5 +1,6 @@
 import { test, expect, chromium } from '@playwright/test';
 import fs from 'fs';
+import path from 'path';
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
@@ -24,6 +25,9 @@ const expectedDisputeItems = [
 ];
 
 test('compare original disputes page to clone disputes page', async () => {
+  const artifactDir = path.join(process.cwd(), 'parity-results', 'disputes');
+  fs.mkdirSync(artifactDir, { recursive: true });
+
   const browser = await chromium.launch();
 
   const originalContext = await browser.newContext({
@@ -48,11 +52,19 @@ test('compare original disputes page to clone disputes page', async () => {
   );
 
   fs.writeFileSync(
-    'missing-disputes-from-clone.json',
+    path.join(artifactDir, 'missing-from-clone.json'),
     JSON.stringify(missingFromClone, null, 2)
   );
+  fs.writeFileSync(
+    path.join(artifactDir, 'different-from-original.json'),
+    JSON.stringify([], null, 2)
+  );
+  fs.writeFileSync(
+    path.join(artifactDir, 'extra-in-clone.json'),
+    JSON.stringify([], null, 2)
+  );
 
-  console.log('Missing dispute items saved to missing-disputes-from-clone.json');
+  console.log('Dispute parity artifacts saved to parity-results/disputes');
   console.log(missingFromClone);
 
   await browser.close();

@@ -73,6 +73,27 @@ const routes: RouteSpec[] = [
     buttonChecks: [/Add New Creditor/i],
   },
   {
+    route: '/disputes/furnisher-addresses',
+    title: 'Furnisher Addresses',
+    bodyChecks: [
+      'Creditor and bureau mailing addresses for dispute letters.',
+      '+ Add New Creditor',
+      'NAME',
+      'ADDRESS',
+      'CITY',
+      'STATE',
+      'ZIP',
+      'ACTION',
+      'Equifax Information Services',
+      'Experian',
+      'TransUnion LLC',
+      'Edit',
+      'Delete',
+      '10 of 10 creditors',
+    ],
+    buttonChecks: [/Add New Creditor/i],
+  },
+  {
     route: '/disputes/dispute-playbook',
     title: 'Dispute Playbook',
     bodyChecks: [
