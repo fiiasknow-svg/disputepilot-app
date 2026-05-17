@@ -71,6 +71,30 @@ test('letters page supports creating and editing saved letters', async ({ page }
   await expect(savedLetters).toContainText('Updated after specialist review.');
 });
 
+test('letter vault search, select, move, delete, and undo controls update visible templates', async ({ page }) => {
+  await page.goto(`${BASE_URL}/letter-vault`);
+
+  await page.getByLabel('Search letter templates').fill('Personal Information Letter');
+  await expect(page.getByLabel('Template list')).toContainText('Personal Information Letter');
+  await expect(page.getByLabel('Template list')).not.toContainText('1-Initial dispute.');
+
+  await page.getByRole('button', { name: 'Select All' }).click();
+  await expect(page.getByLabel('Saved confirmation')).toContainText('Selected 1 visible letter.');
+
+  await page.getByLabel('Move to Letter Category').selectOption('Campaign Letters');
+  await page.getByRole('button', { name: 'Move Letters', exact: true }).click();
+  await expect(page.getByLabel('Saved confirmation')).toContainText('Moved 1 selected letter to Campaign Letters.');
+  await expect(page.getByLabel('Template list')).toContainText('Campaign Letters');
+
+  await page.getByRole('button', { name: 'Delete All' }).click();
+  await expect(page.getByLabel('Template list')).not.toContainText('Personal Information Letter');
+  await expect(page.getByLabel('Saved confirmation')).toContainText('Deleted 1 letter.');
+
+  await page.getByRole('button', { name: 'Undo Deleted Letters' }).click();
+  await expect(page.getByLabel('Template list')).toContainText('Personal Information Letter');
+  await expect(page.getByLabel('Saved confirmation')).toContainText('Restored 1 deleted letter.');
+});
+
 test('AI rewriter accepts input, produces visible output, and clears/reset', async ({ page }) => {
   await page.goto(`${BASE_URL}/letters/ai-rewriter`);
 

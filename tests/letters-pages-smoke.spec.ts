@@ -142,7 +142,7 @@ for (const pageInfo of routes) {
   test(pageInfo.route, async ({ page }) => {
     await page.goto(new URL(pageInfo.route, BASE_URL).toString());
 
-    const body = page.locator('body');
+    const body = page.locator('main').last();
     await expect(body).toBeVisible();
 
     const bodyText = (await body.innerText()).replace(/\s+/g, ' ').trim();

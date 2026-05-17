@@ -165,7 +165,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const [activateOpen, setActivateOpen] = useState(false);
   const [giftHours, setGiftHours] = useState(0);
   useEffect(() => {
-    setGiftHours(Math.floor((CDM_TRIAL_END - Date.now()) / 3600000));
+    setGiftHours(Math.max(0, Math.floor((CDM_TRIAL_END - Date.now()) / 3600000)));
   }, []);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");

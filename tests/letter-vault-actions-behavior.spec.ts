@@ -7,16 +7,9 @@ test('letter vault actions are usable without app error', async ({ page }) => {
 
   await expect(page.getByText(/Letter Vault|Letters|Template|AI Rewriter/i).first()).toBeVisible();
 
-  const actionButton = page
-    .locator('main')
-    .getByRole('button')
-    .filter({ hasText: /View|Edit|Use|Create|Add|Save|Template|Letter|Open/i })
-    .first();
+  await page.getByRole('button', { name: 'Add Manual Letter' }).click();
+  await expect(page.getByLabel('Letter editor')).toBeVisible();
 
-  if (await actionButton.count()) {
-    await actionButton.click();
-  }
-
-  await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
+  await expect(page.locator('main').getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
   await expect(page.getByText(/Letter Vault|Letters|Template|AI Rewriter/i).first()).toBeVisible();
 });

@@ -28,8 +28,6 @@ const emptyDraft: Draft = {
   notes: "",
 };
 
-const categories = [...new Set(letterTemplates.map((t) => t.category))];
-
 const fieldStyle: React.CSSProperties = {
   width: "100%",
   padding: "9px 11px",
@@ -77,15 +75,30 @@ export default function Page() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [savedDrafts, setSavedDrafts] = useState<Draft[]>([]);
   const [confirmation, setConfirmation] = useState("");
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
+  const [deletedTemplateIds, setDeletedTemplateIds] = useState<string[]>([]);
+  const [lastDeletedIds, setLastDeletedIds] = useState<string[]>([]);
+  const [categoryOverrides, setCategoryOverrides] = useState<Record<string, string>>({});
+  const [moveCategory, setMoveCategory] = useState("Manual Letters");
+
+  const displayTemplates = useMemo(
+    () =>
+      letterTemplates
+        .filter((template) => !deletedTemplateIds.includes(template.id))
+        .map((template) => ({ ...template, category: categoryOverrides[template.id] || template.category })),
+    [categoryOverrides, deletedTemplateIds]
+  );
+
+  const categories = useMemo(() => [...new Set(displayTemplates.map((template) => template.category))], [displayTemplates]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return letterTemplates.filter((template) => {
+    return displayTemplates.filter((template) => {
       const matchesTab = activeTab === "All" || template.category === activeTab;
       const matchesSearch = !q || [template.title, template.description, template.category].some((value) => value.toLowerCase().includes(q));
       return matchesTab && matchesSearch;
     });
-  }, [activeTab, search]);
+  }, [activeTab, displayTemplates, search]);
 
   function openDetails(template: LetterTemplate) {
     setSelectedTemplate(template);
@@ -128,6 +141,58 @@ export default function Page() {
     setEditorOpen(false);
   }
 
+  function selectAllFiltered() {
+    const visibleIds = filtered.map((template) => template.id);
+    setSelectedTemplateIds(visibleIds);
+    setConfirmation(`Selected ${visibleIds.length} visible letter${visibleIds.length === 1 ? "" : "s"}.`);
+  }
+
+  function toggleTemplateSelection(templateId: string) {
+    setSelectedTemplateIds((current) => (current.includes(templateId) ? current.filter((id) => id !== templateId) : [...current, templateId]));
+    setConfirmation("");
+  }
+
+  function deleteSelectedLetters() {
+    const idsToDelete = selectedTemplateIds.length ? selectedTemplateIds : filtered.map((template) => template.id);
+    if (!idsToDelete.length) {
+      setConfirmation("No letters are available to delete.");
+      return;
+    }
+
+    setDeletedTemplateIds((current) => [...new Set([...current, ...idsToDelete])]);
+    setLastDeletedIds(idsToDelete);
+    setSelectedTemplateIds([]);
+    setConfirmation(`Deleted ${idsToDelete.length} letter${idsToDelete.length === 1 ? "" : "s"}. Use Undo Deleted Letters to restore them.`);
+  }
+
+  function undoDeletedLetters() {
+    if (!lastDeletedIds.length) {
+      setConfirmation("No recently deleted letters to restore.");
+      return;
+    }
+
+    setDeletedTemplateIds((current) => current.filter((id) => !lastDeletedIds.includes(id)));
+    setConfirmation(`Restored ${lastDeletedIds.length} deleted letter${lastDeletedIds.length === 1 ? "" : "s"}.`);
+    setLastDeletedIds([]);
+  }
+
+  function moveSelectedLetters() {
+    if (!selectedTemplateIds.length) {
+      setConfirmation("Select one or more letters before moving them.");
+      return;
+    }
+
+    setCategoryOverrides((current) => {
+      const next = { ...current };
+      selectedTemplateIds.forEach((id) => {
+        next[id] = moveCategory;
+      });
+      return next;
+    });
+    setActiveTab(moveCategory);
+    setConfirmation(`Moved ${selectedTemplateIds.length} selected letter${selectedTemplateIds.length === 1 ? "" : "s"} to ${moveCategory}.`);
+  }
+
   return (
     <CDMLayout>
       <main style={{ padding: 24, maxWidth: 1380 }}>
@@ -145,13 +210,20 @@ export default function Page() {
 
               <section aria-label="Manual Letters" style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#fff" }}>
                 <h2 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 800 }}>Manual Letters</h2>
-                <button style={buttonStyle()}>Select All</button>
-                <button style={{ ...buttonStyle(), marginLeft: 8 }}>Delete All</button>
-                <button style={{ ...buttonStyle(), marginLeft: 8 }}>Move Letters</button>
+                <button onClick={selectAllFiltered} style={buttonStyle()}>Select All</button>
+                <button onClick={deleteSelectedLetters} style={{ ...buttonStyle(), marginLeft: 8 }}>Delete All</button>
+                <button onClick={moveSelectedLetters} style={{ ...buttonStyle(), marginLeft: 8 }}>Move Letters</button>
                 <button style={{ ...buttonStyle(), marginLeft: 8 }}>Letter Preview</button>
-                <button style={{ ...buttonStyle(), marginLeft: 8 }}>Undo Deleted Letters</button>
-                <button style={{ ...buttonStyle(), marginLeft: 8 }}>Move Manual Letters</button>
-                <button style={{ ...buttonStyle(), marginLeft: 8 }}>Move to Letter Category</button>
+                <button onClick={undoDeletedLetters} style={{ ...buttonStyle(), marginLeft: 8 }}>Undo Deleted Letters</button>
+                <button onClick={moveSelectedLetters} style={{ ...buttonStyle(), marginLeft: 8 }}>Move Manual Letters</button>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 8, fontSize: 12, fontWeight: 700, color: "#334155" }}>
+                  Move to Letter Category
+                  <select aria-label="Move to Letter Category" value={moveCategory} onChange={(event) => setMoveCategory(event.target.value)} style={{ ...fieldStyle, width: 190, padding: "7px 9px" }}>
+                    {[...new Set([...categories, "Manual Letters"])].map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </label>
               </section>
 
               <section aria-label="Response Letters" style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#fff" }}>
@@ -229,10 +301,19 @@ export default function Page() {
               {filtered.map((template) => (
                 <article key={template.id} style={{ background: selectedTemplate.id === template.id ? "#eff6ff" : "#fff", border: `1px solid ${selectedTemplate.id === template.id ? "#93c5fd" : "#e2e8f0"}`, borderRadius: 8, padding: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 14 }}>
-                    <div>
-                      <div style={{ fontSize: 13, color: "#2563eb", fontWeight: 800, marginBottom: 3 }}>{template.category}</div>
-                      <h3 style={{ margin: "0 0 4px", fontSize: 15, color: "#1e293b" }}>{template.title}</h3>
-                      <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>{template.description}</p>
+                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                      <input
+                        aria-label={`Select ${template.title}`}
+                        checked={selectedTemplateIds.includes(template.id)}
+                        onChange={() => toggleTemplateSelection(template.id)}
+                        type="checkbox"
+                        style={{ marginTop: 3 }}
+                      />
+                      <div>
+                        <div style={{ fontSize: 13, color: "#2563eb", fontWeight: 800, marginBottom: 3 }}>{template.category}</div>
+                        <h3 style={{ margin: "0 0 4px", fontSize: 15, color: "#1e293b" }}>{template.title}</h3>
+                        <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>{template.description}</p>
+                      </div>
                     </div>
                     <div style={{ display: "flex", gap: 7, alignItems: "flex-start", flexShrink: 0 }}>
                       <button onClick={() => openDetails(template)} style={buttonStyle("primary")}>View</button>
