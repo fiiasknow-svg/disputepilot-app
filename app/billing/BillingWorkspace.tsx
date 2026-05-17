@@ -157,6 +157,8 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
   const [editTarget, setEditTarget] = useState<Detail | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
 
   const summary = useMemo(() => {
     const openBalance = invoices.filter(i => i.status !== "Paid").reduce((sum, i) => sum + i.amount, 0);
@@ -164,6 +166,43 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
     const overdue = invoices.filter(i => i.status === "Overdue").length;
     return { openBalance, paidThisMonth, overdue, activeServices: services.filter(s => s.status === "Active").length };
   }, [invoices, payments, services]);
+
+  const allStatuses = useMemo(
+    () => ["All Statuses", ...new Set([...invoiceStatuses, ...paymentStatuses, ...serviceStatuses])],
+    []
+  );
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const matchesSearch = (values: Array<string | number>) =>
+    !normalizedQuery || values.some((value) => String(value).toLowerCase().includes(normalizedQuery));
+  const matchesStatus = (status: string) => statusFilter === "All Statuses" || status === statusFilter;
+
+  const filteredInvoices = useMemo(
+    () =>
+      invoices.filter((invoice) =>
+        matchesStatus(invoice.status) &&
+        matchesSearch([invoice.client, invoice.invoiceNumber, invoice.service, invoice.amount, invoice.status, invoice.dueDate, invoice.notes])
+      ),
+    [invoices, normalizedQuery, statusFilter]
+  );
+
+  const filteredPayments = useMemo(
+    () =>
+      payments.filter((payment) =>
+        matchesStatus(payment.status) &&
+        matchesSearch([payment.client, payment.reference, payment.service, payment.amount, payment.status, payment.paymentDate, payment.method, payment.notes])
+      ),
+    [payments, normalizedQuery, statusFilter]
+  );
+
+  const filteredServices = useMemo(
+    () =>
+      services.filter((service) =>
+        matchesStatus(service.status) &&
+        matchesSearch([service.name, service.type, service.amount, service.status, service.notes])
+      ),
+    [services, normalizedQuery, statusFilter]
+  );
 
   useEffect(() => {
     const local = readLocalBilling();
@@ -368,11 +407,40 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
           </section>
         )}
 
+        <section aria-label="Billing search and filters" style={{ ...panel, marginBottom: 18 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) 220px auto", gap: 12, alignItems: "end" }}>
+            <label style={fieldLabel}>Search Billing
+              <input
+                aria-label="Search billing"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search client, invoice, payment, service, notes"
+                style={inputStyle}
+              />
+            </label>
+            <label style={fieldLabel}>Status
+              <select aria-label="Billing status filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={inputStyle}>
+                {allStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setStatusFilter("All Statuses");
+              }}
+              style={secondaryButton}
+            >
+              Clear Filters
+            </button>
+          </div>
+        </section>
+
         {(view === "overview" || view === "history") && <Summary summary={summary} />}
-        {(view === "overview" || view === "invoices") && <InvoicesTable invoices={invoices} onView={item => setDetail({ kind: "Invoice", item })} />}
-        {(view === "overview" || view === "payments") && <PaymentsTable payments={payments} onView={item => setDetail({ kind: "Payment", item })} />}
-        {(view === "overview" || view === "services") && <ServicesTable services={services} onView={item => setDetail({ kind: "Service/Product", item })} />}
-        {view === "history" && <PaymentHistory payments={payments} onView={item => setDetail({ kind: "Payment", item })} />}
+        {(view === "overview" || view === "invoices") && <InvoicesTable invoices={filteredInvoices} onView={item => setDetail({ kind: "Invoice", item })} />}
+        {(view === "overview" || view === "payments") && <PaymentsTable payments={filteredPayments} onView={item => setDetail({ kind: "Payment", item })} />}
+        {(view === "overview" || view === "services") && <ServicesTable services={filteredServices} onView={item => setDetail({ kind: "Service/Product", item })} />}
+        {view === "history" && <PaymentHistory payments={filteredPayments} totalRecords={payments.length} onView={item => setDetail({ kind: "Payment", item })} />}
 
         {modal === "invoice" && <Modal title="Create Invoice" onClose={() => setModal(null)}><InvoiceForm clients={clientOptions} services={services} onSave={saveInvoice} onCancel={() => setModal(null)} /></Modal>}
         {modal === "payment" && <Modal title="Add Payment" onClose={() => setModal(null)}><PaymentForm clients={clientOptions} services={services} onSave={savePayment} onCancel={() => setModal(null)} /></Modal>}
@@ -432,12 +500,12 @@ function ServicesTable({ services, onView }: { services: Service[]; onView: (ser
   ]} />;
 }
 
-function PaymentHistory({ payments, onView }: { payments: Payment[]; onView: (payment: Payment) => void }) {
+function PaymentHistory({ payments, totalRecords, onView }: { payments: Payment[]; totalRecords: number; onView: (payment: Payment) => void }) {
   const totalPaid = payments.filter(p => p.status === "Paid").reduce((sum, p) => sum + p.amount, 0);
   return (
     <section style={{ marginBottom: 18 }}>
       <h2 style={{ ...sectionTitle, marginBottom: 6 }}>Payment History</h2>
-      <p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 14 }}>Showing {payments.length} payment records with {money(totalPaid)} collected from paid payments.</p>
+      <p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 14 }}>Showing {payments.length} of {totalRecords} payment records with {money(totalPaid)} collected from paid payments.</p>
       <PaymentsTable payments={payments} onView={onView} />
     </section>
   );
@@ -499,7 +567,11 @@ function TableSection<T>({ title, rows, headers, renderRow }: { title: string; r
             <tr>{headers.map(header => <th key={header} style={th}>{header}</th>)}</tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={headers.length} style={{ ...td, textAlign: "center", color: "#64748b", padding: 24 }}>No billing records match the current filters.</td>
+              </tr>
+            ) : rows.map((row, index) => (
               <tr key={index} style={{ borderTop: "1px solid #f1f5f9" }}>
                 {renderRow(row).map((cell, cellIndex) => <td key={cellIndex} style={td}>{cell}</td>)}
               </tr>

@@ -87,6 +87,39 @@ test('add payment opens form and save shows payment confirmation', async ({ page
   await expectNoBillingRuntimeErrors(page);
 });
 
+test('billing search and status filters narrow visible records and can be cleared', async ({ page }) => {
+  await page.goto(`${BASE_URL}/billing`);
+
+  const main = page.getByRole('main');
+  await main.getByLabel('Search billing').fill('INV-1042');
+  await expect(main.getByRole('cell', { name: 'INV-1042' })).toBeVisible();
+  await expect(main.getByRole('cell', { name: 'INV-1041' })).toHaveCount(0);
+
+  await main.getByRole('button', { name: 'Clear Filters' }).click();
+  await expect(main.getByRole('cell', { name: 'INV-1041' })).toBeVisible();
+
+  await main.getByLabel('Billing status filter').selectOption('Overdue');
+  await expect(main.getByRole('cell', { name: 'INV-1041' })).toBeVisible();
+  await expect(main.getByRole('cell', { name: 'INV-1042' })).toHaveCount(0);
+
+  await main.getByRole('button', { name: 'Clear Filters' }).click();
+  await expect(main.getByRole('cell', { name: 'PAY-8831' })).toBeVisible();
+  await expectNoBillingRuntimeErrors(page);
+});
+
+test('credit card setup saves visible processor settings', async ({ page }) => {
+  await page.goto(`${BASE_URL}/billing/credit-card-setup`);
+
+  const main = page.getByRole('main');
+  await expect(main.getByRole('heading', { name: 'Credit Card Setup' })).toBeVisible();
+  await main.getByLabel('Payment Processor').selectOption('Square');
+  await main.getByLabel('Statement Descriptor').fill('DisputePilot Services');
+  await main.getByRole('button', { name: 'Save Card Setup' }).click();
+
+  await expect(page.getByRole('status')).toContainText('Saved Square card settings for DisputePilot Services.');
+  await expectNoBillingRuntimeErrors(page);
+});
+
 test('view and manage actions open useful details', async ({ page }) => {
   await page.goto(`${BASE_URL}/billing`);
   const main = page.getByRole('main');
@@ -108,7 +141,7 @@ test('payment history is visible and useful', async ({ page }) => {
 
   const main = page.getByRole('main');
   await expect(main.getByRole('heading', { name: 'Payment History' }).first()).toBeVisible();
-  await expect(main.getByText('Showing 3 payment records')).toBeVisible();
+  await expect(main.getByText('Showing 3 of 3 payment records')).toBeVisible();
   await expect(main.getByText('$248.00 collected')).toBeVisible();
   await expect(main.getByText('PAY-8831')).toBeVisible();
   await expect(main.getByText('Credit Card')).toBeVisible();
