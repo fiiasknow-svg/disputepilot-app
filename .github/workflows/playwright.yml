@@ -25,6 +25,19 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run safe behavior tests
+      - name: Build app
+        run: npm run build
+
+      - name: Prepare local Playwright auth state
+        shell: bash
+        env:
+          AUTH_ORIGINAL_JSON: ${{ secrets.AUTH_ORIGINAL_JSON }}
         run: |
-          npx playwright test tests/*behavior.spec.ts --project=chromium --config=playwright.config.ts
+          if [ -z "$AUTH_ORIGINAL_JSON" ]; then
+            echo "::error::Missing AUTH_ORIGINAL_JSON repository secret. The tracked parity tests need the local auth-original.json Playwright storage state."
+            exit 1
+          fi
+          printf '%s' "$AUTH_ORIGINAL_JSON" > auth-original.json
+
+      - name: Run Playwright tests
+        run: npx playwright test --project=chromium --config=playwright.config.ts
