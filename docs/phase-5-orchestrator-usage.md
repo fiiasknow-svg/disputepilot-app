@@ -34,7 +34,13 @@ cd C:\Users\LESLI\disputepilot-app
 .\scripts\run-agent.ps1 -AgentNumber 1 -WorktreePath C:\Users\LESLI\disputepilot-agent-letters -PromptPath .\agents\prompts\agent-1-nav-dashboard.txt
 ```
 
-The script runs `Get-Content $PromptPath -Raw | codex exec -C $WorktreePath -`, writes the log to `agents\logs\agent-1.log` in the manager root, and writes the exit code to `agents\logs\agent-1.exitcode`.
+The script generates a per-agent wrapper in `agents\logs\run-agent-X-wrapper.ps1`, then runs that wrapper with `powershell.exe -ExecutionPolicy Bypass -File`. The wrapper uses this command shape because the direct `codex.cmd` pipe works from PowerShell while inline script piping failed:
+
+```powershell
+Get-Content "<resolved prompt path>" -Raw | codex.cmd exec -C "<resolved worktree path>" -
+```
+
+Output is written to `agents\logs\agent-X.log` in the manager root, and the exit code is written to `agents\logs\agent-X.exitcode`.
 
 ## Run All Agents
 
@@ -43,7 +49,7 @@ cd C:\Users\LESLI\disputepilot-app
 .\scripts\run-all-agents.ps1
 ```
 
-This starts five separate hidden PowerShell processes. It does not merge or push. Logs are written under `agents\logs` in the manager root. Reports are written by each agent inside its own worktree under `agents\reports\agent-X-report.md`.
+This starts five separate PowerShell processes. It does not merge or push. Logs are written under `agents\logs` in the manager root. Reports are written by each agent inside its own worktree under `agents\reports\agent-X-report.md`.
 
 ## Inspect Results
 
@@ -53,6 +59,8 @@ Check logs and exit codes from the manager root:
 Get-Content .\agents\logs\agent-1.log
 Get-Content .\agents\logs\agent-1.exitcode
 ```
+
+An exit code of `0` means the agent command succeeded. An exit code of `1` means it failed; inspect the matching `agent-X.log` file first.
 
 Check each worker report:
 

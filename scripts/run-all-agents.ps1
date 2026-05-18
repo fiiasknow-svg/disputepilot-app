@@ -55,12 +55,14 @@ foreach ($agent in $agents) {
 foreach ($agent in $agents) {
   $logPath = Join-Path $LogDir "agent-$($agent.Number).log"
   $exitPath = Join-Path $LogDir "agent-$($agent.Number).exitcode"
+  $wrapperPath = Join-Path $LogDir "run-agent-$($agent.Number)-wrapper.ps1"
   $reportPath = Join-Path $agent.Worktree $agent.Report
 
   Write-Host "Launching agent $($agent.Number)"
   Write-Host "  Worktree: $($agent.Worktree)"
   Write-Host "  Log: $logPath"
   Write-Host "  Exit code: $exitPath"
+  Write-Host "  Wrapper: $wrapperPath"
   Write-Host "  Report: $reportPath"
 
   Start-Process -FilePath "powershell.exe" -ArgumentList @(
@@ -75,7 +77,7 @@ foreach ($agent in $agents) {
     $agent.Worktree,
     "-PromptPath",
     $agent.Prompt
-  ) -WorkingDirectory $ManagerRoot -WindowStyle Hidden
+  ) -WorkingDirectory $ManagerRoot
 }
 
 Write-Host "All agents launched in separate PowerShell processes. No merge or push was performed."

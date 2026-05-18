@@ -31,15 +31,25 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 $logPath = Join-Path $logDir "agent-$AgentNumber.log"
 $exitPath = Join-Path $logDir "agent-$AgentNumber.exitcode"
+$wrapperPath = Join-Path $logDir "run-agent-$AgentNumber-wrapper.ps1"
+
+$escapedPrompt = $resolvedPrompt.Replace('"', '""')
+$escapedWorktree = $resolvedWorktree.Replace('"', '""')
+$wrapperCommand = "Get-Content ""$escapedPrompt"" -Raw | codex.cmd exec -C ""$escapedWorktree"" -"
+@(
+  $wrapperCommand
+  'exit $LASTEXITCODE'
+) | Set-Content -LiteralPath $wrapperPath
 
 "Starting Agent $AgentNumber at $(Get-Date -Format o)" | Set-Content -LiteralPath $logPath
 "Worktree: $resolvedWorktree" | Add-Content -LiteralPath $logPath
 "Prompt: $resolvedPrompt" | Add-Content -LiteralPath $logPath
-"Command: Get-Content $resolvedPrompt -Raw | codex exec -C $resolvedWorktree -" | Add-Content -LiteralPath $logPath
+"Wrapper: $wrapperPath" | Add-Content -LiteralPath $logPath
+"Command: $wrapperCommand" | Add-Content -LiteralPath $logPath
 "" | Add-Content -LiteralPath $logPath
 
 try {
-  Get-Content -LiteralPath $resolvedPrompt -Raw | & codex exec -C $resolvedWorktree - *>> $logPath
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $wrapperPath *>> $logPath
   $exitCode = $LASTEXITCODE
 } catch {
   $_ | Out-String | Add-Content -LiteralPath $logPath
