@@ -437,6 +437,8 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
         </section>
 
         {(view === "overview" || view === "history") && <Summary summary={summary} />}
+        {view === "history" && <PaymentHistoryControls clientOptions={clientOptions} />}
+        {view === "services" && <ServicesProductsOriginalPanel />}
         {(view === "overview" || view === "invoices") && <InvoicesTable invoices={filteredInvoices} onView={item => setDetail({ kind: "Invoice", item })} />}
         {(view === "overview" || view === "payments") && <PaymentsTable payments={filteredPayments} onView={item => setDetail({ kind: "Payment", item })} />}
         {(view === "overview" || view === "services") && <ServicesTable services={filteredServices} onView={item => setDetail({ kind: "Service/Product", item })} />}
@@ -455,6 +457,61 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
         )}
       </div>
     </CDMLayout>
+  );
+}
+
+function PaymentHistoryControls({ clientOptions }: { clientOptions: string[] }) {
+  return (
+    <section style={{ ...panel, marginBottom: 18 }}>
+      <h2 style={{ ...sectionTitle, marginBottom: 12 }}>Payment History</h2>
+      <p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 14 }}>In this area, you can view all payment transactions.</p>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+        {["Payment History", "Interval Billing History", "Archived"].map((label) => (
+          <button key={label} type="button" style={smallButton}>{label}</button>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        <label style={fieldLabel}>Select a Client
+          <select style={inputStyle} defaultValue="ALL">
+            <option value="ALL">Select ALL</option>
+            {clientOptions.map((client) => <option key={client}>{client}</option>)}
+          </select>
+        </label>
+        <label style={fieldLabel}>Payment Type
+          <select style={inputStyle} defaultValue="ALL">
+            {["ALL", "Single Payment", "Customer Check Payment", "Customer Cash Payment"].map((type) => <option key={type}>{type}</option>)}
+          </select>
+        </label>
+        <Field label="From Date" name="fromDate" type="date" />
+        <Field label="To Date" name="toDate" type="date" />
+      </div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+        <button type="button" style={primaryButton}>Search</button>
+        <button type="button" style={secondaryButton}>Reset</button>
+        <span style={{ alignSelf: "center", color: "#64748b", fontSize: 13 }}>Show 10 20 50 100 Entries</span>
+      </div>
+    </section>
+  );
+}
+
+function ServicesProductsOriginalPanel() {
+  return (
+    <section style={{ ...panel, marginBottom: 18 }}>
+      <p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 14 }}>In this area, you can setup services and products.</p>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+        <button type="button" style={primaryButton}>Services</button>
+        <button type="button" style={secondaryButton}>Products</button>
+        <button type="button" style={secondaryButton}>Add New Services</button>
+      </div>
+      <h2 style={{ ...sectionTitle, marginBottom: 10 }}>Payment Product Records</h2>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+          <thead style={{ background: "#f8fafc" }}>
+            <tr>{["No.", "Service Name", "Description", "Price", "Product Name", "Payment Gateway Name", "Action"].map(header => <th key={header} style={th}>{header}</th>)}</tr>
+          </thead>
+        </table>
+      </div>
+    </section>
   );
 }
 

@@ -81,7 +81,8 @@ export default function Page() {
   return (
     <CDMLayout>
       <div style={{ padding: 24, maxWidth: 1100 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 24px", color: "#1e293b" }}>Pay Per Deletion</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 8px", color: "#1e293b" }}>Pay Per Deletion</h1>
+        <p style={{ margin: "0 0 24px", color: "#64748b", fontSize: 14 }}>Build Automated and Manual Pay Per Deletion Good Faith Estimates.</p>
 
         {/* Controls */}
         <div style={{ background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", padding: 28, marginBottom: 24 }}>
@@ -114,6 +115,9 @@ export default function Page() {
 
             {/* Upload + Build */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <button type="button" style={{ padding: "9px 18px", background: "#fff", color: "#1e3a5f", border: "1px solid #cbd5e1", borderRadius: 7, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                + Pay Per Deletion Fees
+              </button>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: "0 0 8px" }}>HTML Credit Report</p>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 18px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#475569" }}>
@@ -126,8 +130,22 @@ export default function Page() {
                 style={{ padding: "11px 28px", background: !clientId ? "#cbd5e1" : "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontWeight: 700, cursor: !clientId ? "not-allowed" : "pointer" }}>
                 {building ? "Building…" : "Build Estimate"}
               </button>
+              <button type="button" style={{ padding: "9px 18px", background: "#f8fafc", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 7, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                View Credentials
+              </button>
             </div>
           </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", padding: 16, marginBottom: 24 }}>
+          {["Current", "Archive", "Quick Import"].map(label => (
+            <button key={label} type="button" style={{ padding: "8px 14px", border: "1px solid #e2e8f0", borderRadius: 7, background: label === "Current" ? "#1e3a5f" : "#fff", color: label === "Current" ? "#fff" : "#475569", fontWeight: 700 }}>
+              {label}
+            </button>
+          ))}
+          <label style={{ display: "flex", alignItems: "center", gap: 6, color: "#475569", fontSize: 13, fontWeight: 700 }}>From <input type="date" style={sel} /></label>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, color: "#475569", fontSize: 13, fontWeight: 700 }}>To <input type="date" style={sel} /></label>
+          <button type="button" style={{ padding: "8px 14px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#1e3a5f", fontWeight: 700 }}>Archive</button>
         </div>
 
         {/* Table */}
