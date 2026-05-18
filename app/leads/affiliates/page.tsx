@@ -279,7 +279,7 @@ export default function Page() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead style={{ background: "#f8fafc" }}>
                   <tr>
-                    {["Name", "Company Name", "Phone", "Email", "Referral Code", "Status", "Notes", "Action"].map(header => (
+                    {["Name", "Company Name", "Office Phone", "Cell Phone", "Phone", "Email", "Referral Code", "Status", "Start", "End", "Commission", "Notes", "Action"].map(header => (
                       <th key={header} style={{ textAlign: "left", padding: "11px 14px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
                         {header}
                       </th>
@@ -288,13 +288,15 @@ export default function Page() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={8} style={{ padding: 36, textAlign: "center", color: "#94a3b8" }}>Loading...</td></tr>
+                    <tr><td colSpan={13} style={{ padding: 36, textAlign: "center", color: "#94a3b8" }}>Loading...</td></tr>
                   ) : filtered.length === 0 ? (
-                    <tr><td colSpan={8} style={{ padding: 36, textAlign: "center", color: "#94a3b8" }}>No {filterTab.toLowerCase()} affiliates.</td></tr>
+                    <tr><td colSpan={13} style={{ padding: 36, textAlign: "center", color: "#94a3b8" }}>No {filterTab.toLowerCase()} affiliates.</td></tr>
                   ) : filtered.map(affiliate => (
                     <tr key={affiliate.id} style={{ borderTop: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "11px 14px", fontWeight: 600, fontSize: 14, color: "#1e293b" }}>{affiliateName(affiliate)}</td>
                       <td style={{ padding: "11px 14px", fontSize: 13, color: "#475569" }}>{affiliate.company_name || "-"}</td>
+                      <td style={{ padding: "11px 14px", fontSize: 13, color: "#475569" }}>{affiliate.office_phone || "-"}</td>
+                      <td style={{ padding: "11px 14px", fontSize: 13, color: "#475569" }}>{affiliate.cell_phone || "-"}</td>
                       <td style={{ padding: "11px 14px", fontSize: 13, color: "#475569" }}>{affiliatePhone(affiliate) || "-"}</td>
                       <td style={{ padding: "11px 14px", fontSize: 13, color: "#475569" }}>{affiliate.email || "-"}</td>
                       <td style={{ padding: "11px 14px", fontSize: 13, color: "#475569" }}>{affiliate.referral_code || "-"}</td>
@@ -303,6 +305,9 @@ export default function Page() {
                           {affiliateStatus(affiliate)}
                         </span>
                       </td>
+                      <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b" }}>{affiliate.start_date || "-"}</td>
+                      <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b" }}>{affiliate.end_date || "-"}</td>
+                      <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b" }}>{affiliate.commission || "-"}</td>
                       <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b", maxWidth: 220, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{affiliate.notes || "-"}</td>
                       <td style={{ padding: "11px 14px" }}>
                         <button

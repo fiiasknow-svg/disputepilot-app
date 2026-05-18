@@ -585,6 +585,21 @@ export default function Page() {
           ))}
         </div>
 
+        <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16, marginBottom: 18, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+          <p style={{ margin: "0 0 12px", color: "#64748b", fontSize: 14 }}>In this area, you can manage Website Leads and Client Portal Referral Leads.</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            {["Website Lead Form", "Leads", "Client Portal", "Client Referral Leads", "Current", "Archive"].map((label) => (
+              <button key={label} type="button" onClick={() => { if (label === "Website Lead Form") router.push("/leads/website-lead-form"); }} style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 7, background: label === "Leads" ? "#1e3a5f" : "#fff", color: label === "Leads" ? "#fff" : "#475569", fontSize: 13, fontWeight: 700 }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ color: "#475569", fontSize: 13, fontWeight: 700 }}>Auto Move Website Lead:</span>
+            <button type="button" style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#1e3a5f", fontSize: 13, fontWeight: 700 }}>Move Archive</button>
+          </div>
+        </section>
+
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
           <div>

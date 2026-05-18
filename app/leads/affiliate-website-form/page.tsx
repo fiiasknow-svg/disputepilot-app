@@ -45,8 +45,11 @@ export default function Page() {
 
         {/* Section 1 */}
         <div style={sectionStyle}>
-          <div style={headerStyle}>1. Select Form Style</div>
-          <div style={{ ...bodyStyle, display: "flex", gap: 16 }}>
+          <div style={headerStyle}>1. Select Form Style / Required Fields</div>
+          <p style={{ ...bodyStyle, paddingBottom: 0, margin: 0, color: "#64748b", fontSize: 13 }}>Required/Hide Fields - select the fields you want required or hidden.</p>
+          <div style={{ ...bodyStyle, display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <strong style={{ fontSize: 13, color: "#475569" }}>Required</strong>
+            <strong style={{ fontSize: 13, color: "#475569" }}>Hide</strong>
             {FORM_STYLES.map(s => (
               <label key={s} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "10px 20px", border: `2px solid ${formStyle === s ? "#1e3a5f" : "#e2e8f0"}`, borderRadius: 8, background: formStyle === s ? "#eff6ff" : "#fff" }}>
                 <input type="radio" checked={formStyle === s} onChange={() => setFormStyle(s)} style={{ accentColor: "#1e3a5f" }} />
@@ -59,7 +62,10 @@ export default function Page() {
         {/* Section 2 */}
         <div style={sectionStyle}>
           <div style={headerStyle}>2. Required Fields</div>
+          <p style={{ ...bodyStyle, paddingBottom: 0, margin: 0, color: "#64748b", fontSize: 13 }}>Required/Hide Fields</p>
           <div style={{ ...bodyStyle, display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <strong style={{ fontSize: 13, color: "#475569" }}>Required</strong>
+            <strong style={{ fontSize: 13, color: "#475569" }}>Hide</strong>
             {REQUIRED_FIELDS.map(f => (
               <label key={f} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                 <input type="checkbox" checked={!!required[f]} onChange={() => toggleRequired(f)} style={{ width: 16, height: 16, accentColor: "#1e3a5f" }} />
@@ -74,7 +80,7 @@ export default function Page() {
           <div style={headerStyle}>3. Form Title / Company Name Settings</div>
           <div style={{ ...bodyStyle, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Form Title</label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Custom Title</label>
               <input value={title} onChange={e => setTitle(e.target.value)} style={inp} />
             </div>
             <div>
@@ -88,7 +94,7 @@ export default function Page() {
         <div style={sectionStyle}>
           <div style={headerStyle}>4. Form Fields</div>
           <div style={{ ...bodyStyle, display: "flex", gap: 20, flexWrap: "wrap" }}>
-            {FORM_FIELDS.map(f => (
+            {[...FORM_FIELDS, "Zip Code", "Email Id", "Promotional Methods", "Comment"].map(f => (
               <label key={f} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", minWidth: 140 }}>
                 <input type="checkbox" checked={!!fields[f]} onChange={() => toggleField(f)} style={{ width: 16, height: 16, accentColor: "#1e3a5f" }} />
                 <span style={{ fontSize: 14, color: "#1e293b" }}>{f}</span>

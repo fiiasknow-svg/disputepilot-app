@@ -30,7 +30,7 @@ export default function Page() {
         <header style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 20 }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: "#1e293b" }}>Credit Card Setup</h1>
-            <p style={{ color: "#64748b", margin: "6px 0 0", fontSize: 14 }}>Configure credit card processing for client billing.</p>
+            <p style={{ color: "#64748b", margin: "6px 0 0", fontSize: 14 }}>Configure credit card processing for client billing. In this area, you can setup a payment processor for your company.</p>
           </div>
           <span style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 800 }}>
             {enabled ? "Processing Enabled" : "Processing Disabled"}
@@ -42,6 +42,29 @@ export default function Page() {
             {saved}
           </section>
         )}
+
+        <section style={{ ...panel, marginBottom: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Payment Processor Records</h2>
+            <button type="button" style={primaryButton}>Add New Payment Processor</button>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead style={{ background: "#f8fafc" }}>
+                <tr>
+                  {["No.", "Payment Processor Name", "API Key", "Transaction Key", "Default Method", "Test Mode", "Created By", "Last Edited", "Action"].map(header => (
+                    <th key={header} style={{ padding: "11px 14px", textAlign: "left", color: "#64748b", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>{header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={9} style={{ padding: 24, textAlign: "center", color: "#64748b", borderTop: "1px solid #f1f5f9" }}>No Payment Processor</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <form onSubmit={saveSettings} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(300px, 0.65fr)", gap: 18 }}>
           <section style={panel}>
