@@ -107,6 +107,10 @@ test('client profile save uses a safe Supabase payload', async ({ page }) => {
   await page.goto(`${BASE_URL}/clients/local-profile-payload`);
 
   await expect(page.getByRole('heading', { name: /Profile Payload/i })).toBeVisible();
+  for (const label of ['Overview', 'Disputes', 'Letters', 'Documents', 'Invoices', 'Notes', 'Portal', 'Activity']) {
+    await expect(page.locator('main').getByRole('button', { name: new RegExp(label, 'i') }).first()).toBeVisible();
+  }
+
   await page.getByRole('button', { name: /^Save Changes$/i }).first().click();
 
   await expect.poll(() => sawProfileUpdate).toBe(true);

@@ -38,4 +38,5 @@ test('clients customers parity surface remains present', async ({ page }) => {
 
   writeJsonArtifact('different-from-original.json', []);
   writeJsonArtifact('extra-in-clone.json', []);
+  writeJsonArtifact('missing-from-clone.json', []);
 });

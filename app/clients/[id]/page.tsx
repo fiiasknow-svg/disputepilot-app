@@ -10,7 +10,7 @@ const YEARS = Array.from({ length: 80 }, (_, i) => String(new Date().getFullYear
 const STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
 const PROVIDERS = ["SmartCredit","MyFreeScore360","IdentityIQ","mySCOREIQ","PrivacyGuard"];
 const STATUSES = ["active","pending","inactive","cancelled"];
-const TABS = ["Overview","Disputes","Payments","Documents","Notes","Activity"];
+const TABS = ["Overview","Disputes","Letters","Documents","Invoices","Notes","Portal","Activity"];
 
 const STATUS_COLORS: Record<string, string> = { active:"#10b981", pending:"#f59e0b", inactive:"#94a3b8", cancelled:"#ef4444" };
 const DISPUTE_COLORS: Record<string, string> = { pending:"#f59e0b", sent:"#8b5cf6", responded:"#3b82f6", resolved:"#10b981" };
@@ -333,7 +333,7 @@ export default function Page() {
         {/* ── Tabs ── */}
         <div style={{display:"flex",borderBottom:"2px solid #f1f5f9",marginBottom:20,overflowX:"auto"}}>
           {TABS.map(t=>{
-            const badge=t==="Disputes"?disputes.length:t==="Payments"?invoices.length:t==="Notes"?notes.length:0;
+            const badge=t==="Disputes"?disputes.length:t==="Invoices"?invoices.length:t==="Notes"?notes.length:0;
             return(
               <button key={t} onClick={()=>setTab(t)} style={{padding:"10px 20px",background:"none",border:"none",cursor:"pointer",fontSize:14,fontWeight:tab===t?700:500,color:tab===t?"#1e3a5f":"#64748b",borderBottom:tab===t?"2px solid #1e3a5f":"2px solid transparent",marginBottom:-2,whiteSpace:"nowrap"}}>
                 {t}{badge>0&&<span style={{marginLeft:6,background:"#f1f5f9",borderRadius:10,padding:"1px 7px",fontSize:11,fontWeight:700,color:"#64748b"}}>{badge}</span>}
@@ -488,7 +488,7 @@ export default function Page() {
         )}
 
         {/* ═══════════════ PAYMENTS ═══════════════ */}
-        {tab==="Payments"&&(
+        {tab==="Invoices"&&(
           <div style={card}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <h3 style={{margin:0,fontSize:15,fontWeight:700}}>Payment History ({invoices.length})</h3>
