@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import CDMLayout from "@/components/CDMLayout";
 
 const defaultCompany = {
   companyName: "My Credit Repair Co.",
@@ -49,6 +50,7 @@ export default function CompanySettingsPage() {
   }
 
   return (
+    <CDMLayout>
     <main className="min-h-screen bg-slate-50/80 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <div>
@@ -114,6 +116,24 @@ export default function CompanySettingsPage() {
 
             <div className="px-6 py-6 sm:px-8">
               <div className="grid gap-4 md:grid-cols-2">
+                <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                  Select a Time Zone
+                  <select className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10">
+                    <option>Select Time Zone</option>
+                    <option>UTC-5: Eastern Time (ET)</option>
+                    <option>UTC-6: Central Time (CT)</option>
+                    <option>UTC-7: Mountain Time (MT)</option>
+                    <option>UTC-8: Pacific Time (PT)</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                  Login Username
+                  <input
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10"
+                    value="Leslie Sabek"
+                    readOnly
+                  />
+                </label>
           {fields.map((field) => (
             <label
               key={field.key}
@@ -137,6 +157,26 @@ export default function CompanySettingsPage() {
               onChange={(event) => update("notes", event.target.value)}
             />
           </label>
+          <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+            Fax
+            <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10" />
+          </label>
+          <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+            Office Hours
+            <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10" placeholder="Monday-Friday 9am-5pm" />
+          </label>
+          <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+            Company Logo
+            <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white" type="file" />
+          </label>
+          <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+            Brand Colors
+            <div className="grid grid-cols-3 gap-2">
+              <input aria-label="Brand Color" type="color" defaultValue="#1e3a5f" className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" />
+              <input aria-label="Brand Text Color" type="color" defaultValue="#ffffff" className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" />
+              <input aria-label="Button Color" type="color" defaultValue="#2563eb" className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" />
+            </div>
+          </div>
         </div>
             </div>
           </section>
@@ -177,5 +217,6 @@ export default function CompanySettingsPage() {
         </div>
       </div>
     </main>
+    </CDMLayout>
   );
 }

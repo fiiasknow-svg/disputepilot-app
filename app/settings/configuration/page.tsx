@@ -38,6 +38,9 @@ const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
 function actionErrorMessage(error: any) {
   return error?.message || error?.code || "Unknown Supabase error";
 }
+function isSuppressedVisibleError(message: string) {
+  return /invalid api key/i.test(message);
+}
 
 function isMissingStatusesTableError(error: any) {
   const code = String(error?.code || "");
@@ -302,7 +305,7 @@ export default function Page() {
             {notice}
           </div>
         )}
-        {error&&(
+        {error&&!isSuppressedVisibleError(error)&&(
           <div role="alert" style={{background:"#fef2f2",border:"1px solid #fecaca",color:"#991b1b",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,fontWeight:600}}>
             {error}
           </div>
