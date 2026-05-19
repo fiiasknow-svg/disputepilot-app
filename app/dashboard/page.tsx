@@ -50,7 +50,7 @@ export default function Page() {
 
   return (
     <CDMLayout>
-      <div style={{padding:24,maxWidth:1400}}>
+      <div className="cdm-dashboard-page" style={{padding:24,maxWidth:1400}}>
 
         {/* Quick action buttons */}
         <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
@@ -61,12 +61,12 @@ export default function Page() {
         </div>
 
         {/* CDM stat cards */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+        <div className="cdm-dashboard-stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
           {([
-            {label:"Total Customers",val:"1",color:"#1e3a5f",icon:"👥"},
-            {label:"Total Current Leads",val:"0",color:"#8b5cf6",icon:"🎯"},
-            {label:"Total Bureau Disputes",val:"0",color:"#3b82f6",icon:"📋"},
-            {label:"Total Deletion",val:"0",color:"#10b981",icon:"✅"},
+            {label:"Total Customers",val:"1",color:"#1e3a5f",icon:"CU"},
+            {label:"Total Current Leads",val:"0",color:"#8b5cf6",icon:"LD"},
+            {label:"Total Bureau Disputes",val:"0",color:"#3b82f6",icon:"BD"},
+            {label:"Total Deletion",val:"0",color:"#10b981",icon:"DL"},
           ] as const).map(s=>(
             <div key={s.label} style={{background:"#fff",borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.07)",borderTop:`3px solid ${s.color}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -74,14 +74,14 @@ export default function Page() {
                   <h3 style={{margin:0,fontSize:11,fontWeight:600,color:"#64748b",textTransform:"uppercase",letterSpacing:".04em"}}>{s.label}</h3>
                   <p style={{margin:"6px 0 0",fontSize:28,fontWeight:800,color:s.color}}>{s.val}</p>
                 </div>
-                <span style={{fontSize:24}}>{s.icon}</span>
+                <span style={{fontSize:12,fontWeight:800,color:s.color,border:`1px solid ${s.color}`,borderRadius:6,padding:"4px 6px",lineHeight:1}}>{s.icon}</span>
               </div>
             </div>
           ))}
         </div>
 
         {/* Revenue Channels + Training */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:16,marginBottom:20}}>
+        <div className="cdm-dashboard-revenue-grid" style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:16,marginBottom:20}}>
           <div style={{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
             <h3 style={{margin:"0 0 12px",fontSize:15,fontWeight:700,color:"#1e293b"}}>Revenue Channels</h3>
             <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
@@ -107,7 +107,7 @@ export default function Page() {
               <label style={{display:"block",fontSize:11,color:"rgba(255,255,255,.6)",fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Total Revenue</label>
               <p style={{margin:"8px 0 0",fontSize:36,fontWeight:800,color:"#10b981"}}>$0</p>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginTop:12}}>
+            <div className="cdm-dashboard-revenue-cards" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginTop:12}}>
               {[
                 ["Credit Cards","$0"],
                 ["Customer Checks","$0"],
@@ -135,6 +135,7 @@ export default function Page() {
                 {label:"Full Walkthrough",href:"/academy/credit-repair"},
             {label:"1 to 1",href:"/academy/credit-repair"},
             {label:"Group Training",href:"/academy/credit-repair"},
+            {label:"Free Mastermind",href:"/academy/credit-repair"},
                 {label:"Help Center",href:"/academy/credit-repair"},
                 {label:"Task",href:"/dashboard"},
                 {label:"Start-Run-Grow Training",href:"/get-customers/start-run-grow"},
@@ -145,10 +146,10 @@ export default function Page() {
           </div>
         </div>
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
+        <div className="cdm-dashboard-overview-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
           <section style={{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
             <h3 style={{margin:"0 0 14px",fontSize:15,fontWeight:700,color:"#1e293b"}}>Customer Overview</h3>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+            <div className="cdm-dashboard-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
               {[
                 ["1","Active Clients"],
                 ["1","No Portal"],
@@ -168,7 +169,7 @@ export default function Page() {
 
           <section style={{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
             <h3 style={{margin:"0 0 14px",fontSize:15,fontWeight:700,color:"#1e293b"}}>Dispute Process Overview</h3>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+            <div className="cdm-dashboard-mini-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
               {[
                 ["0","Bureau Disputes"],
                 ["0","Bureau Items Repaired"],
@@ -188,13 +189,13 @@ export default function Page() {
         </div>
 
         {/* Customer Search + Quick Lead + Messages + Calendar/Reminders */}
-        <div style={{display:"grid",gridTemplateColumns:"260px 1fr 300px",gap:16,marginBottom:20}}>
+        <div className="cdm-dashboard-workflow-grid" style={{display:"grid",gridTemplateColumns:"260px 1fr 300px",gap:16,marginBottom:20}}>
 
           {/* Left: Search + Quick Lead */}
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <div style={{background:"#fff",borderRadius:10,padding:18,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
               <h3 style={{margin:"0 0 10px",fontSize:14,fontWeight:700,color:"#1e293b"}}>Search Your Customer Here</h3>
-              <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Name, phone, email…" style={{...inp,marginBottom:8}} />
+              <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Name, phone, email..." style={{...inp,marginBottom:8}} />
               <div style={{display:"flex",gap:6}}>
                 <button style={{...btn("#1e3a5f"),flex:1,padding:"7px"}}>Search</button>
                 <button onClick={()=>setSearchQ("")} style={{...btn("#f1f5f9","#475569"),flex:1,padding:"7px"}}>Clear</button>
@@ -232,7 +233,7 @@ export default function Page() {
                 <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",minHeight:160}}>
                   {msgTab==="Text"
                     ? <h3 style={{color:"#94a3b8",fontWeight:400,fontSize:14}}>No Text Message Yet</h3>
-                    : <p style={{color:"#94a3b8",fontSize:14}}>No {msgTab} Message Yet</p>
+                    : <p style={{color:"#94a3b8",fontSize:14}}>There is no new message yet. Please click on below "See All" button for more info.</p>
                   }
                 </div>
                 <button onClick={()=>setMsgDetail(true)} style={{...btn("#3b82f6"),width:"100%",marginTop:8}}>View Message Detail</button>
@@ -240,13 +241,13 @@ export default function Page() {
             ) : (
               <div style={{flex:1,display:"flex",flexDirection:"column",gap:8}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>User:</label><input readOnly value="—" style={inp} /></div>
-                  <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>SMS Date:</label><input readOnly value="—" style={inp} /></div>
+                  <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>User:</label><input readOnly value="-" style={inp} /></div>
+                  <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>SMS Date:</label><input readOnly value="-" style={inp} /></div>
                 </div>
-                <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>Mobile Number:</label><input readOnly value="—" style={inp} /></div>
+                <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>Mobile Number:</label><input readOnly value="-" style={inp} /></div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>From</label><input readOnly value="—" style={inp} /></div>
-                  <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>To</label><input readOnly value="—" style={inp} /></div>
+                  <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>From</label><input readOnly value="-" style={inp} /></div>
+                  <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>To</label><input readOnly value="-" style={inp} /></div>
                 </div>
                 <div><label style={{display:"block",fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>Enter Message</label><textarea rows={3} style={{...inp,resize:"vertical"}} /></div>
                 <button onClick={()=>setMsgDetail(false)} style={btn("#f1f5f9","#475569")}>Back</button>
@@ -292,7 +293,12 @@ export default function Page() {
             <div style={{background:"#fff",borderRadius:10,padding:18,boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
               <h3 style={{margin:"0 0 10px",fontSize:14,fontWeight:700,color:"#1e293b"}}>Reminders</h3>
               {reminders.length===0
-                ? <h3 style={{fontSize:13,color:"#94a3b8",fontWeight:400,margin:"0 0 12px"}}>No Reminder Yet</h3>
+                ? (
+                    <div style={{margin:"0 0 12px"}}>
+                      <h3 style={{fontSize:13,color:"#94a3b8",fontWeight:400,margin:"0 0 4px"}}>No Reminder Yet</h3>
+                      <p style={{fontSize:13,color:"#94a3b8",margin:0}}>There is no new reminder yet. Please click on below "See All" button for more info.</p>
+                    </div>
+                  )
                 : reminders.map(r=>(
                     <div key={r.id} style={{padding:"8px 10px",background:"#eff6ff",borderRadius:7,borderLeft:"3px solid #3b82f6",marginBottom:6}}>
                       <div style={{fontSize:12,fontWeight:700,color:"#1e293b"}}>{r.title}</div>
@@ -345,30 +351,7 @@ export default function Page() {
                 </label>
               ))
           }
-        </div>
-
-        {/* Ghost elements for exact-match test strings */}
-        <div style={{position:"fixed",left:"-9999px",top:0,width:"1px",height:"1px",overflow:"hidden",pointerEvents:"none"}} aria-hidden="true">
-          {/* Revenue Channels exact textContent match */}
-          <label>{`Revenue Channels\n                \n                    \n                         \n                        Today\nCustom\nLast 30 Days\nYTD\nAll Time\n\n                        \n                    \n\n\n                    \n                        From Date\n                        \n                    \n                    \n                        To Date\n                        \n\n                    \n                    \n                        Apply`}</label>
-          {/* Calendar exact textContent match */}
-          <label>{`Calendar \n            \n                \n                      Reminder Scheduled\n                \n                \n                      Reminder Read\n                \n                \n                      Reminder Past Due`}</label>
-          {/* Other items needing to be in DOM */}
-          <h3>No Text Message Yet</h3>
-          <label>$0</label>
-          <label>See All</label>
-          <h3>Business Growth Statistics</h3>
-          <h3>Customer Overview</h3>
-          <h3>Dispute Process Overview</h3>
-          <label>Turn off Reminder</label>
-          <button>Read</button>
-          <label>From</label>
-          <label>To</label>
-          <label>User:</label>
-          <label>SMS Date:</label>
-          <label>Mobile Number:</label>
-          <label>Enter Message</label>
-          <button>Back</button>
+          <p style={{color:"#94a3b8",fontSize:13,margin:"12px 0 0"}}>There is no new message yet. You can add Tasks from below form.</p>
         </div>
 
       </div>

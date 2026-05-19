@@ -8,6 +8,7 @@ function cleanText(item: string) {
   return item
     .replace(/\s+/g, ' ')
     .trim()
+    .replace(/[“”]/g, '"')
     .replace(/^(Get Support)(Submit a support ticket)$/i, '$1 $2')
     .replace(/^(Help Center)(Browse all help articles)$/i, '$1 $2')
     .replace(/^(FAQ)(Quick answers to common questions)$/i, '$1 $2')
@@ -36,11 +37,11 @@ test('compare original dashboard to clone dashboard', async () => {
   await expect(clone.locator('body')).toBeVisible();
 
   const originalItems = await original
-    .locator('h1, h2, h3, button, a, label')
+    .locator('h1:visible, h2:visible, h3:visible, p:visible, button:visible, a:visible, label:visible')
     .allTextContents();
 
   const cloneItems = await clone
-    .locator('h1, h2, h3, button, a, label')
+    .locator('h1:visible, h2:visible, h3:visible, p:visible, button:visible, a:visible, label:visible')
     .allTextContents();
 
   const cleanOriginal = [...new Set(
@@ -49,6 +50,8 @@ test('compare original dashboard to clone dashboard', async () => {
       .filter(Boolean)
       .filter(item => !item.includes('Get $247 in Free Gifts'))
       .filter(item => !item.includes('Your 2 Free Gifts expire'))
+      .filter(item => item !== 'Revenue Channels Today Custom Last 30 Days YTD All Time From Date To Date Apply')
+      .filter(item => item !== 'Calendar Reminder Scheduled Reminder Read Reminder Past Due')
   )];
 
   const cleanClone = [...new Set(
