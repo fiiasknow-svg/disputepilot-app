@@ -158,7 +158,7 @@ function getNavGroupEntryKey(group: (typeof navGroups)[number]) {
 export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters","partner"]);
+  const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters","get-customers","partner"]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
