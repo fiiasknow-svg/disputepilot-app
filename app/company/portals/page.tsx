@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CDMLayout from "@/components/CDMLayout";
 
 const defaults = {
   portalUrl: "https://portal.disputepilot.com/client",
@@ -37,6 +38,7 @@ export default function PortalsPage() {
   }
 
   return (
+    <CDMLayout>
     <main className="space-y-6 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -121,6 +123,46 @@ export default function PortalsPage() {
           </div>
         </div>
       </section>
+
+      <section className="grid gap-6 lg:grid-cols-3">
+        {[
+          {
+            title: "Client Tracking Portal",
+            text: "Give your clients an easy way to track dispute progress, upload documents, and send messages securely.",
+            link: "https://www.creditrestorationportal.com/Account/Login",
+            questions: ["What is the Client Tracking Portal?", "How can my clients access it?", "Can my clients upload images and documents?"],
+          },
+          {
+            title: "Affiliate Portal",
+            text: "Empower referral partners to track leads, view commissions, and monitor performance in real time.",
+            link: "https://www.affiliatecreditrepairportal.com/Account/Login",
+            questions: ["What is the Affiliate Portal used for?", "How do affiliates sign up?", "Can I preview the Affiliate Portal myself?"],
+          },
+          {
+            title: "Client Tracking Portal Mobile Application",
+            text: "Share mobile app links so customers can log in and view their status in real time.",
+            link: "https://play.google.com/store/apps/details?id=com.incode.portal_client",
+            questions: ["What is the Client Tracking Mobile App?", "Which app stores are available?", "Can customers upload images and documents?"],
+          },
+        ].map((item) => (
+          <div key={item.title} className="space-y-3 rounded-xl border bg-white p-4 shadow-sm">
+            <h2 className="text-lg font-semibold">{item.title}</h2>
+            <p className="text-sm text-gray-700">{item.text}</p>
+            <button className="rounded border px-3 py-2 text-sm font-semibold">Watch Video</button>
+            <div className="rounded border bg-gray-50 p-3 text-sm">
+              <p className="font-semibold">{item.title} Link</p>
+              <p className="mt-1 break-all text-gray-700">{item.link}</p>
+              <button className="mt-2 rounded bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">Copy Link</button>
+            </div>
+            <div className="space-y-1 text-sm text-gray-700">
+              {item.questions.map((question) => (
+                <p key={question}>{question}</p>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
     </main>
+    </CDMLayout>
   );
 }

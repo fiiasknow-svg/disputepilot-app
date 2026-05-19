@@ -1,0 +1,32 @@
+[
+  {
+    "section": "calendar",
+    "items": [
+      "Clone remains event-calendar oriented; original /Reminder is reminder-table oriented."
+    ]
+  },
+  {
+    "section": "employees",
+    "items": [
+      "Clone uses staff stats, role/department filters, invite/export, and permissions modals; original uses a simpler Employees/Outsourcers table and quota view."
+    ]
+  },
+  {
+    "section": "configuration",
+    "items": [
+      "Clone uses expanded General, Statuses, Round Settings, Notifications, Portal, Service Plans, Tags, and Integrations tabs; original starts with Custom Status and default status table."
+    ]
+  },
+  {
+    "section": "company-settings",
+    "items": [
+      "Clone keeps a modern save/reset preview workflow; original uses Edit Settings and broader company setting fields in a single product-shell page."
+    ]
+  },
+  {
+    "section": "portals",
+    "items": [
+      "Clone keeps editable portal/mobile settings; original page is mostly links, Q&A, video prompts, and mobile app download guidance."
+    ]
+  }
+]

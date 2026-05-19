@@ -1,0 +1,32 @@
+[
+  {
+    "section": "calendar",
+    "items": [
+      "Month/week/day/agenda event workflow, event types, iCal export, and upcoming/event type panels."
+    ]
+  },
+  {
+    "section": "employees",
+    "items": [
+      "CSV export, invite by email, stat cards, department filters, permissions preview, activity modal, and bulk status actions."
+    ]
+  },
+  {
+    "section": "configuration",
+    "items": [
+      "Round settings, notification settings, portal settings, service plans, tags, and integrations beyond the original captured default configuration page."
+    ]
+  },
+  {
+    "section": "company-settings",
+    "items": [
+      "Saved Company Profile preview card and local save/reset message workflow."
+    ]
+  },
+  {
+    "section": "portals",
+    "items": [
+      "Editable portal URL, branding, welcome message, logo, mobile app flags, and saved portal summary."
+    ]
+  }
+]
