@@ -1,12 +1,10 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 
-// CDM trial end: derived from observed countdown (35h at ~12:45 UTC Apr 29, 2026)
-const CDM_TRIAL_END = 1777594500000;
 const AUTH_COOKIE = "dp_auth";
 
 const Icons = {
@@ -163,10 +161,10 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters","partner"]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
-  const [giftHours, setGiftHours] = useState(0);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   useEffect(() => {
-    setGiftHours(Math.max(0, Math.floor((CDM_TRIAL_END - Date.now()) / 3600000)));
-  }, []);
+    setMobileSidebarOpen(false);
+  }, [pathname]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const toggleExpand = (key: string) => {
@@ -191,8 +189,16 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div style={{ display:"flex", minHeight:"100vh", backgroundColor:"#f8fafc" }}>
-      <aside style={{ width:"280px", backgroundColor:"#1e293b", color:"#94a3b8", display:"flex", flexDirection:"column", position:"fixed", height:"100vh", overflowY:"auto", fontSize:"13px", zIndex:100 }}>
+    <div className="cdm-shell" style={{ display:"flex", minHeight:"100vh", backgroundColor:"#f8fafc" }}>
+      {mobileSidebarOpen && (
+        <button
+          aria-label="Close navigation"
+          className="cdm-sidebar-overlay"
+          onClick={() => setMobileSidebarOpen(false)}
+          type="button"
+        />
+      )}
+      <aside className={`cdm-sidebar${mobileSidebarOpen ? " is-open" : ""}`} style={{ width:"280px", backgroundColor:"#1e293b", color:"#94a3b8", display:"flex", flexDirection:"column", position:"fixed", height:"100vh", overflowY:"auto", fontSize:"13px", zIndex:100 }}>
 
         {/* Logo */}
         <div style={{ padding:"12px 16px", borderBottom:"1px solid #334155" }}>
@@ -277,9 +283,21 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main style={{ flex:1, marginLeft:"280px", minHeight:"100vh" }}>
-        <div style={{ background:"#fff", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center", gap:16, padding:"10px 24px", fontSize:13, color:"#475569", flexWrap:"wrap" }}>
-          <button onClick={() => setHelpOpen(o => !o)} style={{ background:"none", border:"none", color:"#2563eb", fontWeight:700, cursor:"pointer", padding:0 }}>Need Help?</button>
+      <main className="cdm-main" style={{ flex:1, marginLeft:"280px", minHeight:"100vh" }}>
+        <div className="cdm-topbar" style={{ background:"#fff", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center", gap:16, padding:"10px 24px", fontSize:13, color:"#475569", flexWrap:"wrap" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <button
+              aria-label="Open navigation"
+              className="cdm-mobile-menu-button"
+              onClick={() => setMobileSidebarOpen(true)}
+              type="button"
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+            <button onClick={() => setHelpOpen(o => !o)} style={{ background:"none", border:"none", color:"#2563eb", fontWeight:700, cursor:"pointer", padding:0 }}>Need Help?</button>
+          </div>
           <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
             <span>Leslie Sabek</span>
             <span style={{ fontWeight:800, color:"#1e293b" }}>NO COMPANY</span>
@@ -293,9 +311,9 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
       {activateOpen && (
         <div onClick={() => setActivateOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div onClick={e => e.stopPropagation()} style={{ background:"#fff", borderRadius:12, padding:32, width:480, maxWidth:"95vw", position:"relative" }}>
-            <button onClick={() => setActivateOpen(false)} style={{ position:"absolute", top:12, right:16, background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#94a3b8" }}>×</button>
+            <button onClick={() => setActivateOpen(false)} style={{ position:"absolute", top:12, right:16, background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#94a3b8" }}>x</button>
             <h2 style={{ margin:"0 0 8px", fontSize:20, fontWeight:800, color:"#1e293b" }}>Activate  Your  Client Dispute Manager  Account Today</h2>
-            <h3 style={{ margin:"0 0 16px", fontSize:14, color:"#f59e0b", fontWeight:600 }}>🎉 Get $247 in Free Gifts instantly when you activate within 47 hours.</h3>
+            <h3 style={{ margin:"0 0 16px", fontSize:14, color:"#f59e0b", fontWeight:600 }}>Get $247 in Free Gifts instantly when you activate within 47 hours.</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
               <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
                 <input type="checkbox" readOnly checked />
@@ -306,7 +324,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
                 FREE AI &amp; METRO 2 ATTACK LETTERS
               </label>
             </div>
-            <button style={{ width:"100%", padding:"12px", background:"#f59e0b", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:12 }}>⏳ Your 2 Free Gifts expire in 47 hours!</button>
+            <button style={{ width:"100%", padding:"12px", background:"#f59e0b", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:12 }}>Your 2 Free Gifts expire in 47 hours!</button>
             <button style={{ width:"100%", padding:"12px", background:"#10b981", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:16 }}>ACTIVATE &amp; CLAIM MY GIFTS</button>
             <label style={{ display:"block", fontSize:12, color:"#64748b", marginBottom:8 }}>Credit Repair Mastery Class. Allow 12 hours for your activation email.</label>
             <label style={{ display:"block", fontSize:12, color:"#64748b", marginBottom:12 }}>Email will come from Mark Clayborne: Confirm Your Email  (Check your spam/promotional tab and Inbox)</label>
@@ -322,50 +340,6 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Ghost elements — always in DOM, off-screen, for Playwright text matching */}
-      <div style={{ position:"fixed", left:"-9999px", top:0, width:"1px", height:"1px", overflow:"hidden", pointerEvents:"none" }} aria-hidden="true">
-        <h2>Activate  Your  Client Dispute Manager  Account Today</h2>
-        <h3>{`🎉 Get $247 in Free Gifts instantly when you activate within ${giftHours} hours.`}</h3>
-        <label>FREE CREDIT REPAIR MASTERCLASS</label>
-        <label>FREE AI &amp; METRO 2 ATTACK LETTERS</label>
-        <button>{`⏳ Your 2 Free Gifts expire in ${giftHours} hours!`}</button>
-        <button>ACTIVATE &amp; CLAIM MY GIFTS</button>
-        <label>Credit Repair Mastery Class. Allow 12 hours for your activation email.</label>
-        <label>Email will come from Mark Clayborne: Confirm Your Email  (Check your spam/promotional tab and Inbox)</label>
-        <label>Enter Password</label>
-        <button>Open Registration</button>
-        <button>×</button>
-        <h3>Are you still there?</h3>
-        <label>Profile updated successfully !</label>
-        <label>Your Profile Picture</label>
-        <label>First Name</label>
-        <label>Last Name</label>
-        <button>Save</button>
-        <button>Close</button>
-        <label>Choose file:</label>
-        <label>Note: Maximum file upload limit is 10 MB.</label>
-        <label>Formats supported :  jpg, jpeg, png</label>
-        <label>You are responsible for understanding and complying with all laws related to marketing and collecting fees for your credit repair services. You must ensure that your marketing practices and fee collection methods adhere to all applicable state and federal laws.</label>
-        <label>If you are using telemarketing to close credit repair deals over the phone, you must comply with the Telemarketing Sales Rule (TSR).</label>
-        <label>I understand and acknowledge this legal disclaimer</label>
-        <button>Ok</button>
-        <label>Upgrade To the Yearly Plan</label>
-        <label>Get full access to all yearly plan features</label>
-        <label>Contact Support via Help Desk</label>
-        <label>support@clientdisputemanager.com</label>
-        <label>941-217-8307</label>
-        <a href="#">Start - Run - Grow</a>
-        <a href="#">Business Strategies</a>
-        <a href="#">1 to 1</a>
-        <a href="#">Free Mastermind</a>
-        <label>
-          {"You can \n                                "}
-          <a href="#">click here</a>
-          {"\n                             to learn more about TSR or visit the \n                                "}
-          <a href="#">FTC website</a>
-          {"\n                             for further details."}
-        </label>
-      </div>
     </div>
   );
 }

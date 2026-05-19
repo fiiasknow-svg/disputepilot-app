@@ -24,3 +24,93 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.cdm-mobile-menu-button {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.cdm-mobile-menu-button span {
+  display: block;
+  height: 2px;
+  background: #1e293b;
+  margin-bottom: 5px;
+}
+
+.cdm-mobile-menu-button span:last-child {
+  margin-bottom: 0;
+}
+
+.cdm-sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .cdm-sidebar {
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    box-shadow: 16px 0 40px rgba(15, 23, 42, 0.24);
+  }
+
+  .cdm-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .cdm-sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 280px;
+    z-index: 90;
+    background: rgba(15, 23, 42, 0.46);
+    border: 0;
+    padding: 0;
+  }
+
+  .cdm-main {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  .cdm-topbar {
+    padding: 10px 14px !important;
+    align-items: flex-start !important;
+  }
+
+  .cdm-mobile-menu-button {
+    display: inline-block;
+    flex: 0 0 auto;
+  }
+
+  .cdm-dashboard-page {
+    padding: 14px !important;
+    max-width: none !important;
+  }
+
+  .cdm-dashboard-stat-grid,
+  .cdm-dashboard-revenue-grid,
+  .cdm-dashboard-overview-grid,
+  .cdm-dashboard-workflow-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cdm-dashboard-revenue-cards,
+  .cdm-dashboard-mini-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .cdm-dashboard-revenue-cards,
+  .cdm-dashboard-mini-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
