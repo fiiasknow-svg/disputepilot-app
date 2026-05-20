@@ -121,8 +121,33 @@ export default function DisputesPage() {
   const [saved, setSaved] = useState<Dispute | null>(null);
   const [clientSuggestions, setClientSuggestions] = useState<string[]>([]);
   const [saveHint, setSaveHint] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const [bureauFilter, setBureauFilter] = useState("All Bureaus");
 
   const canSave = useMemo(() => Boolean(form.client.trim() && form.account.trim()), [form.client, form.account]);
+  const filteredDisputes = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return disputes.filter(dispute => {
+      if (statusFilter !== "All Statuses" && dispute.status !== statusFilter) return false;
+      if (bureauFilter !== "All Bureaus" && dispute.bureau !== bureauFilter) return false;
+      if (!query) return true;
+
+      return [
+        dispute.client,
+        dispute.account,
+        dispute.bureau,
+        dispute.status,
+        dispute.round,
+        dispute.reason,
+        dispute.letter,
+      ].some(value => value.toLowerCase().includes(query));
+    });
+  }, [bureauFilter, disputes, search, statusFilter]);
+  const activeCount = disputes.filter(dispute => dispute.status !== "Completed").length;
+  const awaitingResponseCount = disputes.filter(dispute => ["Sent", "In Progress"].includes(dispute.status)).length;
+  const completedCount = disputes.filter(dispute => dispute.status === "Completed").length;
 
   useEffect(() => {
     function loadClientSuggestions() {
@@ -177,6 +202,12 @@ export default function DisputesPage() {
     setSaveHint("");
   }
 
+  function clearFilters() {
+    setSearch("");
+    setStatusFilter("All Statuses");
+    setBureauFilter("All Bureaus");
+  }
+
   function saveDispute() {
     if (!form.client.trim() || !form.account.trim()) {
       const missing: string[] = [];
@@ -206,8 +237,8 @@ export default function DisputesPage() {
       <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
-            <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 800, color: "#0f172a" }}>Dispute Center</h1>
-            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>Manage client disputes, bureaus, letters, accounts, dates, and action status. Table columns include Bureau, Date, and Action for every dispute.</p>
+            <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 800, color: "#0f172a" }}>Dispute Manager</h1>
+            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>All Disputes from the dispute center, with customer lookup, bureau tracking, furnisher context, status workflow, letters, accounts, dates, and action controls.</p>
           </div>
 
           <button
@@ -218,6 +249,20 @@ export default function DisputesPage() {
             Create New Dispute
           </button>
         </div>
+
+        <section aria-label="Dispute workflow summary" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(150px, 1fr))", gap: 12 }}>
+          {[
+            ["All Disputes", disputes.length, "#1e3a5f"],
+            ["Active Workflow", activeCount, "#2563eb"],
+            ["Awaiting Response", awaitingResponseCount, "#8b5cf6"],
+            ["Completed", completedCount, "#16a34a"],
+          ].map(([label, value, color]) => (
+            <div key={label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, borderLeft: `4px solid ${color}` }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</p>
+              <p style={{ margin: "5px 0 0", fontSize: 26, fontWeight: 800, color: String(color) }}>{value}</p>
+            </div>
+          ))}
+        </section>
 
         {saved && (
           <section aria-label="Saved dispute confirmation" style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 8, padding: 16 }}>
@@ -230,8 +275,33 @@ export default function DisputesPage() {
 
         <section style={{ borderRadius: 10, border: "1px solid #e2e8f0", background: "#fff", boxShadow: "0 1px 4px rgba(15,23,42,0.06)", overflow: "hidden" }}>
           <div style={{ padding: "16px 18px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Disputes</h2>
-            <span style={{ fontSize: 13, color: "#64748b" }}>{disputes.length} active records</span>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>All Disputes</h2>
+            <span style={{ fontSize: 13, color: "#64748b" }}>{filteredDisputes.length} of {disputes.length} records</span>
+          </div>
+
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid #e2e8f0", display: "grid", gridTemplateColumns: "minmax(220px, 1fr) 190px 190px auto", gap: 10, alignItems: "center" }}>
+            <input
+              aria-label="Search customer, furnisher, account, bureau, or letter"
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Search customer, furnisher, account, bureau, or letter"
+              style={inputStyle}
+            />
+            <select aria-label="Filter by status" value={statusFilter} onChange={event => setStatusFilter(event.target.value)} style={inputStyle}>
+              <option>All Statuses</option>
+              {STATUSES.map(status => <option key={status}>{status}</option>)}
+            </select>
+            <select aria-label="Filter by bureau" value={bureauFilter} onChange={event => setBureauFilter(event.target.value)} style={inputStyle}>
+              <option>All Bureaus</option>
+              {BUREAUS.map(bureau => <option key={bureau}>{bureau}</option>)}
+            </select>
+            <button
+              type="button"
+              onClick={clearFilters}
+              style={{ border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", padding: "9px 14px", fontSize: 13, fontWeight: 700, color: "#334155", cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              Clear Filters
+            </button>
           </div>
 
           <div style={{ overflowX: "auto" }}>
@@ -245,7 +315,13 @@ export default function DisputesPage() {
               </thead>
 
               <tbody>
-                {disputes.map(dispute => (
+                {filteredDisputes.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} style={{ padding: 32, textAlign: "center", color: "#64748b" }}>
+                      No disputes match the current customer, bureau, furnisher, or status filters.
+                    </td>
+                  </tr>
+                ) : filteredDisputes.map(dispute => (
                   <tr key={dispute.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={{ padding: 12, fontWeight: 700, color: "#0f172a" }}>{dispute.client}</td>
                     <td style={{ padding: 12 }}>{dispute.status}</td>

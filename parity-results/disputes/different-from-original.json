@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "type": "blocked-original-session",
+    "originalUrl": "https://www.clientdisputemanager.com/Home/Index?aspxerrorpath=/User/DisputeCenter",
+    "expectedUrl": "https://www.clientdisputemanager.com/User/DisputeCenter",
+    "detail": "Original Dispute Center could not be confirmed in this run; prior audit observed redirect to dashboard, so exact original page parity remains session-limited."
+  }
+]
