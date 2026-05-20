@@ -68,6 +68,9 @@ const SH=(t:string,action?:React.ReactNode)=>(
 
 export default function Page() {
   const [tab, setTab] = useState("General");
+  const [deletionRows] = useState<{customer:string;deleted_by:string;deleted_on:string;reason:string}[]>([]);
+  const [passwordForm, setPasswordForm] = useState({current:"",next:"",confirm:""});
+  const [passwordSaved, setPasswordSaved] = useState(false);
 
   // ── statuses ──────────────────────────────────────────────────────────────
   const [statuses,    setStatuses]    = useState<Status[]>([]);
@@ -268,6 +271,23 @@ export default function Page() {
     setNotice(`Added tag locally: ${tagInput.trim()}`);
     setTagInput("");
   }
+  function savePassword(){
+    setNotice("");
+    setError("");
+    setPasswordSaved(false);
+    if(!passwordForm.current||!passwordForm.next||!passwordForm.confirm){
+      setError("Enter current password, new password, and confirmation.");
+      return;
+    }
+    if(passwordForm.next!==passwordForm.confirm){
+      setError("New password and confirmation do not match.");
+      return;
+    }
+    setPasswordSaved(true);
+    setNotice("Password change request saved for this session.");
+    setPasswordForm({current:"",next:"",confirm:""});
+    setTimeout(()=>setPasswordSaved(false),3000);
+  }
 
   const SAVE_BTN=(label:string,saving:boolean,saved:boolean,onClick:()=>void)=>(
     <button onClick={onClick} disabled={saving} style={{padding:"9px 22px",background:saved?"#10b981":"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:700,fontSize:13,cursor:"pointer"}}>
@@ -294,11 +314,27 @@ export default function Page() {
     borderBottom:tab===t?"2px solid #1e3a5f":"2px solid transparent",marginBottom:-2,whiteSpace:"nowrap",
   });
 
+  const statusRow=(s:Status|{name:string;color:string}, i:number, builtIn=false)=>(
+    <tr key={`${s.name}-${i}`}>
+      <td style={{padding:"10px 14px",borderTop:i>0||!builtIn?"1px solid #e5e7eb":"none",fontSize:13,color:"#111827",fontWeight:600}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{width:12,height:12,borderRadius:"50%",background:s.color,border:"1px solid rgba(0,0,0,0.12)",display:"inline-block"}}/>
+          {s.name}
+        </div>
+      </td>
+      <td style={{padding:"10px 14px",borderTop:i>0||!builtIn?"1px solid #e5e7eb":"none",fontSize:13,color:"#475569"}}>
+        <span style={{background:s.color+"22",color:s.color,borderRadius:3,padding:"3px 8px",fontSize:12,fontWeight:700}}>{s.name}</span>
+      </td>
+      <td style={{padding:"10px 14px",borderTop:i>0||!builtIn?"1px solid #e5e7eb":"none",fontSize:12,color:"#64748b",textAlign:"right"}}>
+        {builtIn ? "Default" : "Custom"}
+      </td>
+    </tr>
+  );
+
   return (
     <CDMLayout>
-      <div style={{padding:24,maxWidth:900}}>
-        <h1 style={{fontSize:22,fontWeight:800,margin:"0 0 4px",color:"#1e293b"}}>Configuration</h1>
-        <p style={{color:"#64748b",fontSize:14,marginBottom:20}}>Manage system settings, statuses, plans, and integrations.</p>
+      <div style={{padding:24,maxWidth:980}}>
+        <h1 style={{fontSize:22,fontWeight:800,margin:"0 0 16px",color:"#1e293b"}}>Configuration</h1>
 
         {notice&&(
           <div role="status" aria-live="polite" style={{background:"#ecfdf5",border:"1px solid #bbf7d0",color:"#166534",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,fontWeight:600}}>
@@ -311,9 +347,104 @@ export default function Page() {
           </div>
         )}
 
-        {/* Tabs */}
-        <div style={{display:"flex",borderBottom:"2px solid #f1f5f9",marginBottom:24,overflowX:"auto"}}>
-          {TABS.map(t=><button key={t} onClick={()=>setTab(t)} style={tabStyle(t)}>{t}</button>)}
+        <div style={card}>
+          {SH("Custom Status",<button onClick={()=>{setShowSF("client");setSfForm(f=>({...f,type:"client"}));}} style={{fontSize:12,background:"#2f5597",color:"#fff",border:"1px solid #25477f",borderRadius:3,padding:"6px 12px",cursor:"pointer",fontWeight:700}}>Add Custom Status</button>)}
+          <div style={{padding:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 160px auto",gap:10,alignItems:"end",marginBottom:14}}>
+              <div>
+                <label style={{display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:5}}>Status Name</label>
+                <input value={sfForm.name} onChange={e=>setSfForm(f=>({...f,name:e.target.value,type:"client"}))} placeholder="Enter custom status" style={inp}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:5}}>Status Color</label>
+                <div style={{display:"flex",gap:6,alignItems:"center",height:38}}>
+                  {COLOR_OPTIONS.slice(0,6).map(c=>(
+                    <button key={c} aria-label={`Use color ${c}`} onClick={()=>setSfForm(f=>({...f,color:c,type:"client"}))} style={{width:24,height:24,borderRadius:3,background:c,border:sfForm.color===c?"2px solid #111827":"1px solid #cbd5e1",cursor:"pointer"}}/>
+                  ))}
+                </div>
+              </div>
+              <button onClick={addStatus} disabled={savingSt||!sfForm.name.trim()} style={{padding:"9px 14px",background:sfForm.name.trim()?"#2f5597":"#94a3b8",color:"#fff",border:"none",borderRadius:3,fontWeight:700,cursor:sfForm.name.trim()?"pointer":"not-allowed"}}>
+                {savingSt?"Saving...":"Save"}
+              </button>
+            </div>
+            <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #e5e7eb"}}>
+              <thead>
+                <tr>
+                  {["Status Name","Preview","Type"].map(h=><th key={h} style={{textAlign:h==="Type"?"right":"left",padding:"9px 14px",fontSize:11,color:"#374151",fontWeight:800,textTransform:"uppercase",background:"#f3f4f6",borderBottom:"1px solid #d1d5db"}}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {DEFAULT_CLIENT_STATUSES.map((s,i)=>statusRow(s,i,true))}
+                {statuses.filter(s=>s.type==="client").map((s,i)=>(
+                  <tr key={s.id||`${s.name}-${i}`}>
+                    <td style={{padding:"10px 14px",borderTop:"1px solid #e5e7eb",fontSize:13,color:"#111827",fontWeight:600}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{width:12,height:12,borderRadius:"50%",background:s.color,border:"1px solid rgba(0,0,0,0.12)",display:"inline-block"}}/>
+                        {s.name}
+                      </div>
+                    </td>
+                    <td style={{padding:"10px 14px",borderTop:"1px solid #e5e7eb",fontSize:13,color:"#475569"}}>
+                      <span style={{background:s.color+"22",color:s.color,borderRadius:3,padding:"3px 8px",fontSize:12,fontWeight:700}}>{s.name}</span>
+                    </td>
+                    <td style={{padding:"10px 14px",borderTop:"1px solid #e5e7eb",textAlign:"right"}}>
+                      <button onClick={()=>s.id&&delStatus(s.id)} style={{fontSize:12,padding:"4px 10px",background:"#fff",border:"1px solid #dc2626",borderRadius:3,color:"#dc2626",fontWeight:700,cursor:"pointer"}}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+                {!loadingSt&&statuses.filter(s=>s.type==="client").length===0&&(
+                  <tr><td colSpan={3} style={{padding:"10px 14px",borderTop:"1px solid #e5e7eb",fontSize:13,color:"#64748b"}}>No custom client statuses yet.</td></tr>
+                )}
+                {loadingSt&&<tr><td colSpan={3} style={{padding:"10px 14px",borderTop:"1px solid #e5e7eb",fontSize:13,color:"#64748b"}}>Checking statuses...</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={card}>
+          {SH("Customer Deletion Activity")}
+          <div style={{padding:16}}>
+            <table style={{width:"100%",borderCollapse:"collapse",border:"1px solid #e5e7eb"}}>
+              <thead>
+                <tr>
+                  {["Customer","Deleted By","Deleted On","Reason"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 14px",fontSize:11,color:"#374151",fontWeight:800,textTransform:"uppercase",background:"#f3f4f6",borderBottom:"1px solid #d1d5db"}}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {deletionRows.length===0?(
+                  <tr><td colSpan={4} style={{padding:"16px 14px",fontSize:13,color:"#64748b",textAlign:"center"}}>No Customer Deletion Activity Found.</td></tr>
+                ):deletionRows.map((row,i)=>(
+                  <tr key={`${row.customer}-${i}`}>
+                    <td style={{padding:"10px 14px",borderTop:"1px solid #e5e7eb",fontSize:13}}>{row.customer}</td>
+                    <td style={{padding:"10px 14px",borderTop:"1px solid #e5e7eb",fontSize:13}}>{row.deleted_by}</td>
+                    <td style={{padding:"10px 14px",borderTop:"1px solid #e5e7eb",fontSize:13}}>{row.deleted_on}</td>
+                    <td style={{padding:"10px 14px",borderTop:"1px solid #e5e7eb",fontSize:13}}>{row.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={card}>
+          {SH("Change Password")}
+          <div style={{padding:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
+              <div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:5}}>Current Password</label><input type="password" value={passwordForm.current} onChange={e=>setPasswordForm(p=>({...p,current:e.target.value}))} style={inp}/></div>
+              <div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:5}}>New Password</label><input type="password" value={passwordForm.next} onChange={e=>setPasswordForm(p=>({...p,next:e.target.value}))} style={inp}/></div>
+              <div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:5}}>Confirm Password</label><input type="password" value={passwordForm.confirm} onChange={e=>setPasswordForm(p=>({...p,confirm:e.target.value}))} style={inp}/></div>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              <button onClick={savePassword} style={{padding:"9px 18px",background:passwordSaved?"#10b981":"#2f5597",color:"#fff",border:"none",borderRadius:3,fontWeight:700,cursor:"pointer"}}>{passwordSaved?"Saved":"Change Password"}</button>
+            </div>
+          </div>
+        </div>
+
+        <div style={{margin:"22px 0 8px"}}>
+          <h2 style={{fontSize:16,fontWeight:800,color:"#1e293b",margin:"0 0 10px"}}>Additional Settings</h2>
+          <p style={{fontSize:13,color:"#64748b",margin:"0 0 12px"}}>Manage system settings, statuses, plans, and integrations.</p>
+          <div style={{display:"flex",borderBottom:"2px solid #f1f5f9",marginBottom:18,overflowX:"auto"}}>
+            {TABS.map(t=><button key={t} onClick={()=>setTab(t)} style={tabStyle(t)}>{t}</button>)}
+          </div>
         </div>
 
         {/* ═══ GENERAL ═══ */}

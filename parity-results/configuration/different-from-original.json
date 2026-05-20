@@ -1,0 +1,16 @@
+[
+  {
+    "section": "configuration",
+    "item": "First visible surface",
+    "original": "Original starts with Custom Status, Customer Deletion Activity, and Change Password.",
+    "clone": "Clone now starts with those same configuration sections before broader settings.",
+    "status": "fixed"
+  },
+  {
+    "section": "configuration",
+    "item": "Status controls",
+    "original": "Original presents status management as a table/form surface.",
+    "clone": "Clone presents an inline status form, default status rows, preview chips, and custom rows.",
+    "status": "closer"
+  }
+]
