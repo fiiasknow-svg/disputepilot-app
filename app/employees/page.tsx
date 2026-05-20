@@ -363,25 +363,26 @@ export default function Page() {
   const active=employees.filter(e=>e.status==="active").length;
   const inactive=employees.filter(e=>e.status==="inactive").length;
   const admins=employees.filter(e=>e.role==="Admin").length;
+  const employeeQuotaLimit = 1;
 
   const inp: React.CSSProperties = {width:"100%",padding:"9px 12px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:14,boxSizing:"border-box"};
   const lbl: React.CSSProperties = {display:"block",fontSize:13,fontWeight:600,color:"#374151",marginBottom:4};
+  const simpleButton: React.CSSProperties = {padding:"8px 14px",border:"1px solid #d1d5db",borderRadius:4,background:"#fff",cursor:"pointer",fontSize:12,fontWeight:700,color:"#374151",textTransform:"uppercase"};
 
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:1200}}>
 
-        {/* Header */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:10}}>
           <div>
-            <h1 style={{fontSize:22,fontWeight:800,margin:0,color:"#1e293b"}}>Employees</h1>
-            <p style={{margin:"4px 0 0",fontSize:14,color:"#64748b"}}>{active} active staff members</p>
+            <h1 style={{fontSize:22,fontWeight:700,margin:0,color:"#1f2937"}}>Employees/Outsourcers</h1>
+            <div style={{display:"flex",gap:8,alignItems:"center",fontSize:13,color:"#64748b",marginTop:8,flexWrap:"wrap"}}>
+              <span>Dashboard</span>
+              <span>/</span>
+              <span>Employees/Outsourcers</span>
+            </div>
           </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <button onClick={exportCSV} style={{padding:"8px 14px",border:"1px solid #e2e8f0",borderRadius:7,background:"#fff",cursor:"pointer",fontSize:13,fontWeight:600,color:"#475569"}}>⬇ Export CSV</button>
-            <button onClick={()=>setShowInvite(true)} style={{padding:"8px 14px",border:"1px solid #3b82f6",borderRadius:7,background:"#eff6ff",cursor:"pointer",fontSize:13,fontWeight:600,color:"#3b82f6"}}>✉ Invite by Email</button>
-            <button onClick={()=>{setEditing(null);setSaveError("");setForm({...EMPTY_FORM});setShowForm(true);}} style={{background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,padding:"9px 20px",cursor:"pointer",fontWeight:700,fontSize:14}}>+ Add Employee</button>
-          </div>
+          <button type="button" onClick={()=>history.back()} style={simpleButton}>Back</button>
         </div>
 
         {notice&&(
@@ -395,61 +396,19 @@ export default function Page() {
           </div>
         )}
 
-        {/* Stat Cards */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
-          {[
-            {label:"Total Staff",value:total,color:"#1e3a5f",icon:"👥",sub:"All employees"},
-            {label:"Active",value:active,color:"#10b981",icon:"✅",sub:"Currently active"},
-            {label:"Inactive",value:inactive,color:"#94a3b8",icon:"⏸",sub:"Deactivated"},
-            {label:"Admins",value:admins,color:"#8b5cf6",icon:"🛡",sub:"Full access"},
-          ].map(c=>(
-            <div key={c.label} style={{background:"#fff",borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,0.07)",borderTop:`3px solid ${c.color}`}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                <div>
-                  <p style={{margin:0,fontSize:11,fontWeight:600,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.04em"}}>{c.label}</p>
-                  <p style={{margin:"4px 0 0",fontSize:26,fontWeight:800,color:c.color}}>{c.value}</p>
-                </div>
-                <span style={{fontSize:24}}>{c.icon}</span>
-              </div>
-              <p style={{margin:"6px 0 0",fontSize:11,color:"#94a3b8"}}>{c.sub}</p>
+        <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:4,marginBottom:14}}>
+          <div style={{display:"flex",borderBottom:"1px solid #e5e7eb",flexWrap:"wrap"}}>
+            <button type="button" style={{padding:"12px 18px",border:"none",borderRight:"1px solid #e5e7eb",background:"#1e3a5f",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",textTransform:"uppercase"}}>Employees Information</button>
+            <button type="button" style={{padding:"12px 18px",border:"none",borderRight:"1px solid #e5e7eb",background:"#f8fafc",color:"#334155",fontWeight:700,fontSize:12,cursor:"pointer",textTransform:"uppercase"}}>Roles & Permissions</button>
+          </div>
+          <div style={{padding:"16px 18px"}}>
+            <p style={{margin:"0 0 14px",fontSize:14,color:"#475569"}}>In this area you can add, delete, manage and track your employees. You can monitor the employee's login time with the activity log.</p>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+              <button onClick={()=>{setEditing(null);setSaveError("");setForm({...EMPTY_FORM});setShowForm(true);}} style={{background:"#1e3a5f",color:"#fff",border:"none",borderRadius:4,padding:"9px 16px",cursor:"pointer",fontWeight:700,fontSize:12,textTransform:"uppercase"}}>Add New Employee</button>
+              <button type="button" style={simpleButton}>Training Videos</button>
+              <span style={{fontSize:14,fontWeight:700,color:"#374151"}}>Employee Quota = {total}/{employeeQuotaLimit} used</span>
             </div>
-          ))}
-        </div>
-
-        {/* Role breakdown pills */}
-        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-          {ROLES.map(role=>{
-            const count=employees.filter(e=>e.role===role).length;
-            if(!count) return null;
-            const color=ROLE_C[role]||"#94a3b8";
-            return (
-              <button key={role} onClick={()=>setRoleFilter(roleFilter===role?"all":role)}
-                style={{background:roleFilter===role?color+"22":"#fff",border:`1px solid ${roleFilter===role?color:"#e2e8f0"}`,borderRadius:20,padding:"5px 14px",cursor:"pointer",display:"flex",gap:6,alignItems:"center"}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:color}}/>
-                <span style={{fontSize:12,fontWeight:600,color:"#475569"}}>{role}</span>
-                <span style={{fontSize:12,fontWeight:800,color}}>{count}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Filters */}
-        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-          <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="Search by name, email, role, department…"
-            style={{flex:1,minWidth:200,padding:"8px 12px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:13,outline:"none"}}/>
-          <select value={roleFilter} onChange={e=>{setRoleFilter(e.target.value);setPage(1);}} style={{padding:"8px 10px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:13,background:"#fff"}}>
-            <option value="all">All Roles</option>
-            {ROLES.map(r=><option key={r} value={r}>{r}</option>)}
-          </select>
-          <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(1);}} style={{padding:"8px 10px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:13,background:"#fff"}}>
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <select value={deptFilter} onChange={e=>{setDeptFilter(e.target.value);setPage(1);}} style={{padding:"8px 10px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:13,background:"#fff"}}>
-            <option value="all">All Departments</option>
-            {DEPARTMENTS.map(d=><option key={d} value={d}>{d}</option>)}
-          </select>
+          </div>
         </div>
 
         {/* Bulk toolbar */}
@@ -474,7 +433,7 @@ export default function Page() {
         )}
 
         {/* Table */}
-        <div style={{background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+        <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:4,overflow:"hidden"}}>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
               <thead style={{background:"#f8fafc"}}>
@@ -482,65 +441,44 @@ export default function Page() {
                   <th style={{padding:"12px 12px",width:36}}>
                     <input type="checkbox" checked={paged.length>0&&selected.size===paged.length} onChange={toggleAll}/>
                   </th>
-                  {["Employee","Email","Department / Title","Role","Last Login","Status","Actions"].map(h=>(
-                    <th key={h} style={{textAlign:"left",padding:"12px 12px",fontSize:12,fontWeight:700,color:"#64748b",textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>
+                  {["Name","Phone Number","User Name","Position","Created At","Active","Action","Reminders/Tasks"].map(h=>(
+                    <th key={h} style={{textAlign:"left",padding:"12px 12px",fontSize:12,fontWeight:700,color:"#475569",whiteSpace:"nowrap",borderBottom:"1px solid #e5e7eb"}}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading
-                  ? <tr><td colSpan={8} style={{padding:32,textAlign:"center",color:"#94a3b8"}}>Loading…</td></tr>
+                  ? <tr><td colSpan={9} style={{padding:32,textAlign:"center",color:"#64748b"}}>Loading...</td></tr>
                   : paged.length===0
-                  ? <tr><td colSpan={8} style={{padding:40,textAlign:"center",color:"#94a3b8"}}>
-                      <div style={{fontSize:32,marginBottom:8}}>👥</div>
-                      <div style={{fontWeight:600}}>No employees found</div>
-                      <div style={{fontSize:13}}>Try adjusting filters or add a new employee.</div>
+                  ? <tr><td colSpan={9} style={{padding:28,textAlign:"center",color:"#64748b",fontSize:14}}>
+                      No data is available in this table
                     </td></tr>
                   : paged.map(emp=>{
                     const name=employeeName(emp);
-                    const nameParts=splitEmployeeName(emp);
-                    const ac=avatarColor(name); const ini=initials(nameParts.firstName,nameParts.lastName);
-                    const roleColor=ROLE_C[emp.role]||"#94a3b8";
+                    const createdAt = emp.created_at ? new Date(emp.created_at).toLocaleDateString() : "";
                     return (
                       <tr key={emp.id} style={{borderTop:"1px solid #f1f5f9"}}>
                         <td style={{padding:"11px 12px"}}>
                           <input type="checkbox" checked={selected.has(emp.id)} onChange={()=>toggleSelect(emp.id)}/>
                         </td>
+                        <td style={{padding:"11px 12px",fontSize:13,color:"#1f2937",fontWeight:600}}>{name||"-"}</td>
+                        <td style={{padding:"11px 12px",fontSize:13,color:"#475569"}}>{emp.phone||"-"}</td>
+                        <td style={{padding:"11px 12px",fontSize:13,color:"#475569"}}>{emp.email||"-"}</td>
+                        <td style={{padding:"11px 12px",fontSize:13,color:"#475569"}}>{emp.title||emp.role||"-"}</td>
+                        <td style={{padding:"11px 12px",fontSize:13,color:"#475569",whiteSpace:"nowrap"}}>{createdAt||"-"}</td>
                         <td style={{padding:"11px 12px"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            <div style={{width:36,height:36,borderRadius:"50%",background:ac,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700,flexShrink:0}}>
-                              {ini||"?"}
-                            </div>
-                            <div>
-                              <div style={{fontWeight:700,fontSize:14,color:"#1e293b"}}>{name||"—"}</div>
-                              <div style={{fontSize:11,color:"#94a3b8"}}>Added {new Date(emp.created_at).toLocaleDateString()}</div>
-                            </div>
+                          <button type="button" onClick={()=>toggleStatus(emp.id,emp.status)} style={{border:"1px solid #d1d5db",borderRadius:4,background:"#fff",padding:"4px 10px",fontSize:12,cursor:"pointer",color:emp.status==="active"?"#166534":"#64748b"}}>
+                            {emp.status==="active"?"Yes":"No"}
+                          </button>
+                        </td>
+                        <td style={{padding:"11px 12px"}}>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                            <button onClick={()=>openEdit(emp)} title="Edit" aria-label={`Edit ${name||"employee"}`} style={{...simpleButton,padding:"5px 8px",fontSize:11}}>Edit</button>
+                            <button onClick={()=>setDeleteId(emp.id)} title="Delete" aria-label={`Delete ${name||"employee"}`} style={{...simpleButton,padding:"5px 8px",fontSize:11,color:"#991b1b",borderColor:"#fecaca"}}>Delete</button>
+                            <button onClick={()=>setViewActivity(emp)} title="Activity Log" aria-label={`Activity log ${name||"employee"}`} style={{...simpleButton,padding:"5px 8px",fontSize:11}}>Activity Log</button>
                           </div>
                         </td>
-                        <td style={{padding:"11px 12px",fontSize:13,color:"#475569"}}>{emp.email}</td>
-                        <td style={{padding:"11px 12px"}}>
-                          <div style={{fontSize:13,fontWeight:600,color:"#1e293b"}}>{emp.department||"—"}</div>
-                          <div style={{fontSize:11,color:"#94a3b8"}}>{emp.title||""}</div>
-                        </td>
-                        <td style={{padding:"11px 12px"}}>
-                          <span style={{background:roleColor+"22",color:roleColor,borderRadius:5,padding:"3px 10px",fontSize:12,fontWeight:700}}>{emp.role}</span>
-                        </td>
-                        <td style={{padding:"11px 12px",fontSize:12,color:"#94a3b8",whiteSpace:"nowrap"}}>{relTime(emp.last_login)}</td>
-                        <td style={{padding:"11px 12px"}}>
-                          <select value={emp.status} onChange={e=>toggleStatus(emp.id,emp.status==="active"?"active":"inactive")}
-                            onClick={()=>toggleStatus(emp.id,emp.status)}
-                            style={{fontSize:12,padding:"3px 8px",border:`1px solid ${emp.status==="active"?"#10b981":"#94a3b8"}`,borderRadius:20,background:emp.status==="active"?"#dcfce7":"#f1f5f9",color:emp.status==="active"?"#166534":"#64748b",fontWeight:700,cursor:"pointer",appearance:"none"}}>
-                            <option>{emp.status==="active"?"active":"inactive"}</option>
-                          </select>
-                        </td>
-                        <td style={{padding:"11px 12px"}}>
-                          <div style={{display:"flex",gap:4}}>
-                            <button onClick={()=>openEdit(emp)} title="Edit" style={{width:28,height:28,border:"1px solid #e2e8f0",borderRadius:6,background:"#f8fafc",cursor:"pointer",fontSize:13}}>✏️</button>
-                            <button onClick={()=>setViewPerms(emp)} title="Permissions" style={{width:28,height:28,border:"1px solid #e2e8f0",borderRadius:6,background:"#f8fafc",cursor:"pointer",fontSize:13}}>🛡</button>
-                            <button onClick={()=>setViewActivity(emp)} title="Activity" style={{width:28,height:28,border:"1px solid #e2e8f0",borderRadius:6,background:"#f8fafc",cursor:"pointer",fontSize:13}}>📋</button>
-                            <button onClick={()=>setDeleteId(emp.id)} title="Remove" style={{width:28,height:28,border:"1px solid #fecaca",borderRadius:6,background:"#fff5f5",cursor:"pointer",fontSize:13}}>🗑️</button>
-                          </div>
-                        </td>
+                        <td style={{padding:"11px 12px",fontSize:13,color:"#64748b"}}>0</td>
                       </tr>
                     );
                   })}
@@ -570,6 +508,36 @@ export default function Page() {
         </div>
 
         {/* ── ADD / EDIT MODAL ── */}
+        <div style={{marginTop:18,background:"#fff",border:"1px solid #e5e7eb",borderRadius:4,padding:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:12}}>
+            <div>
+              <h2 style={{margin:0,fontSize:16,color:"#1f2937"}}>Staff Management Tools</h2>
+              <p style={{margin:"4px 0 0",fontSize:13,color:"#64748b"}}>{active} active, {inactive} inactive, {admins} admins</p>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button onClick={exportCSV} style={{padding:"8px 14px",border:"1px solid #e2e8f0",borderRadius:4,background:"#fff",cursor:"pointer",fontSize:13,fontWeight:600,color:"#475569"}}>Export CSV</button>
+              <button onClick={()=>setShowInvite(true)} style={{padding:"8px 14px",border:"1px solid #3b82f6",borderRadius:4,background:"#eff6ff",cursor:"pointer",fontSize:13,fontWeight:600,color:"#3b82f6"}}>Invite by Email</button>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="Search by name, email, role, department..."
+              style={{flex:1,minWidth:200,padding:"8px 12px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:13,outline:"none"}}/>
+            <select value={roleFilter} onChange={e=>{setRoleFilter(e.target.value);setPage(1);}} style={{padding:"8px 10px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:13,background:"#fff"}}>
+              <option value="all">All Roles</option>
+              {ROLES.map(r=><option key={r} value={r}>{r}</option>)}
+            </select>
+            <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(1);}} style={{padding:"8px 10px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:13,background:"#fff"}}>
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <select value={deptFilter} onChange={e=>{setDeptFilter(e.target.value);setPage(1);}} style={{padding:"8px 10px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:13,background:"#fff"}}>
+              <option value="all">All Departments</option>
+              {DEPARTMENTS.map(d=><option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+        </div>
+
         {showForm&&(
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
             <div style={{background:"#fff",borderRadius:12,padding:28,width:520,maxHeight:"92vh",overflowY:"auto"}}>

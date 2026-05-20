@@ -15,10 +15,10 @@ test('employees page actions are usable without app error', async ({ page }) => 
 
   await page.goto(`${BASE_URL}/employees`);
 
-  await expect(page.getByRole('heading', { name: 'Employees', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Employees/Outsourcers', exact: true })).toBeVisible();
   await expect(page.getByText(/Application error|Runtime Error/i)).toHaveCount(0);
 
-  await page.getByRole('button', { name: '+ Add Employee' }).click();
+  await page.getByRole('button', { name: /Add New Employee/i }).click();
   await expect(page.getByRole('heading', { name: 'Add Employee' })).toBeVisible();
 
   const addModal = page.locator('div').filter({ has: page.getByRole('heading', { name: 'Add Employee' }) }).last();
@@ -28,7 +28,7 @@ test('employees page actions are usable without app error', async ({ page }) => 
   await addModal.locator('input').nth(2).fill(`employee.${stamp}@example.com`);
   await page.getByRole('button', { name: /^Add Employee$/ }).click();
 
-  await expect(page.getByRole('heading', { name: 'Employees', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Employees/Outsourcers', exact: true })).toBeVisible();
   await expect(page.getByText(/Application error|Runtime Error/i)).toHaveCount(0);
 
   const saveError = page.getByRole('alert').filter({ hasText: /Employee could not be saved/i });
@@ -40,19 +40,19 @@ test('employees page actions are usable without app error', async ({ page }) => 
   const firstDataRow = page.locator('tbody tr').filter({ has: page.locator('td') }).first();
 
   if (await firstDataRow.count()) {
-    const statusSelect = firstDataRow.locator('select').first();
-    if (await statusSelect.count()) {
-      await statusSelect.click();
+    const statusButton = firstDataRow.getByRole('button', { name: /^(Yes|No)$/ }).first();
+    if (await statusButton.count()) {
+      await statusButton.click();
     }
 
-    const editButton = firstDataRow.getByRole('button', { name: '✏️' }).first();
+    const editButton = firstDataRow.getByRole('button', { name: /Edit/i }).first();
     if (await editButton.count()) {
       await editButton.click();
       await expect(page.getByRole('heading', { name: 'Edit Employee' })).toBeVisible();
       await page.getByRole('button', { name: 'Cancel' }).click();
     }
 
-    const removeButton = firstDataRow.getByRole('button', { name: '🗑️' }).first();
+    const removeButton = firstDataRow.getByRole('button', { name: /Delete/i }).first();
     if (await removeButton.count()) {
       await removeButton.click();
       await expect(page.getByRole('heading', { name: 'Remove Employee?' })).toBeVisible();
@@ -61,6 +61,6 @@ test('employees page actions are usable without app error', async ({ page }) => 
   }
 
   await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Employees', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Employees/Outsourcers', exact: true })).toBeVisible();
   expect(runtimeErrors).toEqual([]);
 });
