@@ -37,24 +37,26 @@ const routes: RouteSpec[] = [
     route: '/company/portals',
     title: 'Portals / Mobile App',
     bodyChecks: [
-      'Manage client portal access, branding, and mobile settings.',
-      'Client Portal',
-      'Portal URL',
-      'Logo',
-      'Branding',
-      'Welcome Message',
-      'Enable Client Portal',
-      'Allow Document Uploads',
-      'Enable Secure Messages',
+      'DASHBOARD PORTALS / MOBILE APP',
+      "In this area, you can access and share all your company's portals",
+      'Client Tracking Portal',
+      'Watch the video below to see what your clients experience inside the Client Tracking Portal.',
+      'Client Tracking Portal Q&A',
+      'What is the Client Tracking Portal?',
+      'Client Tracking Portal Link',
+      'https://www.creditrestorationportal.com/Account/Login',
+      'Affiliate Portal',
+      'Affiliate Portal Q&A',
+      'https://www.affiliatecreditrepairportal.com/Account/Login',
+      'Client Tracking Portal Mobile Application',
+      'Android Application',
+      'IOS Application',
+      'https://apps.apple.com/us/app/client-tracking-portal/id1549632923',
+      'Portal Settings',
       'Mobile App',
-      'App Display Name',
-      'Enable Mobile App Access',
-      'Enable Push Notifications',
-      'Allow Biometric Login',
-      'Saved Portal Summary',
       'Save Portal Settings',
     ],
-    buttonChecks: [/Save Portal Settings/i, /Reset/i],
+    buttonChecks: [/WATCH VIDEO/i, /COPY LINK/i, /Save Portal Settings/i, /Reset/i],
   },
   {
     route: '/company/manage-portal-content',
@@ -355,7 +357,8 @@ for (const pageInfo of routes) {
     }
 
     for (const pattern of pageInfo.buttonChecks ?? []) {
-      await expect(page.getByRole('button', { name: pattern })).toBeVisible();
+      const matchingButtons = page.getByRole('button', { name: pattern });
+      await expect(matchingButtons.first()).toBeVisible();
     }
 
     if (pageInfo.afterVisit) {
