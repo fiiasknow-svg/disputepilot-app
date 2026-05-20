@@ -32,9 +32,12 @@ test('compare original disputes page to clone disputes page', async () => {
 
   const originalContext = await browser.newContext({
     storageState: 'auth-original.json',
+    viewport: { width: 1440, height: 1000 },
   });
 
-  const cloneContext = await browser.newContext();
+  const cloneContext = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+  });
 
   const original = await originalContext.newPage();
   const clone = await cloneContext.newPage();
@@ -44,6 +47,14 @@ test('compare original disputes page to clone disputes page', async () => {
 
   await expect(original.locator('body')).toBeVisible();
   await expect(clone.locator('body')).toBeVisible();
+
+  await original.screenshot({ path: path.join(artifactDir, 'desktop-original.png'), fullPage: true });
+  await clone.screenshot({ path: path.join(artifactDir, 'desktop-clone.png'), fullPage: true });
+
+  await original.setViewportSize({ width: 390, height: 844 });
+  await clone.setViewportSize({ width: 390, height: 844 });
+  await original.screenshot({ path: path.join(artifactDir, 'mobile-original.png'), fullPage: true });
+  await clone.screenshot({ path: path.join(artifactDir, 'mobile-clone.png'), fullPage: true });
 
   const cloneBodyText = (await clone.locator('body').innerText()).replace(/\s+/g, ' ');
 
