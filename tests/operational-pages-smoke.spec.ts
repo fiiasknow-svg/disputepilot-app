@@ -25,6 +25,11 @@ const pages = [
       'Export iCal',
       '+ Add Event',
       'Today',
+      'Event Calendar Tools',
+    ],
+    reveal: {
+      button: /Event Calendar Tools/i,
+      checks: [
       'Month',
       'Week',
       'Day',
@@ -33,8 +38,9 @@ const pages = [
       'All Agents',
       'Event Types',
       'Upcoming (30 days)',
-    ],
-    buttons: [/Export iCal/i, /\+ Add Event/i, /Today/i],
+      ],
+    },
+    buttons: [/Export iCal/i, /\+ Add Event/i, /Today/i, /Event Calendar Tools/i],
   },
   {
     path: '/employees',
@@ -128,6 +134,14 @@ test.describe('operational pages are visible and useful', () => {
 
       for (const buttonName of pageInfo.buttons) {
         await expect(page.getByRole('button', { name: buttonName })).toBeVisible();
+      }
+
+      if ('reveal' in pageInfo) {
+        await page.getByRole('button', { name: pageInfo.reveal.button }).click();
+        const revealedBodyText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+        for (const check of pageInfo.reveal.checks) {
+          expect(revealedBodyText).toContain(check);
+        }
       }
     });
   }

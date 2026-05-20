@@ -14,7 +14,7 @@ const ORIGINAL_REMINDER_SURFACE = [
   'Scheduled Reminder',
   'Read Reminder',
   'Past Due',
-  'TODAY',
+  'Today',
   'Reminders',
   'Mark All as Read',
   'Customer',

@@ -21,6 +21,7 @@ type EventItem = {
   id: string;
   title: string;
   date: string;
+  allDay: boolean;
 };
 
 const REMINDER_KEY = "disputepilot.calendar-reminders";
@@ -67,6 +68,7 @@ export default function Page() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [notice, setNotice] = useState("");
   const [showEventForm, setShowEventForm] = useState(false);
+  const [showEventTools, setShowEventTools] = useState(false);
   const [reminderForm, setReminderForm] = useState({
     customer: "",
     title: "",
@@ -76,7 +78,7 @@ export default function Page() {
     endTime: "09:30",
     type: "Follow Up",
   });
-  const [eventForm, setEventForm] = useState({ title: "", date: dateValue(today) });
+  const [eventForm, setEventForm] = useState({ title: "", date: dateValue(today), allDay: false });
 
   useEffect(() => {
     setReminders(readStored<Reminder[]>(REMINDER_KEY, []));
@@ -166,8 +168,8 @@ export default function Page() {
 
   function addEvent() {
     if (!eventForm.title.trim()) return;
-    setEvents((current) => [{ id: `event-${Date.now()}`, title: eventForm.title.trim(), date: eventForm.date }, ...current]);
-    setEventForm({ title: "", date: dateValue(today) });
+    setEvents((current) => [{ id: `event-${Date.now()}`, title: eventForm.title.trim(), date: eventForm.date, allDay: eventForm.allDay }, ...current]);
+    setEventForm({ title: "", date: dateValue(today), allDay: false });
     setShowEventForm(false);
     setNotice("Event saved.");
   }
@@ -297,7 +299,7 @@ export default function Page() {
               <button type="button" style={button} aria-label="Previous month">{"<"}</button>
               <div style={{ fontSize: 14, fontWeight: 800, color: "#1f2937" }}>{monthName(today)}</div>
               <button type="button" style={button} aria-label="Next month">{">"}</button>
-              <button type="button" style={button}>TODAY</button>
+              <button type="button" style={button}>Today</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", fontSize: 11, fontWeight: 800, color: "#64748b", textAlign: "center", marginBottom: 6 }}>
               {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => <div key={day}>{day}</div>)}
@@ -364,25 +366,51 @@ export default function Page() {
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
-              <button type="button" onClick={() => setReminderForm({ customer: "", title: "", scheduleDate: dateValue(today), scheduleTime: "09:00", endDate: dateValue(today), endTime: "09:30", type: "Follow Up" })} style={button}>Cancel</button>
+              <button type="button" onClick={() => setReminderForm({ customer: "", title: "", scheduleDate: dateValue(today), scheduleTime: "09:00", endDate: dateValue(today), endTime: "09:30", type: "Follow Up" })} style={button}>Reset</button>
               <button type="button" onClick={addReminder} style={primaryButton}>Save Reminder</button>
             </div>
           </section>
         </div>
 
         <section style={{ ...panel, padding: 14, marginTop: 16 }}>
-          <h2 style={{ margin: "0 0 8px", fontSize: 14, color: "#1f2937" }}>Event Calendar Tools</h2>
-          <p style={{ margin: "0 0 10px", fontSize: 13, color: "#64748b" }}>
-            Secondary event tools remain available, but reminders are the primary calendar workflow.
-          </p>
+          <button
+            type="button"
+            aria-expanded={showEventTools}
+            onClick={() => setShowEventTools((visible) => !visible)}
+            style={{ ...button, marginBottom: showEventTools ? 12 : 0 }}
+          >
+            Event Calendar Tools
+          </button>
+          {showEventTools && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12, alignItems: "center" }}>
+              {["Month", "Week", "Day", "Agenda"].map((view) => (
+                <button key={view} type="button" style={button}>
+                  {view}
+                </button>
+              ))}
+              <span style={{ fontSize: 12, color: "#475569", fontWeight: 800 }}>Event Types</span>
+              <select aria-label="Event Types" defaultValue="All Types" style={{ ...input, width: "auto", minWidth: 132, background: "#fff" }}>
+                <option>All Types</option>
+                <option>Meeting</option>
+                <option>Deadline</option>
+                <option>Follow Up</option>
+              </select>
+              <select aria-label="All Agents" defaultValue="All Agents" style={{ ...input, width: "auto", minWidth: 132, background: "#fff" }}>
+                <option>All Agents</option>
+                <option>Assigned Agent</option>
+                <option>Unassigned</option>
+              </select>
+              <button type="button" style={button}>Upcoming (30 days)</button>
+            </div>
+          )}
           {events.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>No events saved.</p>
+            <p style={{ margin: showEventTools ? 0 : "12px 0 0", fontSize: 13, color: "#64748b" }}>No events saved.</p>
           ) : (
-            <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ display: "grid", gap: 6, marginTop: showEventTools ? 0 : 12 }}>
               {events.map((event) => (
                 <div key={event.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, padding: 8, background: "#f8fafc" }}>
                   <strong>{event.title}</strong>
-                  <span>{event.date}</span>
+                  <span>{event.allDay ? `${event.date} - All day` : event.date}</span>
                 </div>
               ))}
             </div>
@@ -402,6 +430,15 @@ export default function Page() {
                   <label style={label}>Date</label>
                   <input type="date" value={eventForm.date} onChange={(event) => setEventForm((form) => ({ ...form, date: event.target.value }))} style={input} />
                 </div>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155", fontWeight: 700 }}>
+                  <input
+                    type="checkbox"
+                    checked={eventForm.allDay}
+                    onChange={(event) => setEventForm((form) => ({ ...form, allDay: event.target.checked }))}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  All day
+                </label>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
                 <button type="button" onClick={() => setShowEventForm(false)} style={button}>Cancel</button>
