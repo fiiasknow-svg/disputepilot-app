@@ -1,0 +1,16 @@
+[
+  {
+    "route": "/reports",
+    "item": "Original route target",
+    "original": "Captured audit could not reach a dedicated original Reports page; /Reports redirected to /Home/Index?aspxerrorpath=/Reports.",
+    "clone": "Clone exposes a dedicated /reports dashboard route.",
+    "status": "known-gap"
+  },
+  {
+    "route": "/reports",
+    "item": "First visible reports surface",
+    "original": "Original reports-specific page content remains unknown from the final audit.",
+    "clone": "Visible dashboard includes client, dispute, resolved, revenue, lead, paid invoice, bureau, and resolution-rate reporting.",
+    "status": "safe-smoke-surface"
+  }
+]

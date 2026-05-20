@@ -53,6 +53,7 @@ const navGroups = [
       { label: "Dispute Status", href: "/disputes/status", icon: Icons.BarChart },
       { label: "Notify/Automation", href: "/company/notify-automation", icon: Icons.Zap },
       { label: "Employees", href: "/employees", icon: Icons.Users },
+      { label: "Reports", href: "/reports", icon: Icons.BarChart },
       { label: "Team Messages", href: "/company/team-messages", icon: Icons.MessageSquare },
       { label: "Letter Vault", href: "/letter-vault", icon: Icons.FileText },
       { label: "Calendar", href: "/calendar", icon: Icons.Calendar },
