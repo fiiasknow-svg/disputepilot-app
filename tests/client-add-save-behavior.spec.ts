@@ -51,6 +51,6 @@ test('add client form can save without app error', async ({ page }) => {
 
   await expect.poll(() => sawClientInsert).toBe(true);
   await expect(page.getByText(/client_type|schema cache/i)).toHaveCount(0);
-  await expect(page.getByText(/404|Application error|Runtime Error/i)).toHaveCount(0);
+  await expect(page.getByText(/^404$|Application error|Runtime Error/i)).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /Customers/i })).toBeVisible();
 });

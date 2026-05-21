@@ -245,6 +245,7 @@ export default function Page() {
   const [viewTarget, setViewTarget] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkStatus, setBulkStatus] = useState("active");
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
@@ -563,6 +564,7 @@ export default function Page() {
       return next;
     });
     setSelected(new Set());
+    setBulkDeleteOpen(false);
     setNotice(remoteError ? `Removed ${ids.length} client${ids.length === 1 ? "" : "s"} locally.` : `Removed ${ids.length} client${ids.length === 1 ? "" : "s"}.`);
     if (remoteError) setError(`Supabase bulk delete failed: ${remoteError}`);
   }
@@ -575,9 +577,9 @@ export default function Page() {
   }
 
   // ── Export CSV ──
-  function exportCSV() {
+  function exportCSV(rowsToExport = filtered, filename = "clients.csv") {
     const headers = ["First Name", "Last Name", "Email", "Phone", "Status", "Type", "Notes", "Credit Score", "Plan", "Monthly Charge", "Contract", "Payment", "Address", "City", "State", "ZIP", "DOB", "Source", "Agent", "Tags", "Portal", "Created"];
-    const rows = filtered.map(c => {
+    const rows = rowsToExport.map(c => {
       const name = clientName(c);
       const parts = name.split(" ");
       return [
@@ -590,9 +592,13 @@ export default function Page() {
       ];
     });
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: "clients.csv" });
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: filename });
     a.click();
-    setNotice(`Export ready: ${rows.length} client${rows.length === 1 ? "" : "s"} included in clients.csv`);
+    setNotice(`Export ready: ${rows.length} client${rows.length === 1 ? "" : "s"} included in ${filename}`);
+  }
+
+  function exportSelectedCSV() {
+    exportCSV(filtered.filter(c => selected.has(c.id)), "selected-clients.csv");
   }
 
   // ── Import CSV ──
@@ -678,7 +684,7 @@ export default function Page() {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => setShowImport(true)} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>↑ Import CSV</button>
-            <button onClick={exportCSV} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>↓ Export CSV</button>
+            <button onClick={() => exportCSV()} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>↓ Export CSV</button>
             <button onClick={() => { setShowForm(true); setForm({ ...EMPTY_FORM }); }}
               style={{ background: "#fff", color: "#1e3a5f", border: "1px solid #1e3a5f", borderRadius: 7, padding: "9px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
               Add New Customer
@@ -832,9 +838,9 @@ export default function Page() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 16px", marginBottom: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#1e3a5f" }}>{selected.size} selected</span>
             <button onClick={() => setShowBulkEmail(true)} style={{ fontSize: 12, padding: "5px 13px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>✉ Send Email</button>
-            <button onClick={exportCSV} style={{ fontSize: 12, padding: "5px 13px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>↓ Export</button>
+            <button onClick={exportSelectedCSV} style={{ fontSize: 12, padding: "5px 13px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>↓ Export Selected</button>
             <button onClick={() => setBulkStatusOpen(true)} style={{ fontSize: 12, padding: "5px 13px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>✎ Update Status</button>
-            <button onClick={bulkDelete} style={{ fontSize: 12, padding: "5px 13px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, cursor: "pointer", fontWeight: 600, color: "#dc2626" }}>🗑 Delete</button>
+            <button onClick={() => setBulkDeleteOpen(true)} style={{ fontSize: 12, padding: "5px 13px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, cursor: "pointer", fontWeight: 600, color: "#dc2626" }}>🗑 Delete</button>
             <button onClick={() => setSelected(new Set())} style={{ marginLeft: "auto", fontSize: 12, padding: "5px 10px", background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>✕ Clear</button>
           </div>
         )}
@@ -1111,6 +1117,20 @@ export default function Page() {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => setDeleteTarget(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
               <button onClick={confirmDelete} disabled={deleting} style={{ padding: "9px 20px", background: "#dc2626", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{deleting ? "Deleting…" : "Delete"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ BULK DELETE CONFIRM ══ */}
+      {bulkDeleteOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 420 }}>
+            <h2 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 700 }}>Delete Selected Clients?</h2>
+            <p style={{ fontSize: 14, color: "#475569", marginBottom: 20 }}>Delete {selected.size} selected client{selected.size === 1 ? "" : "s"}? This cannot be undone.</p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setBulkDeleteOpen(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
+              <button onClick={bulkDelete} disabled={deleting} style={{ padding: "9px 20px", background: "#dc2626", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{deleting ? "Deleting…" : "Confirm Delete"}</button>
             </div>
           </div>
         </div>

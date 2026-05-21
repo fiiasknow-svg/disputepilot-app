@@ -102,13 +102,14 @@ function clientProfileSupabasePayload(form: Record<string, any>, fullName: strin
 }
 
 type Note = { id: number; text: string; date: string; author: string };
-type Doc  = { name: string; size: string; date: string };
+type Doc  = { name: string; size: string; date: string; url?: string };
 type Act  = { icon: string; label: string; date: string };
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const docUrlsRef = useRef<string[]>([]);
 
   const [tab,   setTab]   = useState("Overview");
   const [loading, setLoading] = useState(true);
@@ -140,6 +141,10 @@ export default function Page() {
   const [emailSending, setEmailSending] = useState(false);
   const [emailStatus,  setEmailStatus]  = useState<"idle"|"ok"|"err">("idle");
   const [emailError,   setEmailError]   = useState("");
+
+  useEffect(() => () => {
+    docUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+  }, []);
 
   async function getAccountId() {
     const { data: userData } = await supabase.auth.getUser();
@@ -257,7 +262,9 @@ export default function Page() {
 
   function handleDoc(e: React.ChangeEvent<HTMLInputElement>) {
     const f=e.target.files?.[0]; if(!f)return;
-    setDocs(d=>[{name:f.name,size:(f.size/1024).toFixed(0)+" KB",date:new Date().toLocaleString()},...d]);
+    const url = URL.createObjectURL(f);
+    docUrlsRef.current.push(url);
+    setDocs(d=>[{name:f.name,size:(f.size/1024).toFixed(0)+" KB",date:new Date().toLocaleString(),url},...d]);
     setActivity(a=>[{icon:"📄",label:`Document uploaded: ${f.name}`,date:new Date().toISOString()},...a]);
     if(fileRef.current)fileRef.current.value="";
   }
@@ -524,6 +531,54 @@ export default function Page() {
           </div>
         )}
 
+        {/* ═══════════════ LETTERS ═══════════════ */}
+        {tab==="Letters"&&(
+          <div style={card}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+              <div>
+                <h3 style={{margin:"0 0 4px",fontSize:15,fontWeight:700}}>Letters</h3>
+                <p style={{margin:0,fontSize:13,color:"#64748b"}}>No letters are attached to this client yet.</p>
+              </div>
+              <button onClick={()=>router.push("/letter-vault")} style={{padding:"8px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontSize:13,fontWeight:700,cursor:"pointer"}}>View Letter Vault</button>
+            </div>
+            <div style={{border:"1px solid #e2e8f0",borderRadius:8,padding:"20px",background:"#f8fafc"}}>
+              <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:4}}>Create Letter</div>
+              <div style={{fontSize:13,color:"#64748b",lineHeight:1.5}}>Use the letter vault to start a dispute letter template, then attach or send it for {displayName}.</div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════ PORTAL ═══════════════ */}
+        {tab==="Portal"&&(
+          <div style={card}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+              <div>
+                <h3 style={{margin:"0 0 4px",fontSize:15,fontWeight:700}}>Portal Access</h3>
+                <p style={{margin:0,fontSize:13,color:"#64748b"}}>{form.portal_access ? "Portal access is enabled for this client." : "Portal access is currently disabled."}</p>
+              </div>
+              <span style={{background:form.portal_access?"#dcfce7":"#f1f5f9",color:form.portal_access?"#047857":"#64748b",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:800}}>{form.portal_access?"Enabled":"Disabled"}</span>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:18}}>
+              <div style={{border:"1px solid #e2e8f0",borderRadius:8,padding:"12px 14px"}}>
+                <div style={{fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"0.04em",marginBottom:4}}>Client Email</div>
+                <div style={{fontSize:14,fontWeight:600,color:"#1e293b"}}>{form.email || "No email on file"}</div>
+              </div>
+              <div style={{border:"1px solid #e2e8f0",borderRadius:8,padding:"12px 14px"}}>
+                <div style={{fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"0.04em",marginBottom:8}}>Portal Access Toggle</div>
+                <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,fontWeight:600,color:"#374151"}}>
+                  <input type="checkbox" checked={!!form.portal_access} onChange={e=>set("portal_access",e.target.checked)} style={{width:16,height:16,accentColor:"#1e3a5f"}}/>
+                  {form.portal_access ? "Access enabled" : "Access disabled"}
+                </label>
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              <button onClick={save} disabled={saving} style={{padding:"9px 20px",background:saved?"#10b981":"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+                {saving?"Saving…":saved?"Saved":"Save Changes"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ═══════════════ DOCUMENTS ═══════════════ */}
         {tab==="Documents"&&(
           <div style={card}>
@@ -547,8 +602,19 @@ export default function Page() {
                   <div style={{fontSize:14,fontWeight:600,color:"#1e293b"}}>{doc.name}</div>
                   <div style={{fontSize:12,color:"#94a3b8"}}>{doc.size} · Uploaded {doc.date}</div>
                 </div>
-                <button style={{padding:"5px 12px",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:6,fontSize:12,cursor:"pointer",color:"#374151",fontWeight:600}}>Download</button>
-                <button onClick={()=>setDocs(d=>d.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+                {doc.url ? (
+                  <a href={doc.url} download={doc.name} style={{padding:"5px 12px",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:6,fontSize:12,cursor:"pointer",color:"#374151",fontWeight:600,textDecoration:"none"}}>Download</a>
+                ) : (
+                  <span style={{padding:"5px 12px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,fontSize:12,color:"#94a3b8",fontWeight:600}}>Download unavailable</span>
+                )}
+                <button onClick={()=>setDocs(d=>{
+                  const removed = d[i];
+                  if (removed?.url) {
+                    URL.revokeObjectURL(removed.url);
+                    docUrlsRef.current = docUrlsRef.current.filter(url => url !== removed.url);
+                  }
+                  return d.filter((_,j)=>j!==i);
+                })} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
               </div>
             ))}
           </div>
