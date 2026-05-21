@@ -159,6 +159,10 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
   const [hydrated, setHydrated] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const [historyView, setHistoryView] = useState<"current" | "interval" | "archived">("current");
+  const [historyDraft, setHistoryDraft] = useState({ client: "ALL", type: "ALL", fromDate: "", toDate: "", entries: "10" });
+  const [historyFilters, setHistoryFilters] = useState(historyDraft);
+  const [serviceKind, setServiceKind] = useState<"All" | "Service" | "Product">("All");
 
   const summary = useMemo(() => {
     const openBalance = invoices.filter(i => i.status !== "Paid").reduce((sum, i) => sum + i.amount, 0);
@@ -203,6 +207,26 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
       ),
     [services, normalizedQuery, statusFilter]
   );
+
+  const servicesForView = useMemo(
+    () => filteredServices.filter((service) => serviceKind === "All" || service.type === serviceKind),
+    [filteredServices, serviceKind]
+  );
+
+  const historyPayments = useMemo(() => {
+    const rowsForView = filteredPayments.filter((payment) => {
+      if (historyView === "interval") return payment.method === "ACH" || payment.notes.toLowerCase().includes("recurring");
+      if (historyView === "archived") return ["Refunded", "Failed"].includes(payment.status);
+      return !["Refunded", "Failed"].includes(payment.status);
+    });
+
+    return rowsForView
+      .filter((payment) => historyFilters.client === "ALL" || payment.client === historyFilters.client)
+      .filter((payment) => historyFilters.type === "ALL" || payment.method === historyFilters.type)
+      .filter((payment) => !historyFilters.fromDate || payment.paymentDate >= historyFilters.fromDate)
+      .filter((payment) => !historyFilters.toDate || payment.paymentDate <= historyFilters.toDate)
+      .slice(0, Number(historyFilters.entries));
+  }, [filteredPayments, historyView, historyFilters]);
 
   useEffect(() => {
     const local = readLocalBilling();
@@ -394,7 +418,7 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
 ["Invoices", "/billing/invoices"],
 ["Payments", "/billing/payments"],
 ["Services/Products", "/billing/services-products"],
-["Subscription", "/billing"],
+["Subscription", "/billing/subscription"],
 ["Payment History", "/billing/payment-history"],
           ].map(([label, href]) => (
             <Link key={label} href={href} style={tabLink}>{label}</Link>
@@ -437,12 +461,26 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
         </section>
 
         {(view === "overview" || view === "history") && <Summary summary={summary} />}
-        {view === "history" && <PaymentHistoryControls clientOptions={clientOptions} />}
-        {view === "services" && <ServicesProductsOriginalPanel />}
+        {view === "history" && (
+          <PaymentHistoryControls
+            activeView={historyView}
+            clientOptions={clientOptions}
+            filters={historyDraft}
+            onChangeFilters={setHistoryDraft}
+            onSearch={() => setHistoryFilters(historyDraft)}
+            onReset={() => {
+              const reset = { client: "ALL", type: "ALL", fromDate: "", toDate: "", entries: "10" };
+              setHistoryDraft(reset);
+              setHistoryFilters(reset);
+            }}
+            onViewChange={setHistoryView}
+          />
+        )}
+        {view === "services" && <ServicesProductsOriginalPanel services={servicesForView} activeKind={serviceKind} onKindChange={setServiceKind} onAdd={() => setModal("service")} onView={item => setDetail({ kind: "Service/Product", item })} />}
         {(view === "overview" || view === "invoices") && <InvoicesTable invoices={filteredInvoices} onView={item => setDetail({ kind: "Invoice", item })} />}
         {(view === "overview" || view === "payments") && <PaymentsTable payments={filteredPayments} onView={item => setDetail({ kind: "Payment", item })} />}
-        {(view === "overview" || view === "services") && <ServicesTable services={filteredServices} onView={item => setDetail({ kind: "Service/Product", item })} />}
-        {view === "history" && <PaymentHistory payments={filteredPayments} totalRecords={payments.length} onView={item => setDetail({ kind: "Payment", item })} />}
+        {(view === "overview" || view === "services") && <ServicesTable services={view === "services" ? servicesForView : filteredServices} onView={item => setDetail({ kind: "Service/Product", item })} />}
+        {view === "history" && <PaymentHistory view={historyView} payments={historyPayments} totalRecords={filteredPayments.length} onView={item => setDetail({ kind: "Payment", item })} />}
 
         {modal === "invoice" && <Modal title="Create Invoice" onClose={() => setModal(null)}><InvoiceForm clients={clientOptions} services={services} onSave={saveInvoice} onCancel={() => setModal(null)} /></Modal>}
         {modal === "payment" && <Modal title="Add Payment" onClose={() => setModal(null)}><PaymentForm clients={clientOptions} services={services} onSave={savePayment} onCancel={() => setModal(null)} /></Modal>}
@@ -460,48 +498,100 @@ export default function BillingWorkspace({ view = "overview" }: { view?: "overvi
   );
 }
 
-function PaymentHistoryControls({ clientOptions }: { clientOptions: string[] }) {
+function PaymentHistoryControls({
+  activeView,
+  clientOptions,
+  filters,
+  onChangeFilters,
+  onSearch,
+  onReset,
+  onViewChange,
+}: {
+  activeView: "current" | "interval" | "archived";
+  clientOptions: string[];
+  filters: { client: string; type: string; fromDate: string; toDate: string; entries: string };
+  onChangeFilters: (filters: { client: string; type: string; fromDate: string; toDate: string; entries: string }) => void;
+  onSearch: () => void;
+  onReset: () => void;
+  onViewChange: (view: "current" | "interval" | "archived") => void;
+}) {
+  const tabs: Array<[string, "current" | "interval" | "archived"]> = [
+    ["Payment History", "current"],
+    ["Interval Billing History", "interval"],
+    ["Archived", "archived"],
+  ];
+  const updateFilter = (key: keyof typeof filters, value: string) => onChangeFilters({ ...filters, [key]: value });
+
   return (
     <section style={{ ...panel, marginBottom: 18 }}>
       <h2 style={{ ...sectionTitle, marginBottom: 12 }}>Payment History</h2>
       <p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 14 }}>In this area, you can view all payment transactions.</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-        {["Payment History", "Interval Billing History", "Archived"].map((label) => (
-          <button key={label} type="button" style={smallButton}>{label}</button>
+        {tabs.map(([label, value]) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={activeView === value}
+            onClick={() => onViewChange(value)}
+            style={activeView === value ? primaryButton : smallButton}
+          >
+            {label}
+          </button>
         ))}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
         <label style={fieldLabel}>Select a Client
-          <select style={inputStyle} defaultValue="ALL">
+          <select aria-label="Select a Client" style={inputStyle} value={filters.client} onChange={(event) => updateFilter("client", event.target.value)}>
             <option value="ALL">Select ALL</option>
-            {clientOptions.map((client) => <option key={client}>{client}</option>)}
+            {clientOptions.map((client) => <option key={client} value={client}>{client}</option>)}
           </select>
         </label>
         <label style={fieldLabel}>Payment Type
-          <select style={inputStyle} defaultValue="ALL">
-            {["ALL", "Single Payment", "Customer Check Payment", "Customer Cash Payment"].map((type) => <option key={type}>{type}</option>)}
+          <select aria-label="Payment Type" style={inputStyle} value={filters.type} onChange={(event) => updateFilter("type", event.target.value)}>
+            <option value="ALL">ALL</option>
+            {methods.map((type) => <option key={type} value={type}>{type === "Credit Card" ? "Card Payment" : `${type} Payment`}</option>)}
           </select>
         </label>
-        <Field label="From Date" name="fromDate" type="date" />
-        <Field label="To Date" name="toDate" type="date" />
+        <label style={fieldLabel}>From Date
+          <input aria-label="From Date" type="date" value={filters.fromDate} onChange={(event) => updateFilter("fromDate", event.target.value)} style={inputStyle} />
+        </label>
+        <label style={fieldLabel}>To Date
+          <input aria-label="To Date" type="date" value={filters.toDate} onChange={(event) => updateFilter("toDate", event.target.value)} style={inputStyle} />
+        </label>
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-        <button type="button" style={primaryButton}>Search</button>
-        <button type="button" style={secondaryButton}>Reset</button>
-        <span style={{ alignSelf: "center", color: "#64748b", fontSize: 13 }}>Show 10 20 50 100 Entries</span>
+        <button type="button" onClick={onSearch} style={primaryButton}>Search</button>
+        <button type="button" onClick={onReset} style={secondaryButton}>Reset</button>
+        <label style={{ ...fieldLabel, minWidth: 150 }}>Show Entries
+          <select aria-label="Show entries" value={filters.entries} onChange={(event) => updateFilter("entries", event.target.value)} style={inputStyle}>
+            {["10", "20", "50", "100"].map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+        </label>
       </div>
     </section>
   );
 }
 
-function ServicesProductsOriginalPanel() {
+function ServicesProductsOriginalPanel({
+  services,
+  activeKind,
+  onKindChange,
+  onAdd,
+  onView,
+}: {
+  services: Service[];
+  activeKind: "All" | "Service" | "Product";
+  onKindChange: (kind: "Service" | "Product") => void;
+  onAdd: () => void;
+  onView: (service: Service) => void;
+}) {
   return (
     <section style={{ ...panel, marginBottom: 18 }}>
       <p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 14 }}>In this area, you can setup services and products.</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-        <button type="button" style={primaryButton}>Services</button>
-        <button type="button" style={secondaryButton}>Products</button>
-        <button type="button" style={secondaryButton}>Add New Services</button>
+        <button type="button" aria-pressed={activeKind === "Service"} onClick={() => onKindChange("Service")} style={activeKind === "Service" ? primaryButton : secondaryButton}>Services</button>
+        <button type="button" aria-pressed={activeKind === "Product"} onClick={() => onKindChange("Product")} style={activeKind === "Product" ? primaryButton : secondaryButton}>Products</button>
+        <button type="button" onClick={onAdd} style={secondaryButton}>Add New Services</button>
       </div>
       <h2 style={{ ...sectionTitle, marginBottom: 10 }}>Payment Product Records</h2>
       <div style={{ overflowX: "auto" }}>
@@ -509,6 +599,23 @@ function ServicesProductsOriginalPanel() {
           <thead style={{ background: "#f8fafc" }}>
             <tr>{["No.", "Service Name", "Description", "Price", "Product Name", "Payment Gateway Name", "Action"].map(header => <th key={header} style={th}>{header}</th>)}</tr>
           </thead>
+          <tbody>
+            {services.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ ...td, textAlign: "center", color: "#64748b", padding: 24 }}>No payment product records match the selected type.</td>
+              </tr>
+            ) : services.map((service, index) => (
+              <tr key={service.id} style={{ borderTop: "1px solid #f1f5f9" }}>
+                <td style={td}>{index + 1}</td>
+                <td style={td}>{service.type === "Service" ? service.name : ""}</td>
+                <td style={td}>{service.notes}</td>
+                <td style={td}>{money(service.amount)}</td>
+                <td style={td}>{service.type === "Product" ? service.name : ""}</td>
+                <td style={td}>Local demo processor</td>
+                <td style={td}><button type="button" onClick={() => onView(service)} style={smallButton}>Manage</button></td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     </section>
@@ -557,11 +664,12 @@ function ServicesTable({ services, onView }: { services: Service[]; onView: (ser
   ]} />;
 }
 
-function PaymentHistory({ payments, totalRecords, onView }: { payments: Payment[]; totalRecords: number; onView: (payment: Payment) => void }) {
+function PaymentHistory({ view, payments, totalRecords, onView }: { view: "current" | "interval" | "archived"; payments: Payment[]; totalRecords: number; onView: (payment: Payment) => void }) {
   const totalPaid = payments.filter(p => p.status === "Paid").reduce((sum, p) => sum + p.amount, 0);
+  const title = view === "interval" ? "Interval Billing History" : view === "archived" ? "Archived Payment History" : "Payment History";
   return (
     <section style={{ marginBottom: 18 }}>
-      <h2 style={{ ...sectionTitle, marginBottom: 6 }}>Payment History</h2>
+      <h2 style={{ ...sectionTitle, marginBottom: 6 }}>{title}</h2>
       <p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 14 }}>Showing {payments.length} of {totalRecords} payment records with {money(totalPaid)} collected from paid payments.</p>
       <PaymentsTable payments={payments} onView={onView} />
     </section>
