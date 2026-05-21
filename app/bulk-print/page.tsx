@@ -33,6 +33,19 @@ const AUTOMATION_RULES = [
 const PAGE_SIZE = 15;
 type MainTab = "Print Queue" | "Credit Bureau Addresses" | "Print Automation";
 type QueueTab = "current" | "archive";
+type AutomationRule = {
+  id: number;
+  name: string;
+  trigger: string;
+  action: string;
+  active: boolean;
+};
+
+const emptyRuleForm = {
+  name: "",
+  trigger: "",
+  action: "",
+};
 
 const STATUS_STYLE: Record<string, React.CSSProperties> = {
   pending:   { background: "#fef9c3", color: "#854d0e" },
@@ -52,7 +65,11 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [printing, setPrinting] = useState(false);
-  const [rules, setRules] = useState(AUTOMATION_RULES);
+  const [printStatus, setPrintStatus] = useState("");
+  const [rules, setRules] = useState<AutomationRule[]>(AUTOMATION_RULES);
+  const [ruleModal, setRuleModal] = useState<{ mode: "new" | "edit"; ruleId: number | null } | null>(null);
+  const [ruleForm, setRuleForm] = useState(emptyRuleForm);
+  const [automationStatus, setAutomationStatus] = useState("");
   const [copiedBureau, setCopiedBureau] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterBureau, setFilterBureau] = useState("All Bureaus");
@@ -151,10 +168,12 @@ export default function Page() {
     setChecked(prev => ({ ...prev, [id]: !prev[id] }));
   }
 
-  async function doPrint() {
+  async function doPrint(count = selectedCount || 1) {
+    setPrintStatus(`Preparing ${count} letter${count === 1 ? "" : "s"} for print...`);
     setPrinting(true);
     await new Promise(r => setTimeout(r, 800));
     setPrinting(false);
+    setPrintStatus(`Print dialog opened for ${count} letter${count === 1 ? "" : "s"}.`);
     window.print();
   }
 
@@ -166,6 +185,43 @@ export default function Page() {
 
   function toggleRule(id: number) {
     setRules(rs => rs.map(r => r.id === id ? { ...r, active: !r.active } : r));
+  }
+
+  function openNewRule() {
+    setRuleForm(emptyRuleForm);
+    setRuleModal({ mode: "new", ruleId: null });
+    setAutomationStatus("");
+  }
+
+  function openEditRule(rule: AutomationRule) {
+    setRuleForm({ name: rule.name, trigger: rule.trigger, action: rule.action });
+    setRuleModal({ mode: "edit", ruleId: rule.id });
+    setAutomationStatus("");
+  }
+
+  function cancelRuleModal() {
+    setRuleModal(null);
+    setRuleForm(emptyRuleForm);
+  }
+
+  function saveRule() {
+    const normalized = {
+      name: ruleForm.name.trim() || "Untitled Rule",
+      trigger: ruleForm.trigger.trim() || "Manual trigger",
+      action: ruleForm.action.trim() || "Queue letters for review",
+    };
+
+    if (ruleModal?.mode === "edit" && ruleModal.ruleId !== null) {
+      setRules(current => current.map(rule => (rule.id === ruleModal.ruleId ? { ...rule, ...normalized } : rule)));
+      setAutomationStatus(`Updated automation rule "${normalized.name}".`);
+    } else {
+      const nextRule = { id: Date.now(), ...normalized, active: true };
+      setRules(current => [nextRule, ...current]);
+      setAutomationStatus(`Added automation rule "${nextRule.name}".`);
+    }
+
+    setRuleModal(null);
+    setRuleForm(emptyRuleForm);
   }
 
   const selectedCount = Object.values(checked).filter(Boolean).length;
@@ -189,7 +245,7 @@ export default function Page() {
                 style={{ ...btn, background: "#f1f5f9", color: "#1e293b", fontSize: 13, padding: "7px 14px" }}>
                 Select All
               </button>
-              <button onClick={doPrint} disabled={printing || selectedCount === 0}
+              <button onClick={() => doPrint(selectedCount)} disabled={printing || selectedCount === 0}
                 style={{ ...btn, background: selectedCount === 0 ? "#94a3b8" : "#1e3a5f", color: "#fff", cursor: selectedCount === 0 ? "not-allowed" : "pointer" }}>
                 {printing ? "Processing…" : `Print Selected${selectedCount > 0 ? ` (${selectedCount})` : ""}`}
               </button>
@@ -212,6 +268,12 @@ export default function Page() {
               </div>
             ))}
           </div>
+        )}
+
+        {tab === "Print Queue" && printStatus && (
+          <section aria-label="Print status" style={{ border: "1px solid #bfdbfe", background: "#eff6ff", color: "#1e40af", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13, fontWeight: 700 }}>
+            {printStatus}
+          </section>
         )}
 
         {/* Main Tabs */}
@@ -313,7 +375,7 @@ export default function Page() {
                         <div style={{ display: "flex", gap: 6 }}>
                           <button onClick={() => setViewDispute(row)}
                             style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#1e3a5f" }}>View</button>
-                          <button onClick={() => { setChecked(p => ({ ...p, [row.id]: true })); setTimeout(doPrint, 50); }}
+                          <button onClick={() => { setChecked(p => ({ ...p, [row.id]: true })); setTimeout(() => doPrint(1), 50); }}
                             style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#64748b" }}>Print</button>
                         </div>
                       </td>
@@ -341,7 +403,7 @@ export default function Page() {
             {/* Print CTA */}
             {selectedCount > 0 && (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
-                <button onClick={doPrint} disabled={printing}
+                <button onClick={() => doPrint(selectedCount)} disabled={printing}
                   style={{ ...btn, background: "#1e3a5f", color: "#fff", padding: "11px 40px", fontSize: 15 }}>
                   {printing ? "Processing…" : `🖨 Print ${selectedCount} Letter${selectedCount !== 1 ? "s" : ""} (${selectedPages} pages)`}
                 </button>
@@ -391,11 +453,16 @@ export default function Page() {
                 <p style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: 0 }}>Print Automation Rules</p>
                 <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>Automate when letters are generated and queued for printing.</p>
               </div>
-              <button style={{ ...btn, background: "#1e3a5f", color: "#fff" }}>+ New Rule</button>
+              <button onClick={openNewRule} style={{ ...btn, background: "#1e3a5f", color: "#fff" }}>+ New Rule</button>
             </div>
+            {automationStatus && (
+              <section aria-label="Automation status" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13, fontWeight: 700 }}>
+                {automationStatus}
+              </section>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {rules.map(rule => (
-                <div key={rule.id} style={{ background: "#fff", borderRadius: 10, padding: "18px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 16 }}>
+                <article key={rule.id} aria-label={`Automation rule ${rule.name}`} style={{ background: "#fff", borderRadius: 10, padding: "18px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 16 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: 6 }}>{rule.name}</div>
                     <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 2 }}><span style={{ fontWeight: 600, color: "#64748b" }}>Trigger:</span> {rule.trigger}</div>
@@ -408,8 +475,8 @@ export default function Page() {
                     style={{ width: 44, height: 24, borderRadius: 12, border: "none", background: rule.active ? "#10b981" : "#e2e8f0", cursor: "pointer", position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
                     <span style={{ position: "absolute", top: 3, left: rule.active ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
                   </button>
-                  <button style={{ fontSize: 12, padding: "6px 12px", border: "1px solid #e2e8f0", borderRadius: 6, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#475569", flexShrink: 0 }}>Edit</button>
-                </div>
+                  <button onClick={() => openEditRule(rule)} style={{ fontSize: 12, padding: "6px 12px", border: "1px solid #e2e8f0", borderRadius: 6, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#475569", flexShrink: 0 }}>Edit</button>
+                </article>
               ))}
             </div>
           </div>
@@ -451,6 +518,33 @@ export default function Page() {
                 style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>🖨 Print This Letter</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {ruleModal && (
+        <div role="dialog" aria-modal="true" aria-label={ruleModal.mode === "new" ? "New automation rule" : "Edit automation rule"} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.48)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
+          <section style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(520px, 100%)", boxShadow: "0 20px 50px rgba(15,23,42,0.25)" }}>
+            <h2 style={{ margin: "0 0 18px", fontSize: 19, fontWeight: 800, color: "#1e293b" }}>{ruleModal.mode === "new" ? "New Automation Rule" : "Edit Automation Rule"}</h2>
+            {[
+              ["Rule Name", "name"],
+              ["Trigger", "trigger"],
+              ["Action", "action"],
+            ].map(([label, key]) => (
+              <label key={key} style={{ display: "block", marginBottom: 14 }}>
+                <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 5 }}>{label}</span>
+                <input
+                  aria-label={label}
+                  value={ruleForm[key as keyof typeof ruleForm]}
+                  onChange={event => setRuleForm(current => ({ ...current, [key]: event.target.value }))}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 11px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 14 }}
+                />
+              </label>
+            ))}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+              <button type="button" onClick={cancelRuleModal} style={{ ...btn, background: "#fff", color: "#334155", border: "1px solid #cbd5e1" }}>Cancel</button>
+              <button type="button" onClick={saveRule} style={{ ...btn, background: "#1e3a5f", color: "#fff" }}>Save</button>
+            </div>
+          </section>
         </div>
       )}
     </CDMLayout>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
+import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 import { letterTemplates, LetterTemplate } from "@/letterTemplates";
 
@@ -14,6 +15,17 @@ type Draft = {
   title: string;
   body: string;
   notes: string;
+};
+
+type TrainingVideo = {
+  title: string;
+  description: string;
+};
+
+type PreviewContent = {
+  title: string;
+  category: string;
+  body: string;
 };
 
 const emptyDraft: Draft = {
@@ -102,11 +114,15 @@ function groupTemplates(templates: LetterTemplate[]) {
 }
 
 export default function Page() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("Credit Bureau Letters");
   const [search, setSearch] = useState("");
   const [trainingOpen, setTrainingOpen] = useState(false);
+  const [trainingVideo, setTrainingVideo] = useState<TrainingVideo | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<LetterTemplate>(letterTemplates[0]);
+  const [selectedTemplate, setSelectedTemplate] = useState<LetterTemplate | null>(null);
+  const [selectedSavedDraft, setSelectedSavedDraft] = useState<Draft | null>(null);
+  const [previewContent, setPreviewContent] = useState<PreviewContent | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -151,12 +167,14 @@ export default function Page() {
 
   function openDetails(template: LetterTemplate) {
     setSelectedTemplate(template);
+    setSelectedSavedDraft(null);
     setToolsOpen(true);
     setConfirmation("");
   }
 
   function openCreate(template: LetterTemplate) {
     setSelectedTemplate(template);
+    setSelectedSavedDraft(null);
     setDraft(draftFromTemplate(template));
     setEditingId(null);
     setToolsOpen(true);
@@ -167,6 +185,7 @@ export default function Page() {
   function openManual() {
     setDraft({ ...emptyDraft, title: "Manual dispute letter", body: "To Whom It May Concern,\n\nI am writing to dispute the account listed below.\n\nSincerely,\n" });
     setEditingId(null);
+    setSelectedSavedDraft(null);
     setToolsOpen(true);
     setEditorOpen(true);
     setConfirmation("");
@@ -175,6 +194,7 @@ export default function Page() {
   function openEdit(saved: Draft) {
     setDraft(saved);
     setEditingId(saved.id);
+    setSelectedSavedDraft(saved);
     setToolsOpen(true);
     setEditorOpen(true);
     setConfirmation("");
@@ -189,6 +209,7 @@ export default function Page() {
     };
     setSavedDrafts((current) => (editingId ? current.map((item) => (item.id === editingId ? saved : item)) : [saved, ...current]));
     setDraft(saved);
+    setSelectedSavedDraft(saved);
     setEditingId(saved.id);
     setConfirmation(`Saved "${saved.title}" for ${saved.client || "unnamed client"} to ${saved.recipient || "recipient not set"}.`);
     setEditorOpen(false);
@@ -244,6 +265,66 @@ export default function Page() {
     });
     setActiveTab(moveCategory);
     setConfirmation(`Moved ${selectedTemplateIds.length} selected letter${selectedTemplateIds.length === 1 ? "" : "s"} to ${moveCategory}.`);
+  }
+
+  function goBack() {
+    const hasUsefulHistory = typeof window !== "undefined" && document.referrer && document.referrer.startsWith(window.location.origin);
+    if (hasUsefulHistory) {
+      router.back();
+      return;
+    }
+
+    router.push("/letters");
+  }
+
+  function openTraining(video: TrainingVideo) {
+    setTrainingVideo(video);
+    setTrainingOpen(false);
+  }
+
+  function openLetterPreview() {
+    if (selectedSavedDraft) {
+      setPreviewContent({
+        title: selectedSavedDraft.title || "Untitled saved letter",
+        category: selectedSavedDraft.type || "Saved Letter",
+        body: selectedSavedDraft.body || "No letter body entered.",
+      });
+      setConfirmation("");
+      return;
+    }
+
+    if (selectedTemplate) {
+      setPreviewContent({
+        title: selectedTemplate.title,
+        category: selectedTemplate.category,
+        body: selectedTemplate.body,
+      });
+      setConfirmation("");
+      return;
+    }
+
+    setConfirmation("Select a letter or saved draft before opening Letter Preview.");
+  }
+
+  function openResponseDraft(responseType: "Credit Bureau" | "Creditor" | "Collector") {
+    const recipient = responseType === "Credit Bureau" ? "Credit Bureau" : responseType;
+    const nextDraft: Draft = {
+      ...emptyDraft,
+      recipient,
+      type: `Respond ${responseType}`,
+      title: `${responseType} Response Letter`,
+      body: `To Whom It May Concern,\n\nI am responding to your recent ${responseType.toLowerCase()} communication. Please review the dispute details, verify the reported information, and provide the documentation used to support your response.\n\nIf the information cannot be verified as complete and accurate, please correct or remove it and send an updated confirmation.\n\nSincerely,\n`,
+      notes: "Response-style draft created from Letter Vault response controls.",
+    };
+
+    setActiveTab("Respond Letters");
+    setDraft(nextDraft);
+    setEditingId(null);
+    setSelectedTemplate(null);
+    setSelectedSavedDraft(null);
+    setToolsOpen(true);
+    setEditorOpen(true);
+    setConfirmation(`Opened ${responseType.toLowerCase()} response draft in Respond Letters.`);
   }
 
   return (
@@ -528,7 +609,7 @@ export default function Page() {
         </div>
 
         <section className="letter-instruction-panel" aria-label="Letter Vault instructions">
-          <button className="letter-back-button" type="button">BACK</button>
+          <button className="letter-back-button" type="button" onClick={goBack}>BACK</button>
           <div className="letter-helper-copy">In this area, you can add and edit your letters.</div>
           <div className="training-wrap">
             <button className="training-button" type="button" aria-expanded={trainingOpen} onClick={() => setTrainingOpen((open) => !open)}>
@@ -537,8 +618,8 @@ export default function Page() {
             </button>
             {trainingOpen && (
               <div className="training-menu">
-                <button type="button">Letter Vault Training Video</button>
-                <button type="button">Move Letters Training Video</button>
+                <button type="button" onClick={() => openTraining({ title: "Letter Vault Training Video", description: "Overview of selecting templates, opening tools, creating drafts, and saving letters in the Letter Vault." })}>Letter Vault Training Video</button>
+                <button type="button" onClick={() => openTraining({ title: "Move Letters Training Video", description: "Walkthrough for selecting letters, choosing a category, moving letters, and confirming the visible result." })}>Move Letters Training Video</button>
               </div>
             )}
           </div>
@@ -610,7 +691,7 @@ export default function Page() {
               <button onClick={selectAllFiltered} style={{ ...buttonStyle(), marginLeft: 8 }}>Select All</button>
               <button onClick={deleteSelectedLetters} style={{ ...buttonStyle(), marginLeft: 8 }}>Delete All</button>
               <button onClick={moveSelectedLetters} style={{ ...buttonStyle(), marginLeft: 8 }}>Move Letters</button>
-              <button style={{ ...buttonStyle(), marginLeft: 8 }}>Letter Preview</button>
+              <button onClick={openLetterPreview} style={{ ...buttonStyle(), marginLeft: 8 }}>Letter Preview</button>
               <button onClick={undoDeletedLetters} style={{ ...buttonStyle(), marginLeft: 8 }}>Undo Deleted Letters</button>
               <button onClick={moveSelectedLetters} style={{ ...buttonStyle(), marginLeft: 8 }}>Move Manual Letters</button>
               <label style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 8, marginTop: 8, fontSize: 12, fontWeight: 700, color: "#334155" }}>
@@ -625,9 +706,9 @@ export default function Page() {
 
             <section aria-label="Response Letters" className="tool-card">
               <h2>Response Letters</h2>
-              <button style={buttonStyle()}>Respond Credit Bureau</button>
-              <button style={{ ...buttonStyle(), marginLeft: 8 }}>Respond Creditor</button>
-              <button style={{ ...buttonStyle(), marginLeft: 8 }}>Respond Collector</button>
+              <button onClick={() => openResponseDraft("Credit Bureau")} style={buttonStyle()}>Respond Credit Bureau</button>
+              <button onClick={() => openResponseDraft("Creditor")} style={{ ...buttonStyle(), marginLeft: 8 }}>Respond Creditor</button>
+              <button onClick={() => openResponseDraft("Collector")} style={{ ...buttonStyle(), marginLeft: 8 }}>Respond Collector</button>
             </section>
 
             <input
@@ -676,7 +757,7 @@ export default function Page() {
                 <h2>Templates</h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {filtered.map((template) => (
-                    <article key={template.id} style={{ background: selectedTemplate.id === template.id ? "#eff6ff" : "#fff", border: `1px solid ${selectedTemplate.id === template.id ? "#93c5fd" : "#e2e8f0"}`, borderRadius: 8, padding: 14 }}>
+                    <article key={template.id} style={{ background: selectedTemplate?.id === template.id ? "#eff6ff" : "#fff", border: `1px solid ${selectedTemplate?.id === template.id ? "#93c5fd" : "#e2e8f0"}`, borderRadius: 8, padding: 14 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 14 }}>
                         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                           <input
@@ -704,11 +785,17 @@ export default function Page() {
 
               <aside>
                 <section aria-label="Template details" className="tool-card" style={{ position: "sticky", top: 24, marginBottom: 18 }}>
-                  <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 800, marginBottom: 6 }}>{selectedTemplate.category}</div>
-                  <h2 style={{ margin: "0 0 6px", fontSize: 17, color: "#1e293b" }}>{selectedTemplate.title}</h2>
-                  <p style={{ margin: "0 0 12px", color: "#64748b", fontSize: 13 }}>{selectedTemplate.description}</p>
-                  <pre style={{ whiteSpace: "pre-wrap", fontFamily: "Georgia, serif", fontSize: 12, lineHeight: 1.55, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: 12, maxHeight: 360, overflow: "auto" }}>{selectedTemplate.body}</pre>
-                  <button onClick={() => openCreate(selectedTemplate)} style={{ ...buttonStyle("primary"), width: "100%", marginTop: 12 }}>Create From This Template</button>
+                  {selectedTemplate ? (
+                    <>
+                      <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 800, marginBottom: 6 }}>{selectedTemplate.category}</div>
+                      <h2 style={{ margin: "0 0 6px", fontSize: 17, color: "#1e293b" }}>{selectedTemplate.title}</h2>
+                      <p style={{ margin: "0 0 12px", color: "#64748b", fontSize: 13 }}>{selectedTemplate.description}</p>
+                      <pre style={{ whiteSpace: "pre-wrap", fontFamily: "Georgia, serif", fontSize: 12, lineHeight: 1.55, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: 12, maxHeight: 360, overflow: "auto" }}>{selectedTemplate.body}</pre>
+                      <button onClick={() => openCreate(selectedTemplate)} style={{ ...buttonStyle("primary"), width: "100%", marginTop: 12 }}>Create From This Template</button>
+                    </>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Select a template to view details or create a draft.</p>
+                  )}
                 </section>
 
                 <section aria-label="Saved letters" className="tool-card">
@@ -733,6 +820,34 @@ export default function Page() {
           </div>
         )}
       </main>
+
+      {trainingVideo && (
+        <div role="dialog" aria-modal="true" aria-label={trainingVideo.title} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.48)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <section style={{ width: "min(620px, 100%)", background: "#fff", borderRadius: 10, padding: 22, boxShadow: "0 20px 50px rgba(15,23,42,0.25)" }}>
+            <h2 style={{ margin: "0 0 8px", fontSize: 20, color: "#1e293b" }}>{trainingVideo.title}</h2>
+            <p style={{ margin: "0 0 16px", fontSize: 14, color: "#475569", lineHeight: 1.5 }}>{trainingVideo.description}</p>
+            <div style={{ minHeight: 220, borderRadius: 8, border: "1px dashed #94a3b8", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569", fontWeight: 700 }}>
+              Training video placeholder
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button type="button" onClick={() => setTrainingVideo(null)} style={buttonStyle("primary")}>Close</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {previewContent && (
+        <div role="dialog" aria-modal="true" aria-label="Letter Preview" style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.48)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <section style={{ width: "min(720px, 100%)", maxHeight: "90vh", overflow: "auto", background: "#fff", borderRadius: 10, padding: 22, boxShadow: "0 20px 50px rgba(15,23,42,0.25)" }}>
+            <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 800, marginBottom: 6 }}>{previewContent.category}</div>
+            <h2 style={{ margin: "0 0 14px", fontSize: 20, color: "#1e293b" }}>{previewContent.title}</h2>
+            <pre style={{ whiteSpace: "pre-wrap", fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.65, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 16 }}>{previewContent.body}</pre>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button type="button" onClick={() => setPreviewContent(null)} style={buttonStyle("primary")}>Close</button>
+            </div>
+          </section>
+        </div>
+      )}
     </CDMLayout>
   );
 }
