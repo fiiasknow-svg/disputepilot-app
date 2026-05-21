@@ -7,6 +7,7 @@ test('letter vault actions are usable without app error', async ({ page }) => {
 
   await expect(page.getByText(/Letter Vault|Letters|Template|AI Rewriter/i).first()).toBeVisible();
 
+  await page.getByRole('button', { name: 'Open letter tools' }).click();
   await page.getByRole('button', { name: 'Add Manual Letter' }).click();
   await expect(page.getByLabel('Letter editor')).toBeVisible();
 

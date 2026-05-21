@@ -41,33 +41,26 @@ const routes: RouteSpec[] = [
     route: '/letters/vault',
     title: 'Letter Vault',
     bodyChecks: [
-      'View templates, create client-ready drafts, and edit saved letters.',
       'Training Videos',
-      'Letter Vault Training Video',
-      'Move Letters Training Video',
-      'Manual Letters',
-      'Select All',
-      'Delete All',
-      'Move Letters',
-      'Letter Preview',
-      'Undo Deleted Letters',
-      'Move Manual Letters',
-      'Move to Letter Category',
-      'Response Letters',
-      'Respond Credit Bureau',
-      'Respond Creditor',
-      'Respond Collector',
-      'Add Manual Letter',
-      'Templates',
-      'Saved Letters',
-      'No saved letters yet. Use a template or add a manual letter.',
+      'In this area, you can add and edit your letters.',
+      'CREDIT BUREAU LETTERS',
+      "CREDITOR'S LETTERS",
+      "COLLECTOR'S LETTERS",
+      'RESPOND LETTERS',
+      'MANUAL LETTERS',
       'Dispute Flow Letters',
+      'Pre-Step (Optional)',
+      'Personal Information Letter',
+      '1-Initial dispute.',
       'General Letters',
-      'Credit Bureau Letters',
-      'Campaign Letters',
+      '1.Personal information fix.',
     ],
-    buttonChecks: [/Add Manual Letter/i, /Letter Vault Training Video/i, /Move Letters Training Video/i],
+    buttonChecks: [/Training Videos/i, /Open letter tools/i],
     afterVisit: async (page) => {
+      await page.getByRole('button', { name: /Training Videos/i }).click();
+      await expect(page.getByRole('button', { name: /Letter Vault Training Video/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Move Letters Training Video/i })).toBeVisible();
+      await page.getByRole('button', { name: /Open letter tools/i }).click();
       await page.getByRole('button', { name: /Add Manual Letter/i }).click();
       await expect(page.getByRole('heading', { name: 'Create Letter From Template', exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: /Save Letter/i })).toBeVisible();
@@ -81,32 +74,21 @@ const routes: RouteSpec[] = [
     route: '/letter-vault',
     title: 'Letter Vault',
     bodyChecks: [
-      'View templates, create client-ready drafts, and edit saved letters.',
       'Training Videos',
-      'Letter Vault Training Video',
-      'Move Letters Training Video',
-      'Manual Letters',
-      'Select All',
-      'Delete All',
-      'Move Letters',
-      'Letter Preview',
-      'Undo Deleted Letters',
-      'Move Manual Letters',
-      'Move to Letter Category',
-      'Response Letters',
-      'Respond Credit Bureau',
-      'Respond Creditor',
-      'Respond Collector',
-      'Add Manual Letter',
-      'Templates',
-      'Saved Letters',
-      'No saved letters yet. Use a template or add a manual letter.',
+      'In this area, you can add and edit your letters.',
+      'CREDIT BUREAU LETTERS',
+      "CREDITOR'S LETTERS",
+      "COLLECTOR'S LETTERS",
+      'RESPOND LETTERS',
+      'MANUAL LETTERS',
       'Dispute Flow Letters',
+      'Pre-Step (Optional)',
+      'Personal Information Letter',
+      '1-Initial dispute.',
       'General Letters',
-      'Credit Bureau Letters',
-      'Campaign Letters',
+      '1.Personal information fix.',
     ],
-    buttonChecks: [/Add Manual Letter/i, /Letter Vault Training Video/i, /Move Letters Training Video/i],
+    buttonChecks: [/Training Videos/i, /Open letter tools/i],
   },
   {
     route: '/letters/ai-rewriter',
@@ -159,6 +141,18 @@ for (const pageInfo of routes) {
 
     for (const pattern of pageInfo.buttonChecks ?? []) {
       await expect(page.getByRole('button', { name: pattern })).toBeVisible();
+    }
+
+    if (pageInfo.route.includes('/letter-vault') || pageInfo.route.includes('/letters/vault')) {
+      expect(bodyText).not.toContain('View templates, create client-ready drafts, and edit saved letters.');
+      expect(bodyText).not.toContain('Add Manual Letter');
+      expect(bodyText).not.toContain('Search templates by title');
+      expect(bodyText).not.toContain('Create From This Template');
+      expect(bodyText).not.toContain('Saved Letters');
+      expect(bodyText).not.toContain('Campaign Letters');
+      await expect(page.getByRole('button', { name: /Letter Vault Training Video/i })).toHaveCount(0);
+      await expect(page.getByRole('tab')).toHaveCount(5);
+      await expect(page.getByRole('tab', { name: 'CREDIT BUREAU LETTERS' })).toHaveAttribute('aria-selected', 'true');
     }
 
     if (pageInfo.afterVisit) {

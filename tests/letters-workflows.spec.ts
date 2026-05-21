@@ -4,9 +4,11 @@ const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
 test('letter vault view, create, cancel, save, and edit workflows are usable', async ({ page }) => {
   await page.goto(`${BASE_URL}/letter-vault`);
+  await page.getByRole('button', { name: 'Open letter tools' }).click();
 
-  const template = page.locator('article').filter({ hasText: 'Personal Information Letter' }).first();
-  await template.getByRole('button', { name: 'View' }).click();
+  const templateList = page.getByRole('region', { name: 'Template list' });
+  const template = templateList.locator('article').filter({ hasText: 'Personal Information Letter' }).first();
+  await template.getByRole('button', { name: 'View', exact: true }).click();
 
   await expect(page.getByLabel('Template details')).toContainText('Request correction or removal');
   await expect(page.getByLabel('Template details')).toContainText('{{client_name}}');
@@ -73,10 +75,12 @@ test('letters page supports creating and editing saved letters', async ({ page }
 
 test('letter vault search, select, move, delete, and undo controls update visible templates', async ({ page }) => {
   await page.goto(`${BASE_URL}/letter-vault`);
+  await page.getByRole('button', { name: 'Open letter tools' }).click();
+  const templateList = page.getByRole('region', { name: 'Template list' });
 
   await page.getByLabel('Search letter templates').fill('Personal Information Letter');
-  await expect(page.getByLabel('Template list')).toContainText('Personal Information Letter');
-  await expect(page.getByLabel('Template list')).not.toContainText('1-Initial dispute.');
+  await expect(templateList).toContainText('Personal Information Letter');
+  await expect(templateList).not.toContainText('1-Initial dispute.');
 
   await page.getByRole('button', { name: 'Select All' }).click();
   await expect(page.getByLabel('Saved confirmation')).toContainText('Selected 1 visible letter.');
@@ -84,14 +88,14 @@ test('letter vault search, select, move, delete, and undo controls update visibl
   await page.getByLabel('Move to Letter Category').selectOption('Campaign Letters');
   await page.getByRole('button', { name: 'Move Letters', exact: true }).click();
   await expect(page.getByLabel('Saved confirmation')).toContainText('Moved 1 selected letter to Campaign Letters.');
-  await expect(page.getByLabel('Template list')).toContainText('Campaign Letters');
+  await expect(templateList).toContainText('Campaign Letters');
 
   await page.getByRole('button', { name: 'Delete All' }).click();
-  await expect(page.getByLabel('Template list')).not.toContainText('Personal Information Letter');
+  await expect(templateList).not.toContainText('Personal Information Letter');
   await expect(page.getByLabel('Saved confirmation')).toContainText('Deleted 1 letter.');
 
   await page.getByRole('button', { name: 'Undo Deleted Letters' }).click();
-  await expect(page.getByLabel('Template list')).toContainText('Personal Information Letter');
+  await expect(templateList).toContainText('Personal Information Letter');
   await expect(page.getByLabel('Saved confirmation')).toContainText('Restored 1 deleted letter.');
 });
 
