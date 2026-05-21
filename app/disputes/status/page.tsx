@@ -8,6 +8,28 @@ const BUREAU_C: Record<string, string> = { equifax: "#ef4444", experian: "#3b82f
 const BUREAUS = ["equifax", "experian", "transunion"];
 const STATUSES = ["pending", "sent", "responded", "resolved", "deleted"];
 const VIEWS = ["All Disputes", "By Bureau", "By Round"];
+const DEMO_DISPUTES = [
+  {
+    id: "demo-status-1",
+    account_name: "Capital One Platinum",
+    bureau: "equifax",
+    round: 1,
+    status: "pending",
+    created_at: "2026-04-29T12:00:00.000Z",
+    reason: "Incorrect balance",
+    clients: { first_name: "John", last_name: "Smith", email: "john.smith@example.com" },
+  },
+  {
+    id: "demo-status-2",
+    account_name: "First National Bank",
+    bureau: "experian",
+    round: 2,
+    status: "sent",
+    created_at: "2026-05-02T12:00:00.000Z",
+    reason: "Duplicate account",
+    clients: { first_name: "Avery", last_name: "Brooks", email: "avery@example.com" },
+  },
+];
 
 export default function Page() {
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -60,7 +82,7 @@ export default function Page() {
         .order("created_at", { ascending: false });
       rows = data || [];
     }
-    setDisputes(rows);
+    setDisputes(rows.length ? rows : DEMO_DISPUTES);
     setLoading(false);
   }
 
@@ -316,8 +338,14 @@ export default function Page() {
                         : filtered.map(d => (
                           <tr key={d.id} onClick={() => setSelected(selected?.id === d.id ? null : d)}
                             style={{ borderTop: "1px solid #f1f5f9", cursor: "pointer", background: selected?.id === d.id ? "#eff6ff" : checkedIds.has(d.id) ? "#f0fdf4" : "transparent" }}>
-                            <td style={{ padding: "11px 16px" }} onClick={e => { e.stopPropagation(); toggleCheck(d.id); }}>
-                              <input type="checkbox" checked={checkedIds.has(d.id)} onChange={() => toggleCheck(d.id)} style={{ cursor: "pointer" }} />
+                            <td style={{ padding: "11px 16px" }} onClick={e => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                aria-label={`Select dispute ${d.account_name || d.id}`}
+                                checked={checkedIds.has(d.id)}
+                                onChange={() => toggleCheck(d.id)}
+                                style={{ cursor: "pointer" }}
+                              />
                             </td>
                             <td style={{ padding: "11px 16px" }}>
                               <div style={{ fontWeight: 600, fontSize: 14, color: "#1e293b" }}>{d.clients ? `${d.clients.first_name} ${d.clients.last_name}` : "—"}</div>

@@ -19,12 +19,34 @@ const DISPUTE_REASONS = [
 const ACCT_TYPES = ["Credit Card","Auto Loan","Mortgage","Student Loan","Medical Collection","Personal Loan","Charge-Off","Collection Account","Public Record","Inquiry","Other"];
 
 type Round = { round: number; status: string; letterSent: string; bureauResponse: string; outcome: string; date: string };
+type DisputeLetter = {
+  id: string | number;
+  dispute_id?: string | number;
+  title: string;
+  content: string;
+  round: number;
+  status?: string;
+  created_at: string;
+};
+const DEMO_DISPUTE = {
+  id: "demo-dispute-1",
+  account_name: "Capital One Platinum",
+  account_number: "1234",
+  account_type: "Credit Card",
+  bureau: "equifax",
+  reason: "Incorrect balance",
+  balance: 1250,
+  round: 1,
+  status: "pending",
+  created_at: "2026-04-29T12:00:00.000Z",
+  clients: { first_name: "John", last_name: "Smith", email: "john.smith@example.com", mobile_phone: "555-555-1212" },
+};
 
 export default function Page() {
   const { id }  = useParams<{ id: string }>();
   const router  = useRouter();
   const [dispute,  setDispute]  = useState<any>(null);
-  const [letters,  setLetters]  = useState<any[]>([]);
+  const [letters,  setLetters]  = useState<DisputeLetter[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [tab,      setTab]      = useState("Overview");
   const [updating, setUpdating] = useState(false);
@@ -44,10 +66,13 @@ export default function Page() {
   // letter assignment
   const [selTemplate,   setSelTemplate]   = useState(LETTER_TEMPLATES[0]);
   const [assignedLetter,setAssignedLetter]= useState<string|null>(null);
+  const [letterMessage, setLetterMessage] = useState("");
+  const [viewingLetter, setViewingLetter] = useState<DisputeLetter | null>(null);
 
   // round history (local)
   const [rounds, setRounds] = useState<Round[]>([]);
   const [addingRound, setAddingRound] = useState(false);
+  const [roundMessage, setRoundMessage] = useState("");
 
   async function getAccountId() {
     const { data: userData } = await supabase.auth.getUser();
@@ -87,7 +112,7 @@ export default function Page() {
       if (!d?.data) {
         d = await supabase.from("disputes").select("*, clients(first_name,last_name,email,mobile_phone)").eq("id",id).single();
       }
-      let letterRows: any[] = [];
+      let letterRows: DisputeLetter[] = [];
       if (accountId) {
         const { data } = await supabase
           .from("dispute_letters")
@@ -101,34 +126,42 @@ export default function Page() {
         const { data } = await supabase.from("dispute_letters").select("*").eq("dispute_id",id).order("created_at",{ascending:false});
         letterRows = data || [];
       }
-      if(d.data){
-        setDispute(d.data);
+      const loadedDispute = d.data || (String(id).startsWith("demo") ? { ...DEMO_DISPUTE, id } : null);
+      if(loadedDispute){
+        setDispute(loadedDispute);
         setEditFields({
-          account_name:    d.data.account_name||"",
-          account_number:  d.data.account_number||"",
-          account_type:    d.data.account_type||"",
-          bureau:          d.data.bureau||"",
-          reason:          d.data.reason||"",
-          balance:         String(d.data.balance||""),
-          furnisher_name:  d.data.furnisher_name||"",
-          furnisher_address:d.data.furnisher_address||"",
+          account_name:    loadedDispute.account_name||"",
+          account_number:  loadedDispute.account_number||"",
+          account_type:    loadedDispute.account_type||"",
+          bureau:          loadedDispute.bureau||"",
+          reason:          loadedDispute.reason||"",
+          balance:         String(loadedDispute.balance||""),
+          furnisher_name:  loadedDispute.furnisher_name||"",
+          furnisher_address:loadedDispute.furnisher_address||"",
         });
-        if(d.data.bureau_response) setResponse(d.data.bureau_response);
-        if(d.data.response_outcome) setOutcome(d.data.response_outcome);
-        if(d.data.response_date)    setResponseDate(d.data.response_date);
+        if(loadedDispute.bureau_response) setResponse(loadedDispute.bureau_response);
+        if(loadedDispute.response_outcome) setOutcome(loadedDispute.response_outcome);
+        if(loadedDispute.response_date)    setResponseDate(loadedDispute.response_date);
         // seed round history from dispute round number
-        const roundCount = Number(d.data.round||1);
+        const roundCount = Number(loadedDispute.round||1);
         const seed: Round[] = Array.from({length:roundCount},(_,i)=>({
           round: i+1,
           status: i<roundCount-1?"resolved":"active",
-          letterSent: i===0 ? (new Date(d.data.created_at)).toLocaleDateString() : "—",
+          letterSent: i===0 ? (new Date(loadedDispute.created_at)).toLocaleDateString() : "—",
           bureauResponse: i<roundCount-1 ? "Verified" : "Not Yet Received",
           outcome: i<roundCount-1 ? "Verified — Escalated to next round" : "Pending",
-          date: d.data.created_at,
+          date: loadedDispute.created_at,
         }));
         setRounds(seed);
       }
-      setLetters(letterRows);
+      setLetters(letterRows.map(l => ({
+        ...l,
+        title: l.title || "Dispute Letter",
+        content: l.content || "",
+        round: Number(l.round || 1),
+        status: l.status || "sent",
+        created_at: l.created_at || new Date().toISOString(),
+      })));
       setLoading(false);
     }
     load();
@@ -158,16 +191,102 @@ export default function Page() {
     setTimeout(()=>setRespSaved(false),3000);
   }
 
-  function assignLetter() {
+  function buildLetterContent(template: string) {
+    const clientName = dispute?.clients ? `${dispute.clients.first_name || ""} ${dispute.clients.last_name || ""}`.trim() : "Client";
+    const bureau = dispute?.bureau || "Credit Bureau";
+    const accountName = dispute?.account_name || "Disputed Account";
+    const accountNumber = dispute?.account_number ? ` (${dispute.account_number})` : "";
+    const reason = dispute?.reason || "inaccurate reporting";
+    const round = Number(dispute?.round || 1);
+
+    return [
+      template,
+      "",
+      `Client: ${clientName}`,
+      `Recipient: ${bureau}`,
+      `Account: ${accountName}${accountNumber}`,
+      `Dispute Round: ${round}`,
+      "",
+      `I am disputing the reporting of ${accountName} because ${reason}. Please conduct a reasonable investigation and verify that each reported Metro 2 field is complete, accurate, and supported by documentation.`,
+      "",
+      "Please delete or correct any information that cannot be verified, and send the results of your investigation in writing.",
+    ].join("\n");
+  }
+
+  async function assignLetter() {
+    const createdAt = new Date().toISOString();
+    const localLetter: DisputeLetter = {
+      id: `local-${createdAt}`,
+      dispute_id: id,
+      title: selTemplate,
+      content: buildLetterContent(selTemplate),
+      round: Number(dispute?.round || 1),
+      status: "queued",
+      created_at: createdAt,
+    };
+
     setAssignedLetter(selTemplate);
+    setLetters(prev => [localLetter, ...prev]);
+    setLetterMessage(`Queued ${selTemplate} for Round ${localLetter.round}.`);
+
+    const accountId = await getAccountId().catch(() => null);
+    if (!accountId) return;
+
+    const { data, error } = await supabase
+      .from("dispute_letters")
+      .insert({
+        dispute_id: id,
+        account_id: accountId,
+        title: localLetter.title,
+        content: localLetter.content,
+        round: localLetter.round,
+      })
+      .select()
+      .maybeSingle();
+
+    if (!error && data) {
+      const saved = data as DisputeLetter;
+      setLetters(prev => prev.map(letter => letter.id === localLetter.id ? {
+        ...localLetter,
+        ...saved,
+        status: saved.status || "queued",
+        created_at: saved.created_at || localLetter.created_at,
+      } : letter));
+      setLetterMessage(`Queued ${selTemplate} and saved it to Letters Sent.`);
+    }
   }
 
   function advanceRound() {
     const nextRound = rounds.length+1;
-    setRounds(r=>[...r,{round:nextRound,status:"active",letterSent:"—",bureauResponse:"Not Yet Received",outcome:"Pending",date:new Date().toISOString()}]);
-    updateStatus("sent");
+    const now = new Date().toISOString();
+    setRounds(r=>[
+      ...r.map(round => round.status === "active" ? { ...round, status: "sent" } : round),
+      {round:nextRound,status:"active",letterSent:"Pending next letter",bureauResponse:"Not Yet Received",outcome:"Pending",date:now},
+    ]);
+    setDispute((d: any)=>({...d,round:nextRound,status:"sent"}));
+    setRoundMessage(`Advanced to Round ${nextRound}. Status set to sent.`);
     setAddingRound(false);
-    void updateDispute({round:nextRound});
+    void updateDispute({round:nextRound,status:"sent"});
+  }
+
+  function downloadLetter(letter: DisputeLetter) {
+    const body = [
+      letter.title || "Dispute Letter",
+      `Status: ${letter.status || "queued"}`,
+      `Round: ${letter.round || 1}`,
+      `Date: ${new Date(letter.created_at).toLocaleString()}`,
+      "",
+      letter.content || "No letter content is available for this row.",
+    ].join("\n");
+    const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(letter.title || "dispute-letter").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "dispute-letter"}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   const inp: React.CSSProperties={width:"100%",padding:"9px 12px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:14,boxSizing:"border-box",background:"#fff"};
@@ -327,6 +446,11 @@ export default function Page() {
                   <span style={{fontSize:13,color:"#374151"}}>{assignedLetter}</span>
                 </div>
               )}
+              {letterMessage&&(
+                <div role="status" aria-live="polite" style={{marginTop:8,fontSize:12,color:"#166534",fontWeight:600}}>
+                  {letterMessage} Open Letters Sent to view or download it.
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -349,6 +473,11 @@ export default function Page() {
                 <button onClick={assignLetter} style={{padding:"9px 18px",background:"#0369a1",color:"#fff",border:"none",borderRadius:7,fontWeight:700,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}}>Assign & Queue</button>
               </div>
               {assignedLetter&&<div style={{marginTop:8,fontSize:12,color:"#0369a1",fontWeight:600}}>✓ Queued: {assignedLetter}</div>}
+              {letterMessage&&(
+                <div role="status" aria-live="polite" style={{marginTop:8,fontSize:12,color:"#0369a1",fontWeight:600}}>
+                  {letterMessage}
+                </div>
+              )}
             </div>
 
             {letters.length===0?(
@@ -364,10 +493,13 @@ export default function Page() {
                         <span style={{fontSize:12,color:"#94a3b8"}}>{new Date(l.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
+                    <div style={{display:"flex",gap:8,alignItems:"center",marginTop:6}}>
+                      <span style={{background:(l.status==="queued"?"#f59e0b":"#10b981")+"22",color:l.status==="queued"?"#b45309":"#047857",borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:700,textTransform:"capitalize"}}>{l.status||"sent"}</span>
+                    </div>
                     {l.content&&<p style={{margin:"6px 0 0",fontSize:13,color:"#475569",whiteSpace:"pre-wrap"}}>{l.content.substring(0,250)}…</p>}
                     <div style={{marginTop:8,display:"flex",gap:8}}>
-                      <button style={{padding:"4px 10px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:5,fontSize:12,fontWeight:600,cursor:"pointer"}}>View Letter</button>
-                      <button style={{padding:"4px 10px",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:5,fontSize:12,fontWeight:600,cursor:"pointer",color:"#374151"}}>Download PDF</button>
+                      <button onClick={()=>setViewingLetter(l)} style={{padding:"4px 10px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:5,fontSize:12,fontWeight:600,cursor:"pointer"}}>View Letter</button>
+                      <button onClick={()=>downloadLetter(l)} style={{padding:"4px 10px",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:5,fontSize:12,fontWeight:600,cursor:"pointer",color:"#374151"}}>Download PDF</button>
                     </div>
                   </div>
                 ))}
@@ -435,6 +567,11 @@ export default function Page() {
         {/* ═══════════════ ROUND HISTORY ═══════════════ */}
         {tab==="Round History"&&(
           <div>
+            {roundMessage&&(
+              <div role="status" aria-live="polite" style={{background:"#ecfdf5",border:"1px solid #bbf7d0",color:"#166534",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,fontWeight:700}}>
+                {roundMessage}
+              </div>
+            )}
             <div style={{...card,marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                 <h3 style={{margin:0,fontSize:15,fontWeight:700}}>Round History ({rounds.length} round{rounds.length!==1?"s":""})</h3>
@@ -509,6 +646,31 @@ export default function Page() {
           </div>
         )}
       </div>
+
+      {viewingLetter&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div role="dialog" aria-modal="true" aria-label="Letter Preview" style={{background:"#fff",borderRadius:12,padding:24,maxWidth:720,width:"100%",maxHeight:"85vh",overflow:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,marginBottom:14}}>
+              <div>
+                <h3 style={{margin:"0 0 6px",fontSize:18,fontWeight:800,color:"#1e293b"}}>{viewingLetter.title || "Dispute Letter"}</h3>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <span style={{background:"#8b5cf622",color:"#8b5cf6",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700}}>Round {viewingLetter.round || 1}</span>
+                  <span style={{background:"#f59e0b22",color:"#b45309",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700,textTransform:"capitalize"}}>{viewingLetter.status || "queued"}</span>
+                  <span style={{fontSize:12,color:"#64748b",padding:"3px 0"}}>{new Date(viewingLetter.created_at).toLocaleString()}</span>
+                </div>
+              </div>
+              <button onClick={()=>setViewingLetter(null)} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#64748b"}} aria-label="Close letter preview">×</button>
+            </div>
+            <pre style={{whiteSpace:"pre-wrap",fontFamily:"inherit",fontSize:14,lineHeight:1.6,color:"#334155",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:16,margin:0}}>
+              {viewingLetter.content || "No letter content is available for this row."}
+            </pre>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:16}}>
+              <button onClick={()=>downloadLetter(viewingLetter)} style={{padding:"8px 14px",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:7,fontWeight:700,cursor:"pointer",color:"#374151"}}>Download Text</button>
+              <button onClick={()=>setViewingLetter(null)} style={{padding:"8px 18px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Advance Round Confirm Modal ── */}
       {addingRound&&(

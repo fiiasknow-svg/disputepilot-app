@@ -35,6 +35,7 @@ export default function Page() {
   const [deleteTarget, setDeleteTarget] = useState<Creditor | null>(null);
   const [editing, setEditing] = useState<Creditor | null>(null);
   const [message, setMessage] = useState("");
+  const [formError, setFormError] = useState("");
   const [form, setForm] = useState({ name: "", address: "", city: "", state: "", zip: "" });
   const formIds = {
     name: "furnisher-name",
@@ -80,19 +81,25 @@ export default function Page() {
   function openCreate() {
     setEditing(null);
     setForm({ name: "", address: "", city: "", state: "", zip: "" });
+    setFormError("");
     setShowForm(true);
   }
 
   function closeCreate() {
     setShowForm(false);
     setMessage("");
+    setFormError("");
   }
 
   function saveCreate() {
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) {
+      setFormError("Company Name is required before adding a creditor.");
+      return;
+    }
     const creditor: Creditor = { id: Date.now(), ...form };
     setRows((prev) => [creditor, ...prev]);
     setMessage(`Saved creditor: ${form.name}`);
+    setFormError("");
     setShowForm(false);
     setForm({ name: "", address: "", city: "", state: "", zip: "" });
   }
@@ -211,8 +218,23 @@ export default function Page() {
               <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 700 }}>Add New Creditor</h2>
               <div style={{ marginBottom: 14 }}>
                 <label htmlFor={formIds.name} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Company Name</label>
-                <input id={formIds.name} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} style={inp} />
+                <input
+                  id={formIds.name}
+                  value={form.name}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, name: e.target.value }));
+                    if (formError) setFormError("");
+                  }}
+                  aria-invalid={Boolean(formError)}
+                  aria-describedby={formError ? "furnisher-name-error" : undefined}
+                  style={inp}
+                />
               </div>
+              {formError && (
+                <div id="furnisher-name-error" role="alert" style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", borderRadius: 8, padding: "9px 12px", marginBottom: 14, fontSize: 13, fontWeight: 700 }}>
+                  {formError}
+                </div>
+              )}
               <div style={{ marginBottom: 14 }}>
                 <label htmlFor={formIds.address} style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Address</label>
                 <input id={formIds.address} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} style={inp} />
