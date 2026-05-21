@@ -162,6 +162,9 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState<string[]>(["company","dispute-manager","billing","leads","academy","letters","get-customers","partner"]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [activationStatus, setActivationStatus] = useState("");
+  const [registrationPassword, setRegistrationPassword] = useState("");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   useEffect(() => {
     setMobileSidebarOpen(false);
@@ -187,6 +190,17 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
     document.cookie = `${AUTH_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
     clearAuthStorage();
     router.push("/login");
+  };
+  const handleActivateClaim = () => {
+    setActivationStatus("Opening billing so you can activate and claim your gifts.");
+    router.push("/billing");
+  };
+  const handleOpenRegistration = () => {
+    if (!registrationPassword.trim()) {
+      setActivationStatus("Enter your registration password before opening registration.");
+      return;
+    }
+    setActivationStatus("Registration password accepted locally. Continue from billing activation.");
   };
 
   return (
@@ -220,9 +234,17 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
         {/* User section */}
         <div style={{ padding:"10px 16px", borderBottom:"1px solid #334155", display:"flex", flexDirection:"column", gap:6 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <button style={{ background:"none", border:"none", color:"#e2e8f0", fontSize:"13px", fontWeight:600, cursor:"pointer", padding:0, textAlign:"left" as const }}>Leslie Sabek</button>
+            <button onClick={() => setAccountOpen(o => !o)} aria-expanded={accountOpen} style={{ background:"none", border:"none", color:"#e2e8f0", fontSize:"13px", fontWeight:600, cursor:"pointer", padding:0, textAlign:"left" as const }}>Leslie Sabek</button>
             <label style={{ background:"#ef4444", color:"#fff", borderRadius:"50%", width:18, height:18, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"10px", fontWeight:700 }}>0</label>
           </div>
+          {accountOpen && (
+            <div style={{ background:"#0f172a", border:"1px solid #334155", borderRadius:6, padding:8, display:"flex", flexDirection:"column", gap:6 }}>
+              <div style={{ color:"#e2e8f0", fontSize:12, fontWeight:700 }}>Account menu</div>
+              <Link href="/company/settings" style={{ color:"#94a3b8", textDecoration:"none", fontSize:12 }}>Profile and company settings</Link>
+              <Link href="/billing" style={{ color:"#94a3b8", textDecoration:"none", fontSize:12 }}>Billing and membership</Link>
+              <span style={{ color:"#64748b", fontSize:11 }}>Signed in as Leslie Sabek</span>
+            </div>
+          )}
           <div style={{ display:"flex", gap:6 }}>
             <button onClick={() => setActivateOpen(true)} style={{ flex:1, background:"#10b981", color:"#fff", border:"none", borderRadius:5, padding:"5px 0", fontSize:"11px", fontWeight:600, cursor:"pointer" }}>Activate Membership</button>
             <button onClick={handleSignOut} style={{ flex:1, background:"#334155", color:"#94a3b8", border:"none", borderRadius:5, padding:"5px 0", fontSize:"11px", fontWeight:600, cursor:"pointer" }}>Sign out</button>
@@ -325,16 +347,17 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
                 FREE AI &amp; METRO 2 ATTACK LETTERS
               </label>
             </div>
-            <button style={{ width:"100%", padding:"12px", background:"#f59e0b", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:12 }}>Your 2 Free Gifts expire in 47 hours!</button>
-            <button style={{ width:"100%", padding:"12px", background:"#10b981", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:16 }}>ACTIVATE &amp; CLAIM MY GIFTS</button>
+            {activationStatus && <p style={{ margin:"0 0 12px", color:activationStatus.startsWith("Enter") ? "#b45309" : "#2563eb", fontSize:13, fontWeight:700 }}>{activationStatus}</p>}
+            <button onClick={() => setActivationStatus("Your free gifts are reserved during the 47 hour activation window.")} style={{ width:"100%", padding:"12px", background:"#f59e0b", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:12 }}>Your 2 Free Gifts expire in 47 hours!</button>
+            <button onClick={handleActivateClaim} style={{ width:"100%", padding:"12px", background:"#10b981", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:16 }}>ACTIVATE &amp; CLAIM MY GIFTS</button>
             <label style={{ display:"block", fontSize:12, color:"#64748b", marginBottom:8 }}>Credit Repair Mastery Class. Allow 12 hours for your activation email.</label>
             <label style={{ display:"block", fontSize:12, color:"#64748b", marginBottom:12 }}>Email will come from Mark Clayborne: Confirm Your Email  (Check your spam/promotional tab and Inbox)</label>
             <div style={{ display:"flex", gap:8 }}>
-              <input type="password" placeholder="Enter Password" style={{ flex:1, padding:"8px 12px", border:"1px solid #e2e8f0", borderRadius:6, fontSize:13 }} />
+              <input type="password" value={registrationPassword} onChange={e => setRegistrationPassword(e.target.value)} placeholder="Enter Password" style={{ flex:1, padding:"8px 12px", border:"1px solid #e2e8f0", borderRadius:6, fontSize:13 }} />
               <label style={{ display:"none" }}>Enter Password</label>
             </div>
             <div style={{ marginTop:12, display:"flex", gap:8 }}>
-              <button style={{ flex:1, padding:"8px", background:"#3b82f6", color:"#fff", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer" }}>Open Registration</button>
+              <button onClick={handleOpenRegistration} style={{ flex:1, padding:"8px", background:"#3b82f6", color:"#fff", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer" }}>Open Registration</button>
               <button onClick={() => setActivateOpen(false)} style={{ flex:1, padding:"8px", background:"#f1f5f9", color:"#475569", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer" }}>Close</button>
             </div>
           </div>
