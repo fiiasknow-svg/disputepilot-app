@@ -8,17 +8,19 @@ type Contract = {
   type: string;
   recipient: string;
   status: string;
+  body: string;
 };
 
 const initialContracts: Contract[] = [
-  { id: "CON-001", name: "Credit Repair Service Agreement", type: "Template", recipient: "Maria Johnson", status: "Ready to Sign" },
-  { id: "CON-002", name: "Monthly Billing Authorization", type: "Document", recipient: "James Williams", status: "Sent" },
+  { id: "CON-001", name: "Credit Repair Service Agreement", type: "Template", recipient: "Maria Johnson", status: "Ready to Sign", body: "Standard credit repair service agreement terms are ready for review." },
+  { id: "CON-002", name: "Monthly Billing Authorization", type: "Document", recipient: "James Williams", status: "Sent", body: "Monthly billing authorization was sent for local signature tracking." },
 ];
 
 export default function DigitalContractsPage() {
   const [contracts, setContracts] = useState(initialContracts);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<Contract | null>(null);
+  const [workflow, setWorkflow] = useState("Contracts");
   const [message, setMessage] = useState("");
   const [form, setForm] = useState({ name: "", type: "Contract", recipient: "", body: "Client agrees to the selected credit repair services and billing terms." });
 
@@ -30,6 +32,7 @@ export default function DigitalContractsPage() {
       type: form.type,
       recipient: form.recipient.trim(),
       status: "Draft",
+      body: form.body,
     };
     setContracts((current) => [contract, ...current]);
     setForm({ name: "", type: "Contract", recipient: "", body: "Client agrees to the selected credit repair services and billing terms." });
@@ -60,10 +63,18 @@ export default function DigitalContractsPage() {
       <section className="rounded-xl border bg-white p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap gap-2">
           {["Documents", "Upload", "Contracts", "Templates", "Send", "Sign"].map((tab) => (
-            <button key={tab} className="rounded border px-3 py-1 font-semibold" onClick={() => setMessage(`${tab} workflow selected.`)}>
+            <button key={tab} className={`rounded border px-3 py-1 font-semibold ${workflow === tab ? "bg-blue-600 text-white" : ""}`} onClick={() => { setWorkflow(tab); setMessage(`${tab} workflow selected.`); }}>
               {tab}
             </button>
           ))}
+        </div>
+        <div className="mb-4 rounded border bg-gray-50 p-4 text-sm text-gray-700">
+          {workflow === "Documents" && "Documents panel: review uploaded contract documents and local draft records."}
+          {workflow === "Upload" && "Upload panel: select contract files from Images/Documents before sending."}
+          {workflow === "Contracts" && "Contracts panel: view, send, and track local contract rows below."}
+          {workflow === "Templates" && "Templates panel: use service agreement, billing authorization, or CROA disclosure templates."}
+          {workflow === "Send" && "Send panel: choose a draft contract below and use Send to mark it sent locally."}
+          {workflow === "Sign" && "Sign panel: local signing workflow is ready; external DocuSign is deferred until connected."}
         </div>
 
         <table className="w-full text-left text-sm">
@@ -122,6 +133,7 @@ export default function DigitalContractsPage() {
             <h2 className="text-lg font-bold">{selected.name}</h2>
             <p className="mt-2 text-sm text-gray-700">Recipient: {selected.recipient}</p>
             <p className="text-sm text-gray-700">Status: {selected.status}</p>
+            <p className="mt-3 whitespace-pre-wrap rounded border bg-gray-50 p-3 text-sm text-gray-700">{selected.body}</p>
             <p className="mt-4 rounded border bg-gray-50 p-3 text-sm text-gray-700">This contract is ready for review, sending, or signing.</p>
             <div className="mt-5 flex justify-end gap-2">
               <button className="rounded border px-4 py-2 font-semibold" onClick={() => setSelected(null)}>Close</button>

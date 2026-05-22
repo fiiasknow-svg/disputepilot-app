@@ -26,13 +26,38 @@ const STATUS_C: Record<string, string> = { Published: "#10b981", Draft: "#f59e0b
 export default function Page() {
   const [articles, setArticles] = useState(SAMPLE_ARTICLES);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", type: "Educational" });
+  const [validation, setValidation] = useState("");
 
-  function add() {
-    if (!form.name) return;
-    setArticles(prev => [...prev, { id: Date.now(), name: form.name, status: "Draft", type: form.type }]);
+  function saveArticle() {
+    if (!form.name.trim()) {
+      setValidation("Article Title is required before creating portal content.");
+      return;
+    }
+    if (editingId) {
+      setArticles(prev => prev.map(article => article.id === editingId ? { ...article, name: form.name.trim(), type: form.type } : article));
+    } else {
+      setArticles(prev => [...prev, { id: Date.now(), name: form.name.trim(), status: "Draft", type: form.type }]);
+    }
     setForm({ name: "", type: "Educational" });
+    setEditingId(null);
+    setValidation("");
     setShowForm(false);
+  }
+
+  function editArticle(article: (typeof SAMPLE_ARTICLES)[number]) {
+    setEditingId(article.id);
+    setForm({ name: article.name, type: article.type });
+    setValidation("");
+    setShowForm(true);
+  }
+
+  function startCreate() {
+    setEditingId(null);
+    setForm({ name: "", type: "Educational" });
+    setValidation("");
+    setShowForm(true);
   }
 
   function toggleStatus(id: number) {
@@ -47,7 +72,7 @@ export default function Page() {
             <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px", color: "#1e293b" }}>Manage Portal Content</h1>
             <p style={{ color: "#64748b", fontSize: 14, margin: 0 }}>Articles and resources displayed in your client portal.</p>
           </div>
-          <button onClick={() => setShowForm(true)}
+          <button onClick={startCreate}
             style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
             + Create New
           </button>
@@ -74,7 +99,7 @@ export default function Page() {
                   </td>
                   <td style={{ padding: "12px 16px" }}>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600 }}>Edit</button>
+                      <button onClick={() => editArticle(a)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600 }}>Edit</button>
                       <button onClick={() => toggleStatus(a.id)}
                         style={{ fontSize: 12, padding: "4px 10px", border: `1px solid ${STATUS_C[a.status] || "#94a3b8"}44`, borderRadius: 5, cursor: "pointer", background: "#fff", color: STATUS_C[a.status] || "#64748b", fontWeight: 600 }}>
                         {a.status === "Published" ? "Unpublish" : "Publish"}
@@ -93,10 +118,10 @@ export default function Page() {
         {showForm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
             <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 440 }}>
-              <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 700 }}>New Article</h2>
+              <h2 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 700 }}>{editingId ? "Edit Article" : "New Article"}</h2>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Article Title</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                <input value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setValidation(""); }}
                   style={{ width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" as const }} />
               </div>
               <div style={{ marginBottom: 22 }}>
@@ -106,9 +131,10 @@ export default function Page() {
                   {Object.keys(TYPE_C).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
+              {validation && <p style={{ margin: "0 0 14px", color: "#b45309", fontSize: 13, fontWeight: 700 }}>{validation}</p>}
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setShowForm(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
-                <button onClick={add} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Create</button>
+                <button onClick={() => { setShowForm(false); setEditingId(null); setValidation(""); }} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
+                <button onClick={saveArticle} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{editingId ? "Save" : "Create"}</button>
               </div>
             </div>
           </div>

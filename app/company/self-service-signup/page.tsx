@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 const STEPS = ["Welcome", "Terms of Use", "Billing Setup", "Design Center", "About You", "Select a Plan", "Agreement", "Credit Monitoring", "Finish", "Embed Code"];
+const STORAGE_KEY = "dp_self_service_signup_wizard";
 
 export default function Page() {
   const [step, setStep] = useState(0);
@@ -12,6 +13,30 @@ export default function Page() {
   const [contactEmail, setContactEmail] = useState("");
   const [bgColor, setBgColor] = useState("#1e3a5f");
   const [embedCopied, setEmbedCopied] = useState(false);
+  const [wizard, setWizard] = useState({
+    stripeApiKey: "", stripePublishableKey: "", webhookSecret: "",
+    businessLegalName: "", businessAddress: "", phoneNumber: "", stateOfOperation: "", licenseNumber: "",
+    serviceAgreement: false,
+    creditMonitoring: { SmartCredit: false, MyFreeScore360: false, IdentityIQ: false },
+  });
+  const [finishStatus, setFinishStatus] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setWizard((current) => ({ ...current, ...(parsed.wizard || {}) }));
+        setAgreed(Boolean(parsed.agreed));
+        setPlan(parsed.plan || "");
+        setCompanyName(parsed.companyName || "");
+        setContactEmail(parsed.contactEmail || "");
+        setBgColor(parsed.bgColor || "#1e3a5f");
+      }
+    } catch {
+      setFinishStatus("Saved wizard configuration could not be loaded.");
+    }
+  }, []);
 
   const embedCode = `<iframe src="https://portal.disputepilot.com/signup?company=${encodeURIComponent(companyName)}" width="100%" height="600" frameborder="0"></iframe>`;
 
@@ -19,6 +44,18 @@ export default function Page() {
     navigator.clipboard.writeText(embedCode);
     setEmbedCopied(true);
     setTimeout(() => setEmbedCopied(false), 2000);
+  }
+  function updateWizard(key: keyof typeof wizard, value: any) {
+    setWizard((current) => ({ ...current, [key]: value }));
+    setFinishStatus("");
+  }
+  function finishWizard() {
+    if (!agreed || !wizard.serviceAgreement || !companyName.trim() || !contactEmail.trim() || !wizard.businessLegalName.trim()) {
+      setFinishStatus("Complete Terms, Service Agreement, Company Name, Contact Email, and Business Legal Name before finishing.");
+      return;
+    }
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ wizard, agreed, plan, companyName, contactEmail, bgColor }));
+    setFinishStatus("Self-service signup wizard configuration saved locally. Stripe charging is not connected in this demo.");
   }
 
   const inp = { width: "100%", padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" as const };
@@ -61,10 +98,10 @@ export default function Page() {
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: "#1e293b" }}>Billing Setup</h2>
             <p style={{ fontSize: 14, color: "#64748b", marginBottom: 20 }}>Connect your payment processor to accept payments through the signup portal.</p>
-            {[["Stripe API Key", "sk_live_…"], ["Stripe Publishable Key", "pk_live_…"], ["Webhook Secret", "whsec_…"]].map(([label, ph]) => (
+            {[["stripeApiKey", "Stripe API Key", "sk_live_..."], ["stripePublishableKey", "Stripe Publishable Key", "pk_live_..."], ["webhookSecret", "Webhook Secret", "whsec_..."]].map(([key, label, ph]) => (
               <div key={label} style={{ marginBottom: 16 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>{label}</label>
-                <input placeholder={ph} style={inp} />
+                <input placeholder={ph} value={String((wizard as any)[key] || "")} onChange={e => updateWizard(key as keyof typeof wizard, e.target.value)} style={inp} />
               </div>
             ))}
           </div>
@@ -98,10 +135,10 @@ export default function Page() {
         return (
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: "#1e293b" }}>About You</h2>
-            {[["Business Legal Name", ""], ["Business Address", ""], ["Phone Number", ""], ["State of Operation", ""], ["License Number (if applicable)", ""]].map(([label, ph]) => (
+            {[["businessLegalName", "Business Legal Name", ""], ["businessAddress", "Business Address", ""], ["phoneNumber", "Phone Number", ""], ["stateOfOperation", "State of Operation", ""], ["licenseNumber", "License Number", ""]].map(([key, label, ph]) => (
               <div key={label} style={{ marginBottom: 14 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>{label}</label>
-                <input placeholder={ph} style={inp} />
+                <input placeholder={ph} value={String((wizard as any)[key] || "")} onChange={e => updateWizard(key as keyof typeof wizard, e.target.value)} style={inp} />
               </div>
             ))}
           </div>
@@ -135,7 +172,7 @@ export default function Page() {
               <p>This agreement is between the credit repair company ("Provider") and the client ("Client"). Provider agrees to perform credit dispute services as outlined. Client agrees to provide accurate information and timely documentation. Services are provided month-to-month. Either party may cancel with 30 days written notice.</p>
             </div>
             <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-              <input type="checkbox" style={{ width: 16, height: 16, accentColor: "#1e3a5f" }} />
+              <input type="checkbox" checked={wizard.serviceAgreement} onChange={e => updateWizard("serviceAgreement", e.target.checked)} style={{ width: 16, height: 16, accentColor: "#1e3a5f" }} />
               <span style={{ fontSize: 14, color: "#1e293b" }}>I agree to the Service Agreement</span>
             </label>
           </div>
@@ -147,7 +184,7 @@ export default function Page() {
             <p style={{ fontSize: 14, color: "#64748b", marginBottom: 20 }}>Select which credit monitoring service to offer clients during signup.</p>
             {["SmartCredit", "MyFreeScore360", "IdentityIQ"].map(name => (
               <label key={name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, cursor: "pointer" }}>
-                <input type="checkbox" style={{ width: 16, height: 16, accentColor: "#1e3a5f" }} />
+                <input type="checkbox" checked={wizard.creditMonitoring[name as keyof typeof wizard.creditMonitoring]} onChange={e => updateWizard("creditMonitoring", { ...wizard.creditMonitoring, [name]: e.target.checked })} style={{ width: 16, height: 16, accentColor: "#1e3a5f" }} />
                 <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 500 }}>{name}</span>
               </label>
             ))}
@@ -163,6 +200,8 @@ export default function Page() {
             <p style={{ color: "#64748b", fontSize: 15, lineHeight: 1.7, maxWidth: 460, margin: "0 auto 28px" }}>
               Your self-service signup portal is configured. Proceed to the next step to get your embed code.
             </p>
+            <button onClick={finishWizard} style={{ padding: "10px 28px", background: "#10b981", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Finish</button>
+            {finishStatus && <p role="status" style={{ margin: "16px auto 0", maxWidth: 560, color: finishStatus.startsWith("Complete") ? "#b45309" : "#166534", fontSize: 13, fontWeight: 700 }}>{finishStatus}</p>}
           </div>
         );
       case 9:
@@ -214,7 +253,7 @@ export default function Page() {
               Next
             </button>
           ) : (
-            <button style={{ padding: "10px 28px", background: "#10b981", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+            <button onClick={finishWizard} style={{ padding: "10px 28px", background: "#10b981", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
               Finish
             </button>
           )}

@@ -40,6 +40,7 @@ export default function Page() {
   const [form, setForm] = useState({ to: "All Staff", subject: "", body: "", priority: "normal" });
   const [inboxTab, setInboxTab] = useState<"inbox" | "sent">("inbox");
   const [search, setSearch] = useState("");
+  const [composeError, setComposeError] = useState("");
 
   const unread = messages.filter(m => !m.read).length;
 
@@ -78,7 +79,10 @@ export default function Page() {
   }
 
   function sendNew() {
-    if (!form.to || !form.subject) return;
+    if (!form.subject.trim() || !form.body.trim()) {
+      setComposeError("Subject and Message are required before sending.");
+      return;
+    }
     const msg: Message = {
       id: Date.now(), from: "Admin", role: "Admin", to: form.to, subject: form.subject,
       body: form.body, date: new Date().toISOString(), read: false,
@@ -86,6 +90,7 @@ export default function Page() {
     };
     setMessages(ms => [msg, ...ms]);
     setForm({ to: "All Staff", subject: "", body: "", priority: "normal" });
+    setComposeError("");
     setShowCompose(false);
   }
 
@@ -106,7 +111,7 @@ export default function Page() {
                 Mark All Read
               </button>
             )}
-            <button onClick={() => setShowCompose(true)} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+            <button onClick={() => { setComposeError(""); setShowCompose(true); }} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
               + Compose
             </button>
           </div>
@@ -254,7 +259,7 @@ export default function Page() {
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={lbl}>Subject</label>
-                <input style={inp} value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="Message subject" />
+                <input style={inp} value={form.subject} onChange={e => { setForm(f => ({ ...f, subject: e.target.value })); setComposeError(""); }} placeholder="Message subject" />
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={lbl}>Priority</label>
@@ -270,8 +275,9 @@ export default function Page() {
               <div style={{ marginBottom: 20 }}>
                 <label style={lbl}>Message</label>
                 <textarea style={{ ...inp, height: 120, resize: "vertical" } as React.CSSProperties} value={form.body}
-                  onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder="Write your message…" />
+                  onChange={e => { setForm(f => ({ ...f, body: e.target.value })); setComposeError(""); }} placeholder="Write your message…" />
               </div>
+              {composeError && <p role="alert" style={{ margin: "0 0 14px", color: "#b45309", fontSize: 13, fontWeight: 700 }}>{composeError}</p>}
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => setShowCompose(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
                 <button onClick={sendNew} style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Send Message</button>

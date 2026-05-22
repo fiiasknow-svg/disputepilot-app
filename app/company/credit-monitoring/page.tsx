@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 const PROVIDERS = [
@@ -9,6 +9,7 @@ const PROVIDERS = [
   { key: "myscoreiq", name: "mySCOREIQ", color: "#f59e0b", defaultUrl: "https://www.myscoreiq.com" },
   { key: "privacyguard", name: "PrivacyGuard", color: "#ef4444", defaultUrl: "https://www.privacyguard.com" },
 ];
+const STORAGE_KEY = "dp_credit_monitoring_settings";
 
 export default function Page() {
   const [urls, setUrls] = useState<Record<string, string>>(
@@ -19,6 +20,20 @@ export default function Page() {
   );
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, "ok" | null>>({});
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setUrls({ ...Object.fromEntries(PROVIDERS.map(p => [p.key, p.defaultUrl])), ...(parsed.urls || {}) });
+        setEnabled({ ...Object.fromEntries(PROVIDERS.map(p => [p.key, false])), ...(parsed.enabled || {}) });
+      }
+    } catch {
+      setMessage("Saved credit monitoring settings could not be loaded.");
+    }
+  }, []);
 
   async function test(key: string) {
     setTesting(key);
@@ -26,6 +41,12 @@ export default function Page() {
     setTestResult(prev => ({ ...prev, [key]: "ok" }));
     setTesting(null);
     setTimeout(() => setTestResult(prev => ({ ...prev, [key]: null })), 3000);
+  }
+
+  function saveSettings() {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ urls, enabled }));
+    const enabledCount = Object.values(enabled).filter(Boolean).length;
+    setMessage(`Credit monitoring settings saved locally. ${enabledCount} provider${enabledCount === 1 ? "" : "s"} enabled.`);
   }
 
   return (
@@ -58,10 +79,11 @@ export default function Page() {
         </div>
 
         <div style={{ marginTop: 24 }}>
-          <button style={{ padding: "10px 28px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={saveSettings} style={{ padding: "10px 28px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             Save Settings
           </button>
         </div>
+        {message && <div role="status" style={{ marginTop: 16, background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", color: "#15803d", fontSize: 14, fontWeight: 700 }}>{message}</div>}
       </div>
     </CDMLayout>
   );

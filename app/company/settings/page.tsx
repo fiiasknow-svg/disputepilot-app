@@ -5,6 +5,7 @@ import Link from "next/link";
 import CDMLayout from "@/components/CDMLayout";
 
 const defaultCompany = {
+  timezone: "Select Time Zone",
   companyName: "My Credit Repair Co.",
   phone: "(555) 000-0000",
   email: "hello@mycompany.com",
@@ -14,6 +15,12 @@ const defaultCompany = {
   state: "GA",
   zip: "30301",
   notes: "Full-service credit repair and dispute management firm.",
+  fax: "",
+  officeHours: "Monday-Friday 9am-5pm",
+  logoName: "",
+  brandColor: "#1e3a5f",
+  brandTextColor: "#ffffff",
+  buttonColor: "#2563eb",
 };
 
 type CompanyForm = typeof defaultCompany;
@@ -41,7 +48,7 @@ export default function CompanySettingsPage() {
 
   function saveCompany() {
     setSaved(form);
-    setMessage(`Company profile saved for ${form.companyName}.`);
+    setMessage(`Company profile saved for ${form.companyName}. Saved preview refreshed.`);
   }
 
   function cancelChanges() {
@@ -118,7 +125,7 @@ export default function CompanySettingsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
                   Select a Time Zone
-                  <select className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10">
+                  <select value={form.timezone} onChange={(event) => update("timezone", event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10">
                     <option>Select Time Zone</option>
                     <option>UTC-5: Eastern Time (ET)</option>
                     <option>UTC-6: Central Time (CT)</option>
@@ -159,22 +166,23 @@ export default function CompanySettingsPage() {
           </label>
           <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
             Fax
-            <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10" />
+            <input value={form.fax} onChange={(event) => update("fax", event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10" />
           </label>
           <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
             Office Hours
-            <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10" placeholder="Monday-Friday 9am-5pm" />
+            <input value={form.officeHours} onChange={(event) => update("officeHours", event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10" placeholder="Monday-Friday 9am-5pm" />
           </label>
           <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
             Company Logo
-            <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white" type="file" />
+            <input className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white" type="file" onChange={(event) => update("logoName", event.target.files?.[0]?.name || "")} />
+            <span className="text-xs font-normal text-slate-500">{form.logoName ? `Selected logo: ${form.logoName}` : "No logo selected for local preview."}</span>
           </label>
           <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
             Brand Colors
             <div className="grid grid-cols-3 gap-2">
-              <input aria-label="Brand Color" type="color" defaultValue="#1e3a5f" className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" />
-              <input aria-label="Brand Text Color" type="color" defaultValue="#ffffff" className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" />
-              <input aria-label="Button Color" type="color" defaultValue="#2563eb" className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" />
+              <input aria-label="Brand Color" type="color" value={form.brandColor} onChange={(event) => update("brandColor", event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" />
+              <input aria-label="Brand Text Color" type="color" value={form.brandTextColor} onChange={(event) => update("brandTextColor", event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" />
+              <input aria-label="Button Color" type="color" value={form.buttonColor} onChange={(event) => update("buttonColor", event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" />
             </div>
           </div>
         </div>
@@ -198,6 +206,11 @@ export default function CompanySettingsPage() {
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <dt className="text-xs font-semibold tracking-normal text-slate-500">Contact</dt>
                   <dd className="mt-1 text-base font-semibold text-slate-900">{saved.phone} / {saved.email}</dd>
+                  <dd className="mt-1 text-sm text-slate-700">Fax: {saved.fax || "Not saved"} / Hours: {saved.officeHours}</dd>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <dt className="text-xs font-semibold tracking-normal text-slate-500">Time Zone</dt>
+                  <dd className="mt-1 text-base font-semibold text-slate-900">{saved.timezone}</dd>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <dt className="text-xs font-semibold tracking-normal text-slate-500">Website</dt>
@@ -210,6 +223,13 @@ export default function CompanySettingsPage() {
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
                   <dt className="text-xs font-semibold tracking-normal text-slate-500">Notes</dt>
                   <dd className="mt-1 text-base leading-6 text-slate-900">{saved.notes}</dd>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
+                  <dt className="text-xs font-semibold tracking-normal text-slate-500">Logo and Brand</dt>
+                  <dd className="mt-1 text-base font-semibold text-slate-900">Saved logo: {saved.logoName || "No logo saved"}</dd>
+                  <dd className="mt-2 flex gap-2 text-sm text-slate-700">
+                    <span>Brand {saved.brandColor}</span><span>Text {saved.brandTextColor}</span><span>Button {saved.buttonColor}</span>
+                  </dd>
                 </div>
               </dl>
             </div>

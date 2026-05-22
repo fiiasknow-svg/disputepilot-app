@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import CDMLayout from "@/components/CDMLayout";
 
 type NotifEvent = {
@@ -63,6 +64,7 @@ export default function Page() {
   const [masterPortal, setMasterPortal] = useState(true);
   const [showNewRule, setShowNewRule] = useState(false);
   const [newRule, setNewRule] = useState({ name: "", trigger: "", action: "", delay: "Immediately", channel: "Email" });
+  const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
 
   function toggle(id: string, channel: "email" | "sms" | "portal") {
     setEvents(evs => evs.map(e => e.id === id ? { ...e, [channel]: !e[channel] } : e));
@@ -84,11 +86,21 @@ export default function Page() {
 
   function addRule() {
     if (!newRule.name || !newRule.trigger) return;
-    setRules(rs => [{ id: Date.now(), ...newRule, active: true }, ...rs]);
+    if (editingRuleId) {
+      setRules(rs => rs.map(rule => rule.id === editingRuleId ? { ...rule, ...newRule } : rule));
+    } else {
+      setRules(rs => [{ id: Date.now(), ...newRule, active: true }, ...rs]);
+    }
     setNewRule({ name: "", trigger: "", action: "", delay: "Immediately", channel: "Email" });
+    setEditingRuleId(null);
     setShowNewRule(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  }
+  function editRule(rule: AutoRule) {
+    setEditingRuleId(rule.id);
+    setNewRule({ name: rule.name, trigger: rule.trigger, action: rule.action, delay: rule.delay, channel: rule.channel });
+    setShowNewRule(true);
   }
 
   const filtered = useMemo(() => {
@@ -238,7 +250,7 @@ export default function Page() {
 
             <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#92400e", marginTop: 4 }}>
               <strong>SMS Notifications:</strong> Require a connected Twilio account. Configure in{" "}
-              <a href="/company/settings" style={{ color: "#1e3a5f", fontWeight: 600 }}>Company Settings → Integrations</a>.
+              <Link href="/settings/configuration?tab=Integrations#integrations" style={{ color: "#1e3a5f", fontWeight: 600 }}>Company Settings -&gt; Integrations</Link>.
             </div>
           </div>
         )}
@@ -251,7 +263,7 @@ export default function Page() {
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#1e293b" }}>Automation Rules</p>
                 <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>Set up workflows that automatically trigger actions based on client events.</p>
               </div>
-              <button onClick={() => setShowNewRule(true)} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 18px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+              <button onClick={() => { setEditingRuleId(null); setNewRule({ name: "", trigger: "", action: "", delay: "Immediately", channel: "Email" }); setShowNewRule(true); }} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 18px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
                 + New Rule
               </button>
             </div>
@@ -273,7 +285,7 @@ export default function Page() {
                   </span>
                   <Toggle on={rule.active} onChange={() => setRules(rs => rs.map(r => r.id === rule.id ? { ...r, active: !r.active } : r))} />
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    <button style={{ fontSize: 12, padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#374151" }}>Edit</button>
+                    <button onClick={() => editRule(rule)} style={{ fontSize: 12, padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#374151" }}>Edit</button>
                     <button onClick={() => setRules(rs => rs.filter(r => r.id !== rule.id))} style={{ fontSize: 12, padding: "5px 10px", border: "1px solid #fee2e2", borderRadius: 5, cursor: "pointer", background: "#fff", color: "#ef4444", fontWeight: 600 }}>Delete</button>
                   </div>
                 </div>
@@ -294,8 +306,8 @@ export default function Page() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
             <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 520 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1e293b" }}>New Automation Rule</h2>
-                <button onClick={() => setShowNewRule(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8" }}>×</button>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{editingRuleId ? "Edit Automation Rule" : "New Automation Rule"}</h2>
+                <button onClick={() => { setShowNewRule(false); setEditingRuleId(null); }} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8" }}>×</button>
               </div>
               {[
                 { key: "name",    label: "Rule Name",    placeholder: "e.g. Welcome Email Series" },
@@ -323,8 +335,8 @@ export default function Page() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setShowNewRule(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
-                <button onClick={addRule} style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Create Rule</button>
+                <button onClick={() => { setShowNewRule(false); setEditingRuleId(null); }} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
+                <button onClick={addRule} style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{editingRuleId ? "Save Rule" : "Create Rule"}</button>
               </div>
             </div>
           </div>

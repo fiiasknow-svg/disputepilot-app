@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
 const defaults = {
@@ -84,9 +85,12 @@ const appLinks = [
 ];
 
 export default function PortalsPage() {
+  const router = useRouter();
   const [form, setForm] = useState(defaults);
   const [saved, setSaved] = useState(defaults);
   const [logoName, setLogoName] = useState("No logo selected");
+  const [savedLogoName, setSavedLogoName] = useState("No logo saved");
+  const [video, setVideo] = useState<(typeof portalSections)[number] | null>(null);
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState("");
 
@@ -97,12 +101,19 @@ export default function PortalsPage() {
 
   function saveSettings() {
     setSaved(form);
-    setMessage(`Portal and mobile app settings saved for ${form.branding}.`);
+    setSavedLogoName(logoName === "No logo selected" ? "No logo saved" : logoName);
+    setMessage(`Portal and mobile app settings saved for ${form.branding}. Logo: ${logoName === "No logo selected" ? "No logo saved" : logoName}.`);
   }
 
   function resetSettings() {
     setForm(saved);
+    setLogoName(savedLogoName === "No logo saved" ? "No logo selected" : savedLogoName);
     setMessage("Portal changes were reset.");
+  }
+
+  function goBack() {
+    if (typeof window !== "undefined" && window.history.length > 1 && document.referrer.startsWith(window.location.origin)) router.back();
+    else router.push("/company/settings");
   }
 
   async function copyLink(url: string) {
@@ -120,7 +131,7 @@ export default function PortalsPage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">Portals / Mobile App</h1>
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">Dashboard Portals / Mobile App</p>
-          <button className="rounded border px-4 py-2 text-sm font-semibold text-gray-700">BACK</button>
+          <button className="rounded border px-4 py-2 text-sm font-semibold text-gray-700" onClick={goBack}>BACK</button>
           <p className="max-w-5xl text-sm leading-6 text-gray-700">
             In this area, you can access and share all your company's portals - the Client Tracking Portal,
             Affiliate Portal, and Mobile App. These tools allow your clients to track their credit repair
@@ -136,7 +147,7 @@ export default function PortalsPage() {
                 <h2 className="text-xl font-semibold">{section.title}</h2>
                 <p className="text-sm leading-6 text-gray-700">{section.description}</p>
                 <p className="text-sm leading-6 text-gray-700">{section.video}</p>
-                <button className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white">WATCH VIDEO</button>
+                <button className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={() => setVideo(section)}>WATCH VIDEO</button>
                 <p className="text-sm leading-6 text-gray-700">{section.preview}</p>
               </div>
 
@@ -318,10 +329,23 @@ export default function PortalsPage() {
                   Portal: {saved.portalEnabled ? "Enabled" : "Disabled"} / Mobile:{" "}
                   {saved.mobileEnabled ? "Enabled" : "Disabled"}
                 </p>
+                <p className="text-gray-700">Logo: {savedLogoName}</p>
               </div>
             </div>
           </div>
         </section>
+        {video && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
+              <h2 className="text-xl font-bold">{video.title} Training</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-700">{video.video}</p>
+              <div className="mt-4 flex min-h-56 items-center justify-center rounded-lg border bg-gray-100 text-sm font-semibold text-gray-600">Training video placeholder</div>
+              <div className="mt-5 flex justify-end">
+                <button className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={() => setVideo(null)}>Close</button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </CDMLayout>
   );

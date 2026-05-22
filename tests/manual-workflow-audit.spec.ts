@@ -719,7 +719,11 @@ test("manual workflow audit", async ({ context }) => {
     await attempt(routeReport, "/company/images-documents", "Upload updates visible file state", async () => {
       const upload = page.getByRole("button", { name: "+ Upload File", exact: true });
       await expectVisible(upload, "Waiting for + Upload File button");
-      await upload.click();
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "manual-audit-upload.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.from("manual audit"),
+      });
       await expectVisible(page.getByRole("status"), "Waiting for upload status");
       await expect(page.getByRole("status"), "Waiting for upload status text").toContainText(/uploaded to Images & Documents/i);
       await expectVisible(page.locator("main").getByText(/uploaded to Images & Documents/i).first(), "Waiting for upload confirmation in main");

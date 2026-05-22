@@ -53,6 +53,7 @@ export default function Page() {
   const [testing, setTesting] = useState(false);
   const [logSearch, setLogSearch] = useState("");
   const [logStatus, setLogStatus] = useState("All");
+  const [resendId, setResendId] = useState<number | null>(null);
 
   const filteredTemplates = useMemo(() => templates.filter(t => {
     const matchType = filterType === "All Types" || t.type === filterType;
@@ -104,11 +105,20 @@ export default function Page() {
     await new Promise(r => setTimeout(r, 1800));
     setSmtp(s => ({ ...s, tested: true, success: true }));
     setTesting(false);
+    setMessage("Local SMTP connection check completed. No real email was sent.");
   }
 
   function saveSmtp() {
     setSmtp(s => ({ ...s, tested: true, success: true }));
     setMessage(`SMTP settings saved for ${smtp.host}:${smtp.port}.`);
+  }
+  function resendEmail(row: (typeof EMAIL_LOG)[number]) {
+    setResendId(row.id);
+    setMessage(`Resend queued locally for ${row.to} using ${row.template}.`);
+    setTimeout(() => {
+      setResendId(null);
+      setMessage(`Resend marked sent locally for ${row.to}.`);
+    }, 500);
   }
 
   const totalSends = templates.reduce((s, t) => s + t.sends, 0);
@@ -286,7 +296,7 @@ export default function Page() {
               </div>
               {smtp.tested && (
                 <div style={{ marginTop: 14, padding: "10px 16px", background: smtp.success ? "#f0fdf4" : "#fef2f2", border: `1px solid ${smtp.success ? "#bbf7d0" : "#fecaca"}`, borderRadius: 7, color: smtp.success ? "#166534" : "#dc2626", fontSize: 13, fontWeight: 600 }}>
-                  {smtp.success ? "✓ Connection successful — SMTP is configured correctly." : "✗ Connection failed — check your credentials and try again."}
+                  {smtp.success ? "Local connection check successful. No real SMTP message was sent." : "Local connection check failed. Check your credentials and try again."}
                 </div>
               )}
             </div>
@@ -332,7 +342,7 @@ export default function Page() {
                       </td>
                       <td style={{ padding: "12px 16px", fontSize: 13, color: "#94a3b8" }}>{l.sent}</td>
                       <td style={{ padding: "12px 16px" }}>
-                        <button style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#64748b" }}>Resend</button>
+                        <button onClick={() => resendEmail(l)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: resendId === l.id ? "#dcfce7" : "#fff", fontWeight: 600, color: resendId === l.id ? "#166534" : "#64748b" }}>{resendId === l.id ? "Queued" : "Resend"}</button>
                       </td>
                     </tr>
                   ))}

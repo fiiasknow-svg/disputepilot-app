@@ -61,7 +61,11 @@ test("Images and documents upload workflow", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Delete", exact: true }).first()).toBeVisible();
 
   expect(bodyText).toContain("9 files");
-  await page.getByRole("button", { name: "+ Upload File", exact: true }).click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "workflow-smoke-upload.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("workflow smoke"),
+  });
   await expect(page.getByText(/uploaded to Images & Documents\./i)).toBeVisible();
   await expect(page.getByText("10 files", { exact: true })).toBeVisible();
 

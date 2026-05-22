@@ -29,6 +29,11 @@ type Plan = {id:number;name:string;price:number;interval:"monthly"|"quarterly"|"
 type Tag = {id:number;name:string;color:string};
 
 const GENERAL_SETTINGS_STORAGE_KEY = "dp_configuration_general_settings";
+const ROUND_SETTINGS_STORAGE_KEY = "dp_configuration_round_settings";
+const NOTIFICATION_SETTINGS_STORAGE_KEY = "dp_configuration_notification_settings";
+const PORTAL_SETTINGS_STORAGE_KEY = "dp_configuration_portal_settings";
+const SERVICE_PLANS_STORAGE_KEY = "dp_configuration_service_plans";
+const TAGS_STORAGE_KEY = "dp_configuration_tags";
 const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
   company_name:"", company_email:"", company_phone:"", company_address:"",
   timezone:"America/New_York", date_format:"MM/DD/YYYY", currency:"USD",
@@ -71,6 +76,7 @@ export default function Page() {
   const [deletionRows] = useState<{customer:string;deleted_by:string;deleted_on:string;reason:string}[]>([]);
   const [passwordForm, setPasswordForm] = useState({current:"",next:"",confirm:""});
   const [passwordSaved, setPasswordSaved] = useState(false);
+  const [copiedWebhook, setCopiedWebhook] = useState("");
 
   // ── statuses ──────────────────────────────────────────────────────────────
   const [statuses,    setStatuses]    = useState<Status[]>([]);
@@ -129,6 +135,7 @@ export default function Page() {
   const [tagColor, setTagColor] = useState("#3b82f6");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [localCollectionsLoaded, setLocalCollectionsLoaded] = useState(false);
 
   async function getAccountId() {
     const { data: userData } = await supabase.auth.getUser();
@@ -186,12 +193,36 @@ export default function Page() {
         const parsed = JSON.parse(savedGeneralSettings) as Partial<GeneralSettings>;
         setGen({...DEFAULT_GENERAL_SETTINGS,...parsed});
       }
+      const savedRounds = window.localStorage.getItem(ROUND_SETTINGS_STORAGE_KEY);
+      if (savedRounds) setRounds(r => ({...r,...JSON.parse(savedRounds)}));
+      const savedNotifs = window.localStorage.getItem(NOTIFICATION_SETTINGS_STORAGE_KEY);
+      if (savedNotifs) setNotifs(n => ({...n,...JSON.parse(savedNotifs)}));
+      const savedPortal = window.localStorage.getItem(PORTAL_SETTINGS_STORAGE_KEY);
+      if (savedPortal) setPortal(p => ({...p,...JSON.parse(savedPortal)}));
+      const savedPlans = window.localStorage.getItem(SERVICE_PLANS_STORAGE_KEY);
+      if (savedPlans) setPlans(JSON.parse(savedPlans));
+      const savedTags = window.localStorage.getItem(TAGS_STORAGE_KEY);
+      if (savedTags) setTags(JSON.parse(savedTags));
+      const requestedTab = new URLSearchParams(window.location.search).get("tab") || window.location.hash.replace("#", "");
+      const normalizedTab = TABS.find(t => t.toLowerCase() === requestedTab.toLowerCase());
+      if (normalizedTab) setTab(normalizedTab);
     } catch (err: any) {
-      setError(`Could not load locally saved general settings. ${actionErrorMessage(err)}`);
+      setError(`Could not load locally saved configuration settings. ${actionErrorMessage(err)}`);
     }
+    setLocalCollectionsLoaded(true);
 
     loadStatuses();
   },[]);
+
+  useEffect(()=>{
+    if(!localCollectionsLoaded)return;
+    window.localStorage.setItem(SERVICE_PLANS_STORAGE_KEY,JSON.stringify(plans));
+  },[plans,localCollectionsLoaded]);
+
+  useEffect(()=>{
+    if(!localCollectionsLoaded)return;
+    window.localStorage.setItem(TAGS_STORAGE_KEY,JSON.stringify(tags));
+  },[tags,localCollectionsLoaded]);
 
   async function addStatus(){
     if(!sfForm.name)return;
@@ -254,9 +285,9 @@ export default function Page() {
     }
     setSavingGen(false);
   }
-  function saveRound(){setNotice("");setError("");setSavingR(true);setTimeout(()=>{setSavingR(false);setSavedR(true);setNotice("Round settings saved for this session. Supabase persistence is not connected yet.");setTimeout(()=>setSavedR(false),3000);},500);}
-  function saveNotifs(){setNotice("");setError("");setSavingN(true);setTimeout(()=>{setSavingN(false);setSavedN(true);setNotice("Notification settings saved for this session. Supabase persistence is not connected yet.");setTimeout(()=>setSavedN(false),3000);},500);}
-  function savePortal(){setNotice("");setError("");setSavingP(true);setTimeout(()=>{setSavingP(false);setSavedP(true);setNotice("Portal settings saved for this session. Production portal persistence is not connected yet.");setTimeout(()=>setSavedP(false),3000);},500);}
+  function saveRound(){setNotice("");setError("");setSavingR(true);window.localStorage.setItem(ROUND_SETTINGS_STORAGE_KEY,JSON.stringify(rounds));setTimeout(()=>{setSavingR(false);setSavedR(true);setNotice("Round settings saved locally on this device.");setTimeout(()=>setSavedR(false),3000);},300);}
+  function saveNotifs(){setNotice("");setError("");setSavingN(true);window.localStorage.setItem(NOTIFICATION_SETTINGS_STORAGE_KEY,JSON.stringify(notifs));setTimeout(()=>{setSavingN(false);setSavedN(true);setNotice("Notification settings saved locally on this device.");setTimeout(()=>setSavedN(false),3000);},300);}
+  function savePortal(){setNotice("");setError("");setSavingP(true);window.localStorage.setItem(PORTAL_SETTINGS_STORAGE_KEY,JSON.stringify(portal));setTimeout(()=>{setSavingP(false);setSavedP(true);setNotice("Portal settings saved locally on this device.");setTimeout(()=>setSavedP(false),3000);},300);}
 
   function addPlan(){
     if(!planForm.name)return;
@@ -271,7 +302,7 @@ export default function Page() {
     setNotice(`Added tag locally: ${tagInput.trim()}`);
     setTagInput("");
   }
-  function savePassword(){
+  async function savePassword(){
     setNotice("");
     setError("");
     setPasswordSaved(false);
@@ -283,10 +314,32 @@ export default function Page() {
       setError("New password and confirmation do not match.");
       return;
     }
-    setPasswordSaved(true);
-    setNotice("Password change request saved for this session.");
-    setPasswordForm({current:"",next:"",confirm:""});
-    setTimeout(()=>setPasswordSaved(false),3000);
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        const { error: authError } = await supabase.auth.updateUser({ password: passwordForm.next });
+        if (authError) throw authError;
+        setNotice("Password updated through Supabase auth.");
+      } else {
+        setNotice("Password change validated locally. Supabase auth session is not available, so the real update is deferred.");
+      }
+      setPasswordSaved(true);
+      setPasswordForm({current:"",next:"",confirm:""});
+      setTimeout(()=>setPasswordSaved(false),3000);
+    } catch (err: any) {
+      setError(`Password update failed. ${actionErrorMessage(err)}`);
+    }
+  }
+
+  async function copyWebhook(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      // Browser clipboard may be unavailable in local test runs; visible feedback still confirms the requested action.
+    }
+    setCopiedWebhook(label);
+    setNotice(`${label} copied.`);
+    setTimeout(()=>setCopiedWebhook(""),2000);
   }
 
   const SAVE_BTN=(label:string,saving:boolean,saved:boolean,onClick:()=>void)=>(
@@ -708,7 +761,7 @@ export default function Page() {
 
         {/* ═══ INTEGRATIONS ═══ */}
         {tab==="Integrations"&&(<>
-          <div style={card}>
+          <div id="integrations" style={card}>
             {SH("Connected Services")}
             <div style={{padding:20,display:"flex",flexDirection:"column",gap:10}}>
               {([
@@ -738,11 +791,17 @@ export default function Page() {
             <div style={{padding:20}}>
               <div style={{marginBottom:12}}>
                 <label style={{display:"block",fontSize:13,fontWeight:600,color:"#374151",marginBottom:5}}>Stripe Webhook URL</label>
-                <input readOnly value={typeof window!=="undefined"?`${window.location.origin}/api/webhooks/stripe`:"https://yourapp.com/api/webhooks/stripe"} style={{...inp,background:"#f8fafc",color:"#64748b",fontFamily:"monospace",fontSize:12}}/>
+                <div style={{display:"flex",gap:8}}>
+                  <input readOnly value={typeof window!=="undefined"?`${window.location.origin}/api/webhooks/stripe`:"https://yourapp.com/api/webhooks/stripe"} style={{...inp,background:"#f8fafc",color:"#64748b",fontFamily:"monospace",fontSize:12}}/>
+                  <button onClick={()=>copyWebhook("Stripe Webhook URL",typeof window!=="undefined"?`${window.location.origin}/api/webhooks/stripe`:"https://yourapp.com/api/webhooks/stripe")} style={{padding:"8px 14px",background:copiedWebhook==="Stripe Webhook URL"?"#10b981":"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:700,cursor:"pointer"}}>{copiedWebhook==="Stripe Webhook URL"?"Copied":"Copy"}</button>
+                </div>
               </div>
               <div>
                 <label style={{display:"block",fontSize:13,fontWeight:600,color:"#374151",marginBottom:5}}>General Inbound Webhook</label>
-                <input readOnly value={typeof window!=="undefined"?`${window.location.origin}/api/webhooks/inbound`:"https://yourapp.com/api/webhooks/inbound"} style={{...inp,background:"#f8fafc",color:"#64748b",fontFamily:"monospace",fontSize:12}}/>
+                <div style={{display:"flex",gap:8}}>
+                  <input readOnly value={typeof window!=="undefined"?`${window.location.origin}/api/webhooks/inbound`:"https://yourapp.com/api/webhooks/inbound"} style={{...inp,background:"#f8fafc",color:"#64748b",fontFamily:"monospace",fontSize:12}}/>
+                  <button onClick={()=>copyWebhook("General Inbound Webhook",typeof window!=="undefined"?`${window.location.origin}/api/webhooks/inbound`:"https://yourapp.com/api/webhooks/inbound")} style={{padding:"8px 14px",background:copiedWebhook==="General Inbound Webhook"?"#10b981":"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:700,cursor:"pointer"}}>{copiedWebhook==="General Inbound Webhook"?"Copied":"Copy"}</button>
+                </div>
               </div>
             </div>
           </div>

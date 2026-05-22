@@ -1,10 +1,10 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 const FILE_TABS = ["All Files", "Images", "Documents"];
 const CATEGORIES = ["All Categories", "Branding", "Contracts", "Templates", "Client Docs", "Bureau Responses"];
-type FileItem = { id: number; name: string; type: "image" | "document"; ext: string; size: string; sizeKB: number; uploaded: string; category: string };
+type FileItem = { id: number; name: string; type: "image" | "document"; ext: string; size: string; sizeKB: number; uploaded: string; category: string; objectUrl?: string };
 
 const SAMPLE: FileItem[] = [
   { id: 1, name: "company-logo.png",           type: "image",    ext: "PNG",  size: "84 KB",  sizeKB: 84,  uploaded: "2025-01-15", category: "Branding" },
@@ -40,6 +40,7 @@ export default function Page() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const visible = useMemo(() => files.filter(f => {
     const matchTab = fileTab === "All Files" || (fileTab === "Images" && f.type === "image") || (fileTab === "Documents" && f.type === "document");
@@ -52,13 +53,31 @@ export default function Page() {
   const imgCount = files.filter(f => f.type === "image").length;
   const docCount = files.filter(f => f.type === "document").length;
 
-  function fakeUpload() {
-    const names = ["credit-report-scan.pdf", "dispute-response.pdf", "logo-v2.png", "contract-signed.pdf", "approval-letter.docx"];
-    const n = names[Math.floor(Math.random() * names.length)];
-    const isImg = n.endsWith(".png") || n.endsWith(".jpg");
-    const kb = Math.floor(Math.random() * 400 + 50);
-    setFiles(prev => [{ id: Date.now(), name: n, type: isImg ? "image" : "document", ext: n.split(".").pop()!.toUpperCase(), size: fmtKB(kb), sizeKB: kb, uploaded: new Date().toISOString().slice(0, 10), category: isImg ? "Branding" : "Templates" }, ...prev]);
-    setMessage(`${n} uploaded to Images & Documents.`);
+  function uploadFiles(fileList: FileList | File[]) {
+    const selected = Array.from(fileList);
+    if (!selected.length) return;
+    const uploaded = selected.map((file, index) => {
+      const ext = (file.name.split(".").pop() || "FILE").toUpperCase();
+      const isImg = file.type.startsWith("image/") || ["JPG", "JPEG", "PNG", "GIF", "WEBP"].includes(ext);
+      const kb = Math.max(1, Math.round(file.size / 1024));
+      return { id: Date.now() + index, name: file.name, type: isImg ? "image" as const : "document" as const, ext, size: fmtKB(kb), sizeKB: kb, uploaded: new Date().toISOString().slice(0, 10), category: isImg ? "Branding" : "Client Docs", objectUrl: URL.createObjectURL(file) };
+    });
+    setFiles(prev => [...uploaded, ...prev]);
+    setMessage(`${uploaded.map(file => file.name).join(", ")} uploaded to Images & Documents.`);
+  }
+
+  function downloadFile(file: FileItem) {
+    if (!file.objectUrl) {
+      setMessage(`${file.name} is a sample document and is not available for download.`);
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = file.objectUrl;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setMessage(`${file.name} download started.`);
   }
 
   function doRename() {
@@ -89,7 +108,8 @@ export default function Page() {
             <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Images &amp; Documents</h1>
             <p style={{ margin: "4px 0 0", fontSize: 14, color: "#64748b" }}>{files.length} files · {fmtKB(totalKB)} used</p>
           </div>
-          <button onClick={fakeUpload} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+          <input ref={inputRef} type="file" multiple style={{ display: "none" }} onChange={e => uploadFiles(e.target.files || [])} />
+          <button onClick={() => inputRef.current?.click()} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
             + Upload File
           </button>
         </div>
@@ -119,8 +139,8 @@ export default function Page() {
         <div
           onDragOver={e => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
-          onDrop={e => { e.preventDefault(); setDragOver(false); fakeUpload(); }}
-          onClick={fakeUpload}
+          onDrop={e => { e.preventDefault(); setDragOver(false); uploadFiles(e.dataTransfer.files); }}
+          onClick={() => inputRef.current?.click()}
           style={{ border: `2px dashed ${dragOver ? "#3b82f6" : "#e2e8f0"}`, borderRadius: 10, padding: "22px 20px", textAlign: "center", background: dragOver ? "#eff6ff" : "#f8fafc", marginBottom: 22, cursor: "pointer", transition: "all 0.15s" }}>
           <div style={{ fontSize: 26, marginBottom: 6 }}>📂</div>
           <p style={{ margin: 0, fontWeight: 600, color: dragOver ? "#3b82f6" : "#475569", fontSize: 14 }}>{dragOver ? "Drop to upload" : "Drag & drop files here, or click to browse"}</p>
@@ -189,7 +209,7 @@ export default function Page() {
                       <td style={{ padding: "12px 16px", fontSize: 13, color: "#94a3b8" }}>{new Date(f.uploaded).toLocaleDateString()}</td>
                       <td style={{ padding: "12px 16px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => setMessage(`${f.name} is ready to download.`)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#1e3a5f" }}>Download</button>
+                          <button onClick={() => downloadFile(f)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#1e3a5f" }}>Download</button>
                           <button onClick={() => { setRenameId(f.id); setRenameName(f.name); }}
                             style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#374151" }}>Rename</button>
                           <button onClick={() => copyLink(f.id)}
@@ -222,7 +242,7 @@ export default function Page() {
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.name}>{f.name}</div>
                   <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{f.size} · {f.ext}</div>
                   <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
-                    <button style={{ flex: 1, fontSize: 11, padding: "4px 0", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#1e3a5f" }}>↓</button>
+                    <button onClick={() => downloadFile(f)} style={{ flex: 1, fontSize: 11, padding: "4px 0", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#1e3a5f" }}>↓</button>
                     <button onClick={() => copyLink(f.id)} style={{ flex: 1, fontSize: 11, padding: "4px 0", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: copiedId === f.id ? "#dcfce7" : "#fff", fontWeight: 600, color: copiedId === f.id ? "#166534" : "#64748b" }}>
                       {copiedId === f.id ? "✓" : "⬡"}
                     </button>

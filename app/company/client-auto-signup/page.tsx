@@ -17,6 +17,8 @@ export default function Page() {
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [status, setStatus] = useState("");
 
   const signupUrl = "https://portal.disputepilot.com/signup/auto";
 
@@ -24,6 +26,17 @@ export default function Page() {
     navigator.clipboard.writeText(signupUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+  function saveSettings() {
+    window.localStorage.setItem("dp_client_auto_signup_settings", JSON.stringify({ contract, enabled, requirePhone, requireAddress, allowSelf }));
+    setStatus(`Signup settings saved locally. Contract: ${contract || "None selected"}.`);
+  }
+  function authorizeCard() {
+    if (!cardName.trim() || !cardNumber.trim() || !cardExpiry.trim() || !cardCvv.trim()) {
+      setStatus("Enter cardholder name, card number, expiry, and CVV before local authorization.");
+      return;
+    }
+    setStatus(`Local card authorization recorded for ${cardName}. No payment was charged.`);
   }
 
   const inp = { width: "100%", padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" as const };
@@ -73,7 +86,7 @@ export default function Page() {
 
               <div style={{ marginBottom: 28 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Build Signup Form</label>
-                <button style={{ padding: "10px 24px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
+                <button onClick={() => setBuilderOpen(true)} style={{ padding: "10px 24px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
                   Build Signup Form
                 </button>
               </div>
@@ -110,7 +123,7 @@ export default function Page() {
                 </div>
               ))}
               <div style={{ marginTop: 20 }}>
-                <button style={{ padding: "10px 24px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
+                <button onClick={saveSettings} style={{ padding: "10px 24px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
                   Save Settings
                 </button>
               </div>
@@ -140,13 +153,28 @@ export default function Page() {
                 </div>
               </div>
               <div style={{ marginTop: 24 }}>
-                <button style={{ padding: "10px 28px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
+                <button onClick={authorizeCard} style={{ padding: "10px 28px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
                   Authorize Card
                 </button>
               </div>
             </div>
           )}
+          {status && <div role="status" style={{ marginTop: 20, padding: "10px 16px", borderRadius: 8, border: "1px solid #bfdbfe", background: "#eff6ff", color: status.startsWith("Enter") ? "#b45309" : "#1d4ed8", fontSize: 13, fontWeight: 700 }}>{status}</div>}
         </div>
+        {builderOpen && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ width: 560, background: "#fff", borderRadius: 12, padding: 28 }}>
+              <h2 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800 }}>Signup Form Builder</h2>
+              <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>Configure visible fields for the client signup form. Current contract: {contract || "None selected"}.</p>
+              <div style={{ marginTop: 16, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, fontSize: 13, color: "#1e293b" }}>
+                Fields: Name, Email{requirePhone ? ", Phone" : ""}{requireAddress ? ", Address" : ""}{allowSelf ? ", Plan Selection" : ""}.
+              </div>
+              <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={() => setBuilderOpen(false)} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Close</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </CDMLayout>
   );
