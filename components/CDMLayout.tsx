@@ -98,8 +98,8 @@ const navGroups = [
     items:[
       { label:"Leads", href:"/leads", icon:Icons.Mail },
       { label:"Website Lead Form", href:"/leads/website-lead-form", icon:Icons.Mail },
-      { label:"Affiliates", href:"/affiliates", icon:Icons.UserPlus },
-      { label:"Affiliate Website Form", href:"/affiliates/website-form", icon:Icons.Settings },
+      { label:"Affiliates", href:"/leads/affiliates", icon:Icons.UserPlus },
+      { label:"Affiliate Website Form", href:"/leads/affiliate-website-form", icon:Icons.Settings },
     ]
   },
   {

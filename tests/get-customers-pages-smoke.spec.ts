@@ -76,3 +76,41 @@ test.describe('get customers pages are visible and useful', () => {
     });
   }
 });
+
+test('get customers cards and page actions navigate or update visible content', async ({ page }) => {
+  await page.goto(`${BASE_URL}/get-customers`);
+
+  await page.getByText('Step-by-step guidance for launching').click();
+  await expect(page).toHaveURL(/\/get-customers\/start-run-grow$/);
+  await expect(page.getByRole('heading', { name: 'Start, Run & Grow' })).toBeVisible();
+  await page.getByRole('button', { name: /Back to Get Customers/i }).click();
+  await expect(page).toHaveURL(/\/get-customers$/);
+
+  await page.getByText('Proven marketing and outreach strategies to attract').click();
+  await expect(page).toHaveURL(/\/get-customers\/business-strategies$/);
+  await expect(page.getByRole('heading', { name: 'Business Strategies' })).toBeVisible();
+  await page.getByRole('button', { name: /View Client Acquisition/i }).click();
+  await expect(page).toHaveURL(/\/get-customers\/get-customers$/);
+
+  await page.getByRole('button', { name: /Back to Get Customers/i }).click();
+  await page.getByText('Specific client acquisition tactics').click();
+  await expect(page).toHaveURL(/\/get-customers\/get-customers$/);
+  await expect(page.getByRole('heading', { name: 'Get Customers' })).toBeVisible();
+
+  await page.getByText('Social Media Organic').click();
+  await expect(page.getByText('Post credit tips daily on Facebook and Instagram')).toBeVisible();
+  await page.getByText('Paid Facebook / Instagram Ads').click();
+  await expect(page.getByText('Create a lead generation ad')).toBeVisible();
+  await page.getByText('Google Ads & SEO').click();
+  await expect(page.getByText(/Target high-intent keywords/i)).toBeVisible();
+  await page.getByText('Referral Network').click();
+  await expect(page.getByText(/Identify 10 potential referral partners/i)).toBeVisible();
+
+  await page.goto(`${BASE_URL}/get-customers/start-run-grow`);
+  await page.getByRole('button', { name: /Next: Business Strategies/i }).click();
+  await expect(page).toHaveURL(/\/get-customers\/business-strategies$/);
+
+  await page.goto(`${BASE_URL}/get-customers`);
+  await page.getByRole('button', { name: /View Partner Resources/i }).click();
+  await expect(page).toHaveURL(/\/partner-resources$/);
+});

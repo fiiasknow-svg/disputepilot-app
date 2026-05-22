@@ -15,6 +15,8 @@ const SERVICE_PLANS = ["Basic ($99/mo)","Standard ($149/mo)","Premium ($199/mo)"
 const PAGE_SIZES = [25, 50, 100];
 const STATUSES = Object.keys(STATUS_COLORS);
 const LOCAL_LEADS_KEY = "disputepilot.leads";
+const LOCAL_ARCHIVED_LEAD_IDS_KEY = "disputepilot.leads.archivedIds";
+const LOCAL_AUTO_ARCHIVE_KEY = "disputepilot.leads.autoArchiveWebsite";
 
 const EMPTY_FORM = {
   first_name: "", last_name: "", email: "", phone: "",
@@ -48,6 +50,48 @@ function readLocalLeads() {
 function writeLocalLeads(leads: any[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(LOCAL_LEADS_KEY, JSON.stringify(leads));
+}
+
+function readArchivedLeadIds() {
+  if (typeof window === "undefined") return new Set<string>();
+  try {
+    return new Set<string>(JSON.parse(window.localStorage.getItem(LOCAL_ARCHIVED_LEAD_IDS_KEY) || "[]"));
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeArchivedLeadIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_ARCHIVED_LEAD_IDS_KEY, JSON.stringify([...ids]));
+}
+
+function parseCSVLine(line: string) {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && inQuotes && next === '"') {
+      current += '"';
+      i++;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  values.push(current.trim());
+  return values;
+}
+
+function normalizeHeader(header: string) {
+  return header.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 }
 
 function actionErrorMessage(error: any) {
@@ -155,6 +199,7 @@ export default function Page() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [leadViewFilter, setLeadViewFilter] = useState<"all" | "portal" | "referral" | "current" | "archive">("current");
   const [sortBy, setSortBy] = useState("date");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -165,16 +210,19 @@ export default function Page() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [converting, setConverting] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState("");
   const [showBulkEmail, setShowBulkEmail] = useState(false);
   const [bulkEmailSubject, setBulkEmailSubject] = useState("");
   const [bulkEmailBody, setBulkEmailBody] = useState("");
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
+  const [autoArchiveWebsite, setAutoArchiveWebsite] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function getAccountId() {
@@ -225,11 +273,25 @@ export default function Page() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    if (typeof window !== "undefined") {
+      setAutoArchiveWebsite(window.localStorage.getItem(LOCAL_AUTO_ARCHIVE_KEY) === "true");
+    }
+  }, []);
 
   // Filtered + sorted
   const filtered = (() => {
     let out = [...leads];
+    const archivedIds = readArchivedLeadIds();
+    out = out.map(lead => ({ ...lead, archived: !!lead.archived || archivedIds.has(String(lead.id)) }));
+    if (leadViewFilter === "archive") out = out.filter(l => l.archived);
+    else out = out.filter(l => !l.archived);
+    if (leadViewFilter === "portal") {
+      out = out.filter(l => `${l.source || ""} ${l.tags || ""} ${l.notes || ""}`.toLowerCase().includes("portal"));
+    } else if (leadViewFilter === "referral") {
+      out = out.filter(l => `${l.source || ""} ${l.tags || ""} ${l.notes || ""}`.toLowerCase().includes("referral"));
+    }
     if (statusFilter !== "all") out = out.filter(l => l.status === statusFilter);
     if (sourceFilter !== "all") out = out.filter(l => l.source === sourceFilter);
     if (dateFrom) out = out.filter(l => l.created_at >= dateFrom);
@@ -422,6 +484,46 @@ export default function Page() {
     if (remoteError) setError(`Supabase bulk status update failed: ${remoteError}`);
   }
 
+  function setLeadSection(filter: typeof leadViewFilter) {
+    setLeadViewFilter(filter);
+    setPage(1);
+    setSelected(new Set());
+    const messages: Record<typeof leadViewFilter, string> = {
+      all: "Showing all active leads.",
+      portal: "Showing Client Portal lead context.",
+      referral: "Showing Client Referral Leads.",
+      current: "Showing current non-archived leads.",
+      archive: "Showing archived leads.",
+    };
+    setNotice(messages[filter]);
+  }
+
+  function moveVisibleToArchive() {
+    const ids = new Set(filtered.map(lead => String(lead.id)));
+    if (!ids.size) {
+      setNotice("No visible leads are available to move to archive.");
+      return;
+    }
+    const archivedIds = readArchivedLeadIds();
+    ids.forEach(id => archivedIds.add(id));
+    writeArchivedLeadIds(archivedIds);
+    setLeads(current => {
+      const next = current.map(lead => ids.has(String(lead.id)) ? { ...lead, archived: true } : lead);
+      writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
+      return next;
+    });
+    setSelected(new Set());
+    setLeadViewFilter("archive");
+    setNotice(`Moved ${ids.size} visible lead${ids.size === 1 ? "" : "s"} to archive.`);
+  }
+
+  function toggleAutoArchiveWebsite() {
+    const next = !autoArchiveWebsite;
+    setAutoArchiveWebsite(next);
+    if (typeof window !== "undefined") window.localStorage.setItem(LOCAL_AUTO_ARCHIVE_KEY, String(next));
+    setNotice(next ? "Website lead auto-archive is enabled locally." : "Website lead auto-archive is disabled locally.");
+  }
+
   async function updateStatus(id: string, status: string) {
     setNotice("");
     setError("");
@@ -478,34 +580,95 @@ export default function Page() {
     router.push(`/clients`);
   }
 
-  function exportCSV() {
+  function exportCSV(rowsToExport = filtered, filename = "leads.csv") {
     const headers = ["First Name","Last Name","Email","Phone","Source","Status","Score","Agent","Tags","City","State","Credit Score","Budget","Follow-up","Notes"];
-    const rows = filtered.map(l => [
+    const rows = rowsToExport.map(l => [
       l.first_name, l.last_name, l.email, l.phone, l.source, l.status,
       l.lead_score, l.assigned_agent, l.tags, l.city, l.state,
       l.credit_score, l.monthly_budget, l.follow_up_date, l.notes,
     ].map(v => `"${(v || "").toString().replace(/"/g, '""')}"`).join(","));
     const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = "leads.csv"; a.click();
+    a.download = filename; a.click();
   }
 
-  function importCSV() {
-    const lines = importText.trim().split("\n");
-    if (lines.length < 2) return;
-    const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/ /g, "_"));
-    const rows = lines.slice(1).map(line => {
-      const vals = line.split(",");
+  function exportSelectedCSV() {
+    const selectedRows = leads.filter(lead => selected.has(lead.id));
+    exportCSV(selectedRows, "selected-leads.csv");
+    setNotice(`Exported ${selectedRows.length} selected lead${selectedRows.length === 1 ? "" : "s"}.`);
+  }
+
+  async function importCSV() {
+    setImportError("");
+    setNotice("");
+    setError("");
+    const csv = importText.trim();
+    if (!csv) {
+      setImportError("Paste or upload a CSV before importing.");
+      return;
+    }
+
+    const lines = csv.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if (!lines.length) {
+      setImportError("CSV is blank. Add at least one lead row.");
+      return;
+    }
+
+    const firstValues = parseCSVLine(lines[0]);
+    const normalizedFirst = firstValues.map(normalizeHeader);
+    const knownHeaders = new Set(["name", "full_name", "first_name", "last_name", "email", "phone", "source", "status"]);
+    const hasHeader = normalizedFirst.some(header => knownHeaders.has(header));
+    const headers = hasHeader ? normalizedFirst : ["name", "email", "phone", "source", "status"].slice(0, firstValues.length);
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+
+    const now = new Date().toISOString();
+    const rows = dataLines.map((line, index) => {
+      const vals = parseCSVLine(line);
       const obj: any = {};
-      headers.forEach((h, i) => { obj[h] = (vals[i] || "").replace(/^"|"$/g, "").trim(); });
-      return { first_name: obj.first_name || obj.name || "", last_name: obj.last_name || "", email: obj.email || "", phone: obj.phone || "", source: obj.source || "Other", status: obj.status || "new" };
-    }).filter(r => r.first_name);
-    getAccountId()
-      .then(accountId => {
-        const payload = accountId ? rows.map(row => ({ ...row, account_id: accountId })) : rows;
-        return supabase.from("leads").insert(payload);
-      })
-      .then(() => { setShowImport(false); setImportText(""); load(); });
+      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
+      const nameParts = (obj.name || obj.full_name || "").trim().split(/\s+/).filter(Boolean);
+      const firstName = obj.first_name || nameParts[0] || "";
+      const lastName = obj.last_name || nameParts.slice(1).join(" ") || "";
+      return {
+        id: `local-lead-import-${Date.now()}-${index}`,
+        first_name: firstName,
+        last_name: lastName,
+        email: obj.email || "",
+        phone: obj.phone || "",
+        source: obj.source || "Other",
+        status: STATUSES.includes(String(obj.status || "").toLowerCase()) ? String(obj.status).toLowerCase() : "new",
+        created_at: now,
+        updated_at: now,
+      };
+    }).filter(row => row.first_name || row.last_name || row.email || row.phone);
+
+    if (!rows.length) {
+      setImportError("No usable lead rows were found. Include name, email, phone, source, or status values.");
+      return;
+    }
+
+    setLeads(current => {
+      const next = [...rows, ...current];
+      writeLocalLeads(next.filter(lead => String(lead.id).startsWith("local-")));
+      return next;
+    });
+
+    let remoteError = "";
+    try {
+      const accountId = await getAccountId();
+      const remoteRows = rows.map(({ id, created_at, updated_at, ...row }) => accountId ? { ...row, account_id: accountId } : row);
+      const { error } = await supabase.from("leads").insert(remoteRows);
+      if (error) throw error;
+    } catch (err: any) {
+      remoteError = actionErrorMessage(err);
+    }
+
+    setShowImport(false);
+    setImportText("");
+    setNotice(remoteError
+      ? `Imported ${rows.length} lead${rows.length === 1 ? "" : "s"} locally. Supabase sync failed, so local fallback is visible now.`
+      : `Imported ${rows.length} lead${rows.length === 1 ? "" : "s"}.`);
+    if (remoteError) setError(`Supabase import failed: ${remoteError}`);
   }
 
   const TAG_COLORS = ["#3b82f6","#8b5cf6","#10b981","#f59e0b","#ef4444","#06b6d4","#ec4899"];
@@ -588,15 +751,32 @@ export default function Page() {
         <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16, marginBottom: 18, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
           <p style={{ margin: "0 0 12px", color: "#64748b", fontSize: 14 }}>In this area, you can manage Website Leads and Client Portal Referral Leads.</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-            {["Website Lead Form", "Leads", "Client Portal", "Client Referral Leads", "Current", "Archive"].map((label) => (
-              <button key={label} type="button" onClick={() => { if (label === "Website Lead Form") router.push("/leads/website-lead-form"); }} style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 7, background: label === "Leads" ? "#1e3a5f" : "#fff", color: label === "Leads" ? "#fff" : "#475569", fontSize: 13, fontWeight: 700 }}>
+            {[
+              { label: "Website Lead Form", filter: null },
+              { label: "Leads", filter: "all" as const },
+              { label: "Client Portal", filter: "portal" as const },
+              { label: "Client Referral Leads", filter: "referral" as const },
+              { label: "Current", filter: "current" as const },
+              { label: "Archive", filter: "archive" as const },
+            ].map(({ label, filter }) => (
+              <button key={label} type="button" onClick={() => { filter ? setLeadSection(filter) : router.push("/leads/website-lead-form"); }} style={{ padding: "8px 12px", border: `1px solid ${filter && leadViewFilter === filter ? "#1e3a5f" : "#e2e8f0"}`, borderRadius: 7, background: filter && leadViewFilter === filter ? "#1e3a5f" : "#fff", color: filter && leadViewFilter === filter ? "#fff" : "#475569", fontSize: 13, fontWeight: 700 }}>
                 {label}
               </button>
             ))}
           </div>
+          <div style={{ margin: "0 0 12px", color: "#475569", fontSize: 13, fontWeight: 600 }}>
+            {leadViewFilter === "portal" && "Client Portal context: portal-tagged/source leads are shown below."}
+            {leadViewFilter === "referral" && "Client Referral Leads: referral-tagged/source leads are shown below."}
+            {leadViewFilter === "current" && "Current leads: archived leads are hidden."}
+            {leadViewFilter === "archive" && "Archive: archived leads are shown below."}
+            {leadViewFilter === "all" && "Leads: all non-archived leads are shown below."}
+          </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <span style={{ color: "#475569", fontSize: 13, fontWeight: 700 }}>Auto Move Website Lead:</span>
-            <button type="button" style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#1e3a5f", fontSize: 13, fontWeight: 700 }}>Move Archive</button>
+            <button type="button" onClick={moveVisibleToArchive} style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#1e3a5f", fontSize: 13, fontWeight: 700 }}>Move Archive</button>
+            <button type="button" onClick={toggleAutoArchiveWebsite} aria-pressed={autoArchiveWebsite} style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: autoArchiveWebsite ? "#ecfdf5" : "#fff", color: autoArchiveWebsite ? "#166534" : "#475569", fontSize: 13, fontWeight: 700 }}>
+              Auto-archive {autoArchiveWebsite ? "On" : "Off"}
+            </button>
           </div>
         </section>
 
@@ -608,7 +788,7 @@ export default function Page() {
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => setShowImport(true)} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>⬆ Import CSV</button>
-            <button onClick={exportCSV} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>⬇ Export CSV</button>
+            <button onClick={() => exportCSV()} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569" }}>⬇ Export CSV</button>
             <button onClick={() => { setEditing(null); setForm({ ...EMPTY_FORM }); setShowForm(true); }}
               style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>+ Add Lead</button>
           </div>
@@ -665,7 +845,7 @@ export default function Page() {
             <span style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>{selected.size} selected</span>
             <div style={{ flex: 1 }} />
             <button onClick={() => setShowBulkEmail(true)} style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>✉ Send Email</button>
-            <button onClick={exportCSV} style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>⬇ Export</button>
+            <button onClick={exportSelectedCSV} style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>⬇ Export</button>
             <div style={{ position: "relative" }}>
               <button onClick={() => setBulkStatusOpen(o => !o)} style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Update Status ▾</button>
               {bulkStatusOpen && (
@@ -679,7 +859,7 @@ export default function Page() {
                 </div>
               )}
             </div>
-            <button onClick={bulkDelete} style={{ padding: "6px 14px", border: "1px solid #fca5a5", borderRadius: 6, background: "transparent", color: "#fca5a5", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🗑 Delete</button>
+            <button onClick={() => setBulkDeleteOpen(true)} style={{ padding: "6px 14px", border: "1px solid #fca5a5", borderRadius: 6, background: "transparent", color: "#fca5a5", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🗑 Delete</button>
             <button onClick={() => setSelected(new Set())} style={{ padding: "6px 14px", border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", borderRadius: 6, cursor: "pointer", fontSize: 12 }}>✕ Clear</button>
           </div>
         )}
@@ -834,6 +1014,19 @@ export default function Page() {
           </div>
         )}
 
+        {bulkDeleteOpen && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 420 }}>
+              <h2 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 700 }}>Delete Selected Leads?</h2>
+              <p style={{ color: "#64748b", fontSize: 14, margin: "0 0 20px" }}>Delete {selected.size} selected lead{selected.size === 1 ? "" : "s"}? This action cannot be undone.</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setBulkDeleteOpen(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
+                <button onClick={() => { setBulkDeleteOpen(false); bulkDelete(); }} style={{ padding: "9px 20px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Delete Selected</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Import CSV Modal */}
         {showImport && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
@@ -848,8 +1041,13 @@ export default function Page() {
               <textarea value={importText} onChange={e => setImportText(e.target.value)}
                 placeholder="Or paste CSV content here…"
                 style={{ width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, minHeight: 100, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace" }} />
+              {importError && (
+                <div role="alert" style={{ marginTop: 10, background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 7, padding: "8px 10px", fontSize: 13, fontWeight: 600 }}>
+                  {importError}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
-                <button onClick={() => { setShowImport(false); setImportText(""); }} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
+                <button onClick={() => { setShowImport(false); setImportText(""); setImportError(""); }} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
                 <button onClick={importCSV} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Import</button>
               </div>
             </div>
@@ -882,6 +1080,8 @@ export default function Page() {
                 disabled={bulkEmailSending||!bulkEmailSubject}
                 onClick={async()=>{
                   setBulkEmailSending(true);
+                  setNotice("");
+                  setError("");
                   const targets = leads.filter(l=>selected.has(l.id)&&l.email);
                   const results = await Promise.all(targets.map(l=>
                     fetch("/api/send-email",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -892,8 +1092,12 @@ export default function Page() {
                   setShowBulkEmail(false);
                   setBulkEmailSubject(""); setBulkEmailBody("");
                   const failed = results.filter(r=>!r.ok);
-                  if (failed.length) alert(`${results.length-failed.length} sent, ${failed.length} failed:\n${failed.map(f=>`${f.email}: ${f.err}`).join("\n")}`);
-                  else alert(`Email sent to ${targets.length} lead${targets.length!==1?"s":""}.`);
+                  if (failed.length) {
+                    setNotice(`Queued/sent ${results.length - failed.length} email${results.length - failed.length === 1 ? "" : "s"} locally; ${failed.length} failed through the email API.`);
+                    setError(`Email API failures: ${failed.map(f=>`${f.email}: ${f.err}`).join("; ")}`);
+                  } else {
+                    setNotice(`Email queued/sent to ${targets.length} lead${targets.length!==1?"s":""}.`);
+                  }
                 }}
                 style={{ padding:"9px 20px", background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", opacity:bulkEmailSending?0.6:1 }}>
                 {bulkEmailSending?"Sending…":"Send Email"}

@@ -76,18 +76,23 @@ const pages = [
     title: 'Affiliates',
     checks: [
       'Affiliates',
-      'Manage your affiliate partners and referral programs.',
+      '+ Add New',
+      'Manage Affiliate',
+      'Documents & Commissions',
     ],
-    buttons: [],
+    buttons: [/Add New/i],
   },
   {
     path: '/affiliates/website-form',
     title: 'Affiliate Website Form',
     checks: [
       'Affiliate Website Form',
-      'Embed signup forms on affiliate websites.',
+      'Preview',
+      'Publish',
+      'Save',
+      'Form Preview',
     ],
-    buttons: [],
+    buttons: [/Preview/i, /Publish/i, /Save/i],
   },
 ];
 
@@ -115,4 +120,19 @@ test.describe('leads and affiliates pages are visible and useful', () => {
       }
     });
   }
+});
+
+test('sidebar leads affiliate links route to implemented pages', async ({ page }) => {
+  await page.goto(`${BASE_URL}/leads`);
+
+  const sidebar = page.locator('aside');
+  await sidebar.getByRole('link', { name: 'Affiliates', exact: true }).click();
+  await expect(page).toHaveURL(/\/leads\/affiliates$/);
+  await expect(page.getByRole('heading', { name: 'Affiliates', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Add New/i })).toBeVisible();
+
+  await sidebar.getByRole('link', { name: 'Affiliate Website Form', exact: true }).click();
+  await expect(page).toHaveURL(/\/leads\/affiliate-website-form$/);
+  await expect(page.getByRole('heading', { name: 'Affiliate Website Form', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible();
 });
