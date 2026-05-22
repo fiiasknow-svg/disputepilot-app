@@ -117,10 +117,10 @@ const navGroups = [
     ]
   },
   { key:"automation", label:"Automation", href:"/automation", icon:Icons.Zap, isSingle:true },
-  { key:"ai-credit-coach", label:"AI Credit Coach", href:"/academy/credit-repair", icon:Icons.GraduationCap, isSingle:true },
-  { key:"zapier", label:"Zapier Automation", href:"/automation", icon:Icons.Zap, isSingle:true },
-  { key:"ghl", label:"Go-HighLevel", href:"/automation", icon:Icons.Zap, isSingle:true },
-  { key:"web-nurture", label:"Website Lead Nurturing", href:"/leads/website-lead-form", icon:Icons.Mail, isSingle:true },
+  { key:"ai-credit-coach", label:"AI Credit Coach", href:"/automation/ai-credit-coach", icon:Icons.GraduationCap, isSingle:true },
+  { key:"zapier", label:"Zapier Automation", href:"/automation/zapier", icon:Icons.Zap, isSingle:true },
+  { key:"ghl", label:"Go-HighLevel", href:"/automation/go-highlevel", icon:Icons.Zap, isSingle:true },
+  { key:"web-nurture", label:"Website Lead Nurturing", href:"/automation/website-lead-nurturing", icon:Icons.Mail, isSingle:true },
   { key:"auto-service", label:"Automation Service", href:"/automation", icon:Icons.Zap, isSingle:true },
   {
     key:"get-customers", label:"Get Customers", icon:Icons.UserPlus,
@@ -301,7 +301,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
             <a href="https://clientdisputemanager.com/faq" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>FAQ<br /><span style={{ color:"#64748b" }}>Quick answers to common questions</span></a>
             <a href="https://clientdisputemanager.com/success-path" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Success Path<br /><span style={{ color:"#64748b" }}>Step-by-step system walkthrough</span></a>
             <a href="https://clientdisputemanager.com/coaching" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>1-on-1 Coaching<br /><span style={{ color:"#64748b" }}>Schedule a session</span></a>
-            <a href="/academy/credit-repair" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px" }}>AI Credit Coach<br /><span style={{ color:"#64748b" }}>Get instant guidance</span></a>
+            <a href="/automation/ai-credit-coach" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px" }}>AI Credit Coach<br /><span style={{ color:"#64748b" }}>Get instant guidance</span></a>
           </div>
         </div>
       </aside>

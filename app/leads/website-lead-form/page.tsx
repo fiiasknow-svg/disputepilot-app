@@ -69,6 +69,15 @@ export default function Page() {
     setStatus("Website lead form published locally. Embed snippet is ready.");
   }
 
+  async function handleCopyEmbed() {
+    try {
+      await navigator.clipboard?.writeText(embedSnippet);
+      setStatus("Website lead form embed snippet copied.");
+    } catch {
+      setStatus("Website lead form embed snippet copied status recorded locally. Clipboard unavailable, so select the snippet manually.");
+    }
+  }
+
   const sectionStyle = { background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", marginBottom: 20, overflow: "hidden" };
   const headerStyle = { padding: "14px 20px", background: "#f8fafc", borderBottom: "1px solid #f1f5f9", fontSize: 14, fontWeight: 700, color: "#1e293b" };
   const bodyStyle = { padding: 20 };
@@ -91,7 +100,8 @@ export default function Page() {
           <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", marginBottom: 6 }}>Published embed</div>
             <code style={{ display: "block", whiteSpace: "normal", overflowWrap: "anywhere", fontSize: 12, color: "#475569" }}>{embedSnippet}</code>
-            <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>Public URL placeholder: /public/forms/website-lead-form</div>
+            <button onClick={handleCopyEmbed} style={{ marginTop: 10, padding: "7px 12px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Copy Embed</button>
+            <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>Local placeholder public URL only: /public/forms/website-lead-form. No public backend route is created here.</div>
           </div>
         )}
 

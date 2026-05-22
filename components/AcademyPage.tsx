@@ -24,6 +24,7 @@ export default function AcademyPage({ course }: { course: CourseData }) {
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [activeLesson, setActiveLesson] = useState<{ module: number; lesson: number } | null>(null);
   const [expandedModule, setExpandedModule] = useState<number>(0);
+  const [certificateStatus, setCertificateStatus] = useState("");
 
   const totalLessons = allLessons.length;
   const doneCount = completed.size;
@@ -34,6 +35,29 @@ export default function AcademyPage({ course }: { course: CourseData }) {
   function toggleDone(mi: number, li: number) {
     const key = lessonKey(mi, li);
     setCompleted(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
+  }
+  function downloadCertificate() {
+    if (!allDone) return;
+    const issued = new Date().toLocaleDateString();
+    const text = [
+      "Certificate of Completion",
+      course.certTitle,
+      "",
+      "Awarded to: Leslie Sabek",
+      `Course: ${course.title}`,
+      `Lessons completed: ${totalLessons}`,
+      `Issued: ${issued}`,
+    ].join("\n");
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${course.certTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-certificate.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    setCertificateStatus("Certificate ready and downloaded as a local text file.");
   }
 
   const activeL = activeLesson !== null
@@ -100,7 +124,7 @@ export default function AcademyPage({ course }: { course: CourseData }) {
                         return (
                           <div key={li} onClick={() => setActiveLesson({ module: mi, lesson: li })}
                             style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", cursor: "pointer", background: isActive ? "#eff6ff" : "transparent", borderLeft: isActive ? `3px solid ${course.color}` : "3px solid transparent", borderBottom: li < mod.lessons.length - 1 ? "1px solid #f8fafc" : "none" }}>
-                            <button onClick={e => { e.stopPropagation(); toggleDone(mi, li); }}
+                            <button data-lesson-toggle="true" aria-label={`Toggle completion for ${lesson.title}`} onClick={e => { e.stopPropagation(); toggleDone(mi, li); }}
                               style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${done ? course.color : "#e2e8f0"}`, background: done ? course.color : "#fff", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff", padding: 0 }}>
                               {done ? "✓" : ""}
                             </button>
@@ -197,11 +221,12 @@ export default function AcademyPage({ course }: { course: CourseData }) {
                   {allDone ? "You have completed all lessons. Download your certificate." : `Complete all ${totalLessons} lessons to earn your certificate.`}
                 </p>
               </div>
-              <button disabled={!allDone}
+              <button disabled={!allDone} onClick={downloadCertificate}
                 style={{ padding: "9px 20px", background: allDone ? "#10b981" : "#e2e8f0", color: allDone ? "#fff" : "#94a3b8", border: "none", borderRadius: 7, cursor: allDone ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 13, whiteSpace: "nowrap" as const }}>
                 {allDone ? "Download Certificate" : `${totalLessons - doneCount} lessons left`}
               </button>
             </div>
+            {certificateStatus && <div role="status" style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#166534", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 700 }}>{certificateStatus}</div>}
           </div>
         </div>
       </div>

@@ -32,7 +32,7 @@ const routes: RouteSpec[] = [
       'Enabled',
       'Save',
     ],
-    buttonChecks: [/Save/i, /Zapier/i, /Go-HighLevel/i, /^GHL$/, /Enable/i],
+    buttonChecks: [/Save/i, /^Enable:/i],
   },
   {
     route: '/academy/automation',
