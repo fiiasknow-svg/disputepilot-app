@@ -94,3 +94,19 @@ test('reports route is discoverable and exposes visible report dashboard surface
 
   expect(missingFromClone).toEqual([]);
 });
+
+test('reports period controls expose active state', async ({ page }) => {
+  await page.goto(`${BASE_URL}/reports`);
+
+  const threeMonths = page.getByRole('button', { name: '3 Mo', exact: true });
+  const sixMonths = page.getByRole('button', { name: '6 Mo', exact: true });
+  const twelveMonths = page.getByRole('button', { name: '12 Mo', exact: true });
+
+  await expect(sixMonths).toHaveAttribute('aria-pressed', 'true');
+  await threeMonths.click();
+  await expect(threeMonths).toHaveAttribute('aria-pressed', 'true');
+  await expect(sixMonths).toHaveAttribute('aria-pressed', 'false');
+  await twelveMonths.click();
+  await expect(twelveMonths).toHaveAttribute('aria-pressed', 'true');
+  await expect(threeMonths).toHaveAttribute('aria-pressed', 'false');
+});

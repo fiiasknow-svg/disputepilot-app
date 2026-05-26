@@ -112,11 +112,14 @@ const pages = [
   },
   {
     path: '/credit-analyzer',
-    title: 'Credit Analyzer',
+    title: 'Credit Analysis',
     checks: [
-      'Credit Analyzer',
+      'Select Client',
+      'Load Credit Report',
+      'Local Report Import',
+      'Analyze/Import Report',
     ],
-    buttons: [],
+    buttons: [/Load Credit Report/i, /Analyze\/Import Report/i],
   },
 ];
 

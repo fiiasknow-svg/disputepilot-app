@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import type { ChangeEvent } from "react";
 import { supabaseBrowser as supabase } from "@/lib/supabase-browser";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -71,6 +72,9 @@ type Factor = { label: string; impact: "positive" | "negative" | "neutral"; desc
 type Tradeline = { name: string; type: string; balance: number; limit: number; status: string; opened: string; impact: "positive" | "negative" | "neutral" };
 type Inquiry = { creditor: string; date: string; type: "Hard" | "Soft" };
 type BureauData = { score: number; history: number[]; histLabels: string[]; factors: Factor[]; tradelines: Tradeline[]; inquiries: Inquiry[] };
+type ReportSnapshot = { source: "demo" | "import"; clientName: string; importedAt: string; fileName?: string; bureaus: Record<string, BureauData> };
+type DisputeDraft = { item: string; itemType: "tradeline" | "inquiry"; bureau: string; reason: string };
+type QueuedDispute = DisputeDraft & { id: string; clientId: string; clientName: string; notes: string; createdAt: string };
 
 const MOCK: Record<string, BureauData> = {
   Equifax: {
@@ -164,6 +168,86 @@ const RECS = [
 ];
 
 const PRIORITY_COLOR: Record<string, string> = { High: "#ef4444", Medium: "#f59e0b", Low: "#10b981" };
+const REPORT_STORAGE_PREFIX = "credit-analysis-report:";
+const DISPUTE_STORAGE_PREFIX = "credit-analysis-disputes:";
+const DEMO_CLIENT = { id: "local-demo-client", full_name: "Demo Client" };
+
+function cloneBureaus() {
+  return JSON.parse(JSON.stringify(MOCK)) as Record<string, BureauData>;
+}
+
+function selectedClientName(clients: { id: string; full_name: string }[], clientId: string) {
+  return clients.find(c => c.id === clientId)?.full_name || "Selected Client";
+}
+
+function reportStorageKey(clientId: string) {
+  return `${REPORT_STORAGE_PREFIX}${clientId}`;
+}
+
+function disputeStorageKey(clientId: string) {
+  return `${DISPUTE_STORAGE_PREFIX}${clientId}`;
+}
+
+function safeLocalStorageGet<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeLocalStorageSet(key: string, value: unknown) {
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function csvCell(value: string) {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function downloadFile(filename: string, content: string, type: string) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function applyScoreFromText(bureaus: Record<string, BureauData>, text: string, bureauName: string) {
+  const match = text.match(new RegExp(`${bureauName}\\s*(?:score)?\\s*[:#-]?\\s*(\\d{3})`, "i"));
+  if (!match) return;
+  const score = Math.min(850, Math.max(300, Number(match[1])));
+  const data = bureaus[bureauName];
+  data.score = score;
+  data.history = [...data.history.slice(0, -1), score];
+}
+
+function buildImportedSnapshot(clientName: string, text: string, fileName?: string): ReportSnapshot {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed?.bureaus?.Equifax && parsed?.bureaus?.Experian && parsed?.bureaus?.TransUnion) {
+        return { source: "import", clientName, importedAt: new Date().toISOString(), fileName, bureaus: parsed.bureaus };
+      }
+    } catch {}
+  }
+
+  const bureaus = cloneBureaus();
+  (["Equifax", "Experian", "TransUnion"] as const).forEach(b => applyScoreFromText(bureaus, trimmed, b));
+  const sourceLabel = fileName ? `Imported from ${fileName}` : "Imported from pasted report facts";
+  Object.values(bureaus).forEach(data => {
+    data.factors = [
+      { label: "Local Import Snapshot", impact: "neutral", desc: `${sourceLabel}. Basic fields were parsed locally; backend AI/report parsing is not connected.` },
+      ...data.factors,
+    ];
+  });
+  return { source: "import", clientName, importedAt: new Date().toISOString(), fileName, bureaus };
+}
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function Page() {
@@ -178,6 +262,13 @@ export default function Page() {
   const [disputeReason, setDisputeReason] = useState("Not My Account");
   const [disputeNotes, setDisputeNotes] = useState("");
   const [disputeSuccess, setDisputeSuccess] = useState(false);
+  const [reportData, setReportData] = useState<Record<string, BureauData>>(cloneBureaus());
+  const [reportStatus, setReportStatus] = useState("");
+  const [importText, setImportText] = useState("");
+  const [importFileName, setImportFileName] = useState("");
+  const [importStatus, setImportStatus] = useState("");
+  const [queuedDisputes, setQueuedDisputes] = useState<QueuedDispute[]>([]);
+  const [disputeDraft, setDisputeDraft] = useState<DisputeDraft | null>(null);
 
   async function getAccountId() {
     const { data: userData } = await supabase.auth.getUser();
@@ -211,16 +302,25 @@ export default function Page() {
           remoteClients = data || [];
         }
 
-        setClients(remoteClients);
+        setClients(remoteClients.length ? remoteClients : [DEMO_CLIENT]);
       } catch {
-        setClients([]);
+        setClients([DEMO_CLIENT]);
       }
     }
 
     loadClients();
   }, []);
 
-  const d = MOCK[bureau];
+  useEffect(() => {
+    if (!clientId) {
+      setQueuedDisputes([]);
+      return;
+    }
+    setQueuedDisputes(safeLocalStorageGet<QueuedDispute[]>(disputeStorageKey(clientId)) || []);
+  }, [clientId]);
+
+  const clientName = selectedClientName(clients, clientId);
+  const d = reportData[bureau] || MOCK[bureau];
   const bc = BUREAU_COLORS[bureau];
   const negatives = d.tradelines.filter(t => t.impact === "negative" || t.status.includes("Late") || t.status === "120 Days Late");
 
@@ -230,9 +330,78 @@ export default function Page() {
     setSimScore(Math.min(850, d.score + boost));
   }
 
+  function loadCreditReport() {
+    if (!clientId) return;
+    const saved = safeLocalStorageGet<ReportSnapshot>(reportStorageKey(clientId));
+    if (saved?.bureaus) {
+      setReportData(saved.bureaus);
+      setReportStatus(saved.source === "import"
+        ? `Imported report loaded for ${clientName}${saved.fileName ? ` from ${saved.fileName}` : ""}.`
+        : `Demo report loaded for ${clientName}; upload/import is not connected to backend storage yet.`);
+    } else {
+      const demoSnapshot: ReportSnapshot = { source: "demo", clientName, importedAt: new Date().toISOString(), bureaus: cloneBureaus() };
+      safeLocalStorageSet(reportStorageKey(clientId), demoSnapshot);
+      setReportData(demoSnapshot.bureaus);
+      setReportStatus(`Demo report loaded for ${clientName}; upload/import is not connected to backend storage yet.`);
+    }
+    setLoaded(true);
+    setSimScore(null);
+    setSimPayOff(0);
+    setSimDispute(false);
+    setBureau("Equifax");
+  }
+
+  function handleFileImport(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setImportText(String(reader.result || ""));
+    reader.readAsText(file);
+  }
+
+  function importReport() {
+    if (!clientId) {
+      setImportStatus("Select a client before importing a report.");
+      return;
+    }
+    if (!importText.trim()) {
+      setImportStatus("Paste report facts or choose a text/json file first.");
+      return;
+    }
+    const snapshot = buildImportedSnapshot(clientName, importText, importFileName || undefined);
+    safeLocalStorageSet(reportStorageKey(clientId), snapshot);
+    setReportData(snapshot.bureaus);
+    setLoaded(true);
+    setBureau("Equifax");
+    setReportStatus(`Imported local report snapshot saved for ${clientName}. Backend report parsing and AI analysis are not connected.`);
+    setImportStatus(`Imported local snapshot for ${clientName}${importFileName ? ` from ${importFileName}` : ""}.`);
+  }
+
+  function openDispute(draft: DisputeDraft) {
+    setDisputeDraft(draft);
+    setShowDispute(draft.item);
+    setDisputeReason(draft.reason);
+    setDisputeNotes("");
+    setDisputeSuccess(false);
+  }
+
   function handleDispute() {
+    if (!clientId || !disputeDraft) return;
+    const next: QueuedDispute = {
+      ...disputeDraft,
+      reason: disputeReason,
+      notes: disputeNotes,
+      clientId,
+      clientName,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [next, ...queuedDisputes];
+    safeLocalStorageSet(disputeStorageKey(clientId), updated);
+    setQueuedDisputes(updated);
     setDisputeSuccess(true);
-    setTimeout(() => { setShowDispute(null); setDisputeSuccess(false); setDisputeNotes(""); }, 1500);
+    setTimeout(() => { setShowDispute(null); setDisputeDraft(null); setDisputeSuccess(false); setDisputeNotes(""); }, 900);
   }
 
   function exportCSV() {
@@ -240,9 +409,25 @@ export default function Page() {
       ["Account Name", "Type", "Balance", "Limit", "Status", "Opened", "Impact"],
       ...d.tradelines.map(t => [t.name, t.type, String(t.balance), String(t.limit), t.status, t.opened, t.impact]),
     ];
-    const blob = new Blob([rows.map(r => r.join(",")).join("\n")], { type: "text/csv" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = `credit_report_${bureau}.csv`; a.click();
+    downloadFile(`credit_report_${bureau}.csv`, rows.map(r => r.map(csvCell).join(",")).join("\n"), "text/csv");
+  }
+
+  function downloadReport() {
+    const content = [
+      `Credit Analysis Report - ${clientName}`,
+      `Bureau: ${bureau}`,
+      `Score: ${d.score} (${scoreLabel(d.score)})`,
+      "",
+      "Tradelines",
+      ...d.tradelines.map(t => `${t.name} | ${t.type} | Balance $${t.balance} | Limit $${t.limit} | ${t.status} | ${t.impact}`),
+      "",
+      "Negative Items",
+      ...(negatives.length ? negatives.map(t => `${t.name} | ${t.status} | ${t.impact}`) : ["None"]),
+      "",
+      "Queued Disputes",
+      ...(queuedDisputes.length ? queuedDisputes.map(q => `${q.bureau} | ${q.item} | ${q.reason}`) : ["None"]),
+    ].join("\n");
+    downloadFile(`credit_report_${clientName.replace(/[^a-z0-9]+/gi, "_")}_${bureau}.txt`, content, "text/plain");
   }
 
   const inp: React.CSSProperties = { width: "100%", padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, background: "#fff", boxSizing: "border-box" };
@@ -262,8 +447,11 @@ export default function Page() {
               <button onClick={exportCSV} style={{ padding: "8px 16px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151" }}>
                 ↓ Export CSV
               </button>
+              <button onClick={downloadReport} style={{ padding: "8px 16px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151" }}>
+                Download Report
+              </button>
               <button onClick={() => window.print()} style={{ padding: "8px 16px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                ↓ PDF Report
+                Print Report
               </button>
             </div>
           )}
@@ -279,12 +467,37 @@ export default function Page() {
                 {clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
               </select>
             </div>
-            <button onClick={() => { if (clientId) { setLoaded(true); setSimScore(null); setSimPayOff(0); setSimDispute(false); } }}
+            <button onClick={loadCreditReport}
               disabled={!clientId}
               style={{ padding: "10px 28px", background: !clientId ? "#94a3b8" : "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontWeight: 700, cursor: !clientId ? "not-allowed" : "pointer" }}>
               Load Credit Report
             </button>
           </div>
+          {reportStatus && (
+            <div role="status" style={{ marginTop: 14, padding: "10px 12px", background: "#eff6ff", color: "#1e3a5f", borderRadius: 7, fontSize: 13, fontWeight: 600 }}>
+              {reportStatus}
+            </div>
+          )}
+        </div>
+
+        <div style={{ ...card, marginBottom: 24 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", marginBottom: 12 }}>Local Report Import</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 14, alignItems: "end" }}>
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Upload Credit Report Text/JSON</label>
+              <input type="file" accept=".txt,.json,.csv" onChange={handleFileImport} style={inp} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Paste Report Facts</label>
+              <textarea rows={3} value={importText} onChange={e => setImportText(e.target.value)} style={{ ...inp, resize: "vertical" }} placeholder="Example: Equifax score 690, Experian score 704..." />
+            </div>
+            <button onClick={importReport} style={{ padding: "10px 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+              Analyze/Import Report
+            </button>
+          </div>
+          {importStatus && (
+            <div role="status" style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: "#276749" }}>{importStatus}</div>
+          )}
         </div>
 
         {!loaded ? (
@@ -296,20 +509,21 @@ export default function Page() {
           {/* 3-bureau score summary cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
             {(["Equifax", "Experian", "TransUnion"] as const).map(b => {
-              const s = MOCK[b].score;
+              const bureauSummary = reportData[b] || MOCK[b];
+              const s = bureauSummary.score;
               const col = scoreColor(s);
               const active = bureau === b;
               return (
-                <div key={b} onClick={() => setBureau(b)} style={{
-                  ...card, cursor: "pointer", borderTop: `4px solid ${BUREAU_COLORS[b]}`,
+                <button type="button" key={b} onClick={() => setBureau(b)} style={{
+                  ...card, cursor: "pointer", border: "none", textAlign: "left", borderTop: `4px solid ${BUREAU_COLORS[b]}`,
                   outline: active ? `2px solid ${BUREAU_COLORS[b]}` : "none",
                   opacity: active ? 1 : 0.75, transition: "opacity 0.15s, outline 0.15s",
                 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: BUREAU_COLORS[b], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{b}</div>
                   <div style={{ fontSize: 36, fontWeight: 900, color: col, lineHeight: 1 }}>{s}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: col }}>{scoreLabel(s)}</div>
-                  <div style={{ fontSize: 11, color: "#10b981", marginTop: 6 }}>↑ +{s - MOCK[b].history[0]} pts since {MOCK[b].histLabels[0]}</div>
-                </div>
+                  <div style={{ fontSize: 11, color: "#10b981", marginTop: 6 }}>↑ +{s - bureauSummary.history[0]} pts since {bureauSummary.histLabels[0]}</div>
+                </button>
               );
             })}
           </div>
@@ -443,7 +657,7 @@ export default function Page() {
                         <span style={{ marginLeft: 6, background: "#fff7ed", color: "#f59e0b", borderRadius: 20, padding: "2px 9px", fontSize: 11, fontWeight: 700 }}>{t.impact}</span>
                       </div>
                     </div>
-                    <button onClick={() => { setShowDispute(t.name); setDisputeReason("Not My Account"); setDisputeNotes(""); }}
+                    <button onClick={() => openDispute({ item: t.name, itemType: "tradeline", bureau, reason: "Not My Account" })}
                       style={{ padding: "6px 12px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
                       Dispute
                     </button>
@@ -495,7 +709,7 @@ export default function Page() {
                     </td>
                     <td style={TD}>
                       {inq.type === "Hard" && (
-                        <button onClick={() => { setShowDispute(inq.creditor + " (inquiry)"); setDisputeReason("Inquiry Not Authorized"); setDisputeNotes(""); }}
+                        <button onClick={() => openDispute({ item: `${inq.creditor} (inquiry)`, itemType: "inquiry", bureau, reason: "Inquiry Not Authorized" })}
                           style={{ padding: "4px 10px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                           Dispute
                         </button>
@@ -505,6 +719,28 @@ export default function Page() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div style={{ ...card, marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>View Queued Disputes</div>
+              <a href="/disputes" style={{ fontSize: 12, fontWeight: 700, color: "#1e3a5f", textDecoration: "none" }}>Open Disputes</a>
+            </div>
+            {queuedDisputes.length === 0 ? (
+              <div style={{ color: "#64748b", fontSize: 13 }}>No local dispute items queued for {clientName}.</div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {queuedDisputes.map(q => (
+                  <div key={q.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, padding: "10px 12px", background: "#f8fafc", borderRadius: 7 }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>{q.item}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{q.clientName} · {q.bureau} · {q.reason}</div>
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#276749", textTransform: "capitalize" }}>{q.itemType}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Score Simulator */}
@@ -557,7 +793,7 @@ export default function Page() {
               <div style={{ textAlign: "center", padding: "24px 0" }}>
                 <div style={{ fontSize: 40, marginBottom: 10 }}>✅</div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "#10b981" }}>Dispute Added Successfully</div>
-                <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>The item has been added to your disputes queue.</div>
+                <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>The item has been added to the local disputes queue for {clientName}.</div>
               </div>
             ) : (<>
               <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 800, color: "#1e293b" }}>Add Dispute Item</h3>
@@ -579,12 +815,12 @@ export default function Page() {
                 </select>
               </div>
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Notes (optional)</label>
-                <textarea rows={3} value={disputeNotes} onChange={e => setDisputeNotes(e.target.value)}
+                <label htmlFor="dispute-notes" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Notes (optional)</label>
+                <textarea id="dispute-notes" rows={3} value={disputeNotes} onChange={e => setDisputeNotes(e.target.value)}
                   style={{ ...inp, resize: "vertical" }} placeholder="Add supporting details..." />
               </div>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setShowDispute(null)} style={{ padding: "9px 20px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#374151" }}>
+                <button onClick={() => { setShowDispute(null); setDisputeDraft(null); }} style={{ padding: "9px 20px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#374151" }}>
                   Cancel
                 </button>
                 <button onClick={handleDispute} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>

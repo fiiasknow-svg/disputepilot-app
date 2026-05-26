@@ -128,7 +128,7 @@ export default function Page() {
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#1e293b" }}>Reports</h1>
           <div style={{ display: "flex", gap: 2, background: "#f1f5f9", borderRadius: 8, padding: 3 }}>
             {[["3m", "3 Mo"], ["6m", "6 Mo"], ["12m", "12 Mo"]].map(([val, label]) => (
-              <button key={val} onClick={() => setPeriod(val)} style={{ padding: "6px 16px", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600, background: period === val ? "#fff" : "transparent", color: period === val ? "#1e293b" : "#64748b", boxShadow: period === val ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>{label}</button>
+              <button key={val} aria-pressed={period === val} onClick={() => setPeriod(val)} style={{ padding: "6px 16px", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600, background: period === val ? "#fff" : "transparent", color: period === val ? "#1e293b" : "#64748b", boxShadow: period === val ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>{label}</button>
             ))}
           </div>
         </div>
