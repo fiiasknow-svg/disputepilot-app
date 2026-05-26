@@ -7,6 +7,7 @@ const partnerPages = [
   { path: '/partner-resources/merchant-accounts', expected: ['Merchant Accounts'] },
   { path: '/partner-resources/monitoring-commissions', expected: ['Monitoring Commissions'] },
   { path: '/partner-resources/dispute-outsourcing', expected: ['Dispute Outsourcing'] },
+  { path: '/partner-resources/attorney-review', expected: ['Attorney Review'] },
   { path: '/partner-resources/rebuild-credit-affiliate', expected: ['Rebuild Credit Affiliate'] },
   { path: '/partner-resources/partner-and-earn', expected: ['Partner & Earn'] },
   { path: '/partner-resources/save-and-annual-plan', expected: ['Save & Annual Plan'] },

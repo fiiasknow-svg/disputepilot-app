@@ -17,6 +17,8 @@ interface PageHeaderProps {
   breadcrumb?: { label: string; href?: string }[];
   actionButton?: React.ReactNode;
   showTrainingVideos?: boolean;
+  trainingHref?: string;
+  activationHref?: string;
 }
 
 export default function PageHeader({ 
@@ -26,7 +28,9 @@ export default function PageHeader({
   backLabel = "BACK",
   breadcrumb,
   actionButton,
-  showTrainingVideos = true 
+  showTrainingVideos = true,
+  trainingHref = "/academy",
+  activationHref = "/billing",
 }: PageHeaderProps) {
   return (
     <div style={{ backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0" }}>
@@ -78,7 +82,7 @@ export default function PageHeader({
 
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {showTrainingVideos && (
-            <button style={{
+            <Link href={trainingHref} style={{
               display: "flex",
               alignItems: "center",
               gap: "6px",
@@ -88,14 +92,15 @@ export default function PageHeader({
               border: "1px solid #fcd34d",
               borderRadius: "4px",
               fontSize: "12px",
-              cursor: "pointer"
+              cursor: "pointer",
+              textDecoration: "none",
             }}>
               <Icons.Video />
               Training Videos
-            </button>
+            </Link>
           )}
           
-          <button style={{
+          <Link href={activationHref} style={{
             padding: "8px 16px",
             backgroundColor: "#22c55e",
             color: "#fff",
@@ -103,10 +108,11 @@ export default function PageHeader({
             borderRadius: "20px",
             fontSize: "12px",
             fontWeight: "600",
-            cursor: "pointer"
+            cursor: "pointer",
+            textDecoration: "none",
           }}>
             ACTIVATE MEMBERSHIP
-          </button>
+          </Link>
         </div>
       </div>
 

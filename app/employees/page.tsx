@@ -135,6 +135,7 @@ export default function Page() {
   const [errorMessage, setErrorMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+  const [trainingOpen, setTrainingOpen] = useState(false);
 
   // Mock activity log per employee
   const activityLog: Record<string,any[]> = {};
@@ -405,7 +406,7 @@ export default function Page() {
             <p style={{margin:"0 0 14px",fontSize:14,color:"#475569"}}>In this area you can add, delete, manage and track your employees. You can monitor the employee's login time with the activity log.</p>
             <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
               <button onClick={()=>{setEditing(null);setSaveError("");setForm({...EMPTY_FORM});setShowForm(true);}} style={{background:"#1e3a5f",color:"#fff",border:"none",borderRadius:4,padding:"9px 16px",cursor:"pointer",fontWeight:700,fontSize:12,textTransform:"uppercase"}}>Add New Employee</button>
-              <button type="button" style={simpleButton}>Training Videos</button>
+              <button type="button" onClick={() => setTrainingOpen(true)} style={simpleButton}>Training Videos</button>
               <span style={{fontSize:14,fontWeight:700,color:"#374151"}}>Employee Quota = {total}/{employeeQuotaLimit} used</span>
             </div>
           </div>
@@ -506,6 +507,29 @@ export default function Page() {
             </div>
           )}
         </div>
+
+        {trainingOpen&&(
+          <div role="dialog" aria-modal="true" aria-labelledby="employee-training-title" onClick={()=>setTrainingOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:10,width:640,maxWidth:"96vw",overflow:"hidden",boxShadow:"0 18px 45px rgba(15,23,42,0.28)"}}>
+              <div style={{padding:"16px 20px",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+                <div>
+                  <h2 id="employee-training-title" style={{margin:0,fontSize:18,fontWeight:800,color:"#1f2937"}}>Employees Training Videos</h2>
+                  <p style={{margin:"4px 0 0",fontSize:13,color:"#64748b"}}>Train staff on roles, permissions, employee records, and activity tracking.</p>
+                </div>
+                <button type="button" onClick={()=>setTrainingOpen(false)} style={simpleButton}>Close</button>
+              </div>
+              <div style={{background:"#0f172a",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",textAlign:"center",padding:24}}>
+                <div>
+                  <div style={{fontSize:40,marginBottom:10}}>â–¶</div>
+                  <div style={{fontSize:15,fontWeight:800}}>Employee training video placeholder</div>
+                  <p style={{margin:"8px auto 0",fontSize:13,color:"rgba(255,255,255,0.72)",maxWidth:440}}>
+                    No hosted employee training video source is connected yet. This local placeholder gives the Training Videos button a visible training panel until real video content is added.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── ADD / EDIT MODAL ── */}
         <div style={{marginTop:18,background:"#fff",border:"1px solid #e5e7eb",borderRadius:4,padding:16}}>

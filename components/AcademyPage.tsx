@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 export type Lesson = { title: string; duration: string; type: "video" | "reading" | "quiz" };
@@ -21,10 +21,16 @@ const TYPE_ICON: Record<string, string> = { video: "▶", reading: "📄", quiz:
 
 export default function AcademyPage({ course }: { course: CourseData }) {
   const allLessons = course.modules.flatMap(m => m.lessons);
+  const progressKey = useMemo(
+    () => `academy-progress:${course.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    [course.title],
+  );
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [activeLesson, setActiveLesson] = useState<{ module: number; lesson: number } | null>(null);
   const [expandedModule, setExpandedModule] = useState<number>(0);
   const [certificateStatus, setCertificateStatus] = useState("");
+  const [videoLesson, setVideoLesson] = useState<Lesson | null>(null);
+  const [progressLoaded, setProgressLoaded] = useState(false);
 
   const totalLessons = allLessons.length;
   const doneCount = completed.size;
@@ -32,6 +38,25 @@ export default function AcademyPage({ course }: { course: CourseData }) {
   const allDone = doneCount === totalLessons;
 
   function lessonKey(mi: number, li: number) { return `${mi}-${li}`; }
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(progressKey);
+      if (raw) {
+        const keys = JSON.parse(raw);
+        if (Array.isArray(keys)) setCompleted(new Set(keys.filter(key => typeof key === "string")));
+      }
+    } catch {
+      setCompleted(new Set());
+    } finally {
+      setProgressLoaded(true);
+    }
+  }, [progressKey]);
+
+  useEffect(() => {
+    if (!progressLoaded) return;
+    window.localStorage.setItem(progressKey, JSON.stringify([...completed]));
+  }, [completed, progressKey, progressLoaded]);
+
   function toggleDone(mi: number, li: number) {
     const key = lessonKey(mi, li);
     setCompleted(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
@@ -148,7 +173,14 @@ export default function AcademyPage({ course }: { course: CourseData }) {
               <div style={{ background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", overflow: "hidden" }}>
                 {activeL.type === "video" && (
                   <div style={{ background: "#0f172a", aspectRatio: "16/9", display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", gap: 12 }}>
-                    <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, cursor: "pointer" }}>▶</div>
+                    <button
+                      type="button"
+                      aria-label={`Play ${activeL.title}`}
+                      onClick={() => setVideoLesson(activeL)}
+                      style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, cursor: "pointer" }}
+                    >
+                      ▶
+                    </button>
                     <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, margin: 0 }}>{activeL.title} · {activeL.duration}</p>
                   </div>
                 )}
@@ -230,6 +262,28 @@ export default function AcademyPage({ course }: { course: CourseData }) {
           </div>
         </div>
       </div>
+      {videoLesson && (
+        <div role="dialog" aria-modal="true" aria-labelledby="academy-video-title" onClick={() => setVideoLesson(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.72)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 720, maxWidth: "96vw", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 20px 50px rgba(15,23,42,0.3)" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <div>
+                <h2 id="academy-video-title" style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1e293b" }}>{videoLesson.title}</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>Training video - {videoLesson.duration}</p>
+              </div>
+              <button type="button" onClick={() => setVideoLesson(null)} style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 6, padding: "7px 12px", cursor: "pointer", fontWeight: 700, color: "#475569" }}>Close</button>
+            </div>
+            <div style={{ background: "#0f172a", aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", textAlign: "center", padding: 24 }}>
+              <div>
+                <div style={{ fontSize: 42, marginBottom: 10 }}>â–¶</div>
+                <div style={{ fontSize: 15, fontWeight: 800 }}>Video placeholder</div>
+                <p style={{ margin: "8px 0 0", fontSize: 13, color: "rgba(255,255,255,0.72)", maxWidth: 460 }}>
+                  No hosted video source is connected for this lesson yet. This local placeholder confirms the training player flow and keeps the lesson available until real video content is added.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </CDMLayout>
   );
 }

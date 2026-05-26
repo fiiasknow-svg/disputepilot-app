@@ -16,6 +16,8 @@ export default function Page() {
   const now = new Date();
   const searchSectionRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const taskSectionRef = useRef<HTMLDivElement>(null);
+  const taskInputRef = useRef<HTMLInputElement>(null);
   const [revFilter, setRevFilter] = useState<RevFilter>("All Time");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -95,6 +97,13 @@ export default function Page() {
     searchSectionRef.current?.scrollIntoView({behavior:"smooth", block:"center"});
     searchInputRef.current?.focus();
     setSearchStatus("Customer search is ready. Enter a name, phone, or email.");
+  }
+
+  function openTaskSection() {
+    setShowTaskForm(true);
+    setTaskStatus("Task form ready. Add the next task below.");
+    taskSectionRef.current?.scrollIntoView({behavior:"smooth", block:"center"});
+    window.setTimeout(() => taskInputRef.current?.focus(), 0);
   }
 
   function runCustomerSearch() {
@@ -276,17 +285,19 @@ export default function Page() {
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {[
                 {label:"Claim Your Free Gifts",href:"/billing"},
-                {label:"CDM Credit Boss Skool NEW",href:"/academy/credit-repair"},
+                {label:"CDM Credit Boss Skool NEW",href:"/academy"},
                 {label:"Your First Dispute",href:"/disputes"},
-                {label:"Full Walkthrough",href:"/academy/credit-repair"},
-            {label:"1 to 1",href:"/academy/credit-repair"},
-            {label:"Group Training",href:"/academy/credit-repair"},
-            {label:"Free Mastermind",href:"/academy/credit-repair"},
-                {label:"Help Center",href:"/academy/credit-repair"},
-                {label:"Task",href:"/dashboard"},
+                {label:"Full Walkthrough",href:"/academy"},
+                {label:"1 to 1",href:"https://clientdisputemanager.com/coaching", external:true},
+                {label:"Group Training",href:"/academy"},
+                {label:"Free Mastermind",href:"/partner-resources/community"},
+                {label:"Help Center",href:"https://help.clientdisputemanager.com", external:true},
+                {label:"Task",action:openTaskSection},
                 {label:"Start-Run-Grow Training",href:"/get-customers/start-run-grow"},
-              ].map(l=>(
-                <a key={l.label} href={l.href} style={{display:"block",padding:"7px 10px",background:"#f8fafc",borderRadius:6,textDecoration:"none",color:"#1e293b",fontSize:12,fontWeight:500}}>{l.label}</a>
+              ].map(l=> "action" in l ? (
+                <button key={l.label} type="button" onClick={l.action} style={{display:"block",width:"100%",textAlign:"left",padding:"7px 10px",background:"#f8fafc",border:"none",borderRadius:6,textDecoration:"none",color:"#1e293b",fontSize:12,fontWeight:500,cursor:"pointer"}}>{l.label}</button>
+              ) : (
+                <a key={l.label} href={l.href} target={"external" in l && l.external ? "_blank" : undefined} rel={"external" in l && l.external ? "noreferrer" : undefined} style={{display:"block",padding:"7px 10px",background:"#f8fafc",borderRadius:6,textDecoration:"none",color:"#1e293b",fontSize:12,fontWeight:500}}>{l.label}</a>
               ))}
             </div>
           </div>
@@ -502,7 +513,7 @@ export default function Page() {
         </div>
 
         {/* Tasks */}
-        <div style={{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.07)",marginBottom:20}}>
+        <div id="tasks" ref={taskSectionRef} tabIndex={-1} style={{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.07)",marginBottom:20}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <h3 style={{margin:0,fontSize:15,fontWeight:700,color:"#1e293b"}}>Tasks</h3>
             <div style={{display:"flex",gap:6}}>
@@ -517,7 +528,7 @@ export default function Page() {
           </div>
           {showTaskForm && (
             <div style={{display:"flex",gap:8,marginBottom:12}}>
-              <input value={newTaskText} onChange={e=>setNewTaskText(e.target.value)} placeholder="Task title" style={{...inp,flex:1}} />
+              <input ref={taskInputRef} value={newTaskText} onChange={e=>setNewTaskText(e.target.value)} placeholder="Task title" style={{...inp,flex:1}} />
               <button onClick={addTask} style={btn("#10b981")}>Save Task</button>
             </div>
           )}
