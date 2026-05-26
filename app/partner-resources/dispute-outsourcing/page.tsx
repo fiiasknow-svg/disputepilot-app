@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -20,7 +21,13 @@ const PRICING = [
 
 export default function Page() {
   const router = useRouter();
+  const [selectedPlan, setSelectedPlan] = useState<(typeof PRICING)[number] | null>(null);
+  const [status, setStatus] = useState("");
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:22};
+  function closeIntake() {
+    setSelectedPlan(null);
+    setStatus("");
+  }
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:1000}}>
@@ -55,11 +62,45 @@ export default function Page() {
               <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:16}}>
                 {p.features.map(f=><div key={f} style={{fontSize:12,color:"#374151"}}>✓ {f}</div>)}
               </div>
-              <button style={{width:"100%",padding:"9px 0",background:p.color,color:"#fff",border:"none",borderRadius:7,fontWeight:700,fontSize:13,cursor:"pointer"}}>Get Started</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPlan(p);
+                  setStatus("");
+                }}
+                style={{width:"100%",padding:"9px 0",background:p.color,color:"#fff",border:"none",borderRadius:7,fontWeight:700,fontSize:13,cursor:"pointer"}}
+              >
+                Get Started
+              </button>
             </div>
           ))}
         </div>
       </div>
+      {selectedPlan && (
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <section aria-modal="true" role="dialog" aria-labelledby="outsourcing-intake-title" style={{background:"#fff",borderRadius:10,padding:24,width:500,maxWidth:"100%",boxShadow:"0 12px 40px rgba(15,23,42,0.22)"}}>
+            <h2 id="outsourcing-intake-title" style={{fontSize:20,fontWeight:800,margin:"0 0 8px",color:"#1e293b"}}>Dispute Outsourcing Intake</h2>
+            <p style={{fontSize:14,color:"#64748b",margin:"0 0 16px",lineHeight:1.5}}>
+              Selected plan: <strong style={{color:"#1e293b"}}>{selectedPlan.name}</strong>. We will collect client volume, turnaround needs, and account setup details before any real service begins.
+            </p>
+            <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:14,marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:800,color:"#1e293b",marginBottom:8}}>Next steps</div>
+              <ol style={{margin:"0 0 0 18px",padding:0,color:"#475569",fontSize:13,lineHeight:1.7}}>
+                <li>Confirm current dispute volume and preferred plan.</li>
+                <li>Review client file access and documentation requirements.</li>
+                <li>Connect a real intake or billing workflow before processing starts.</li>
+              </ol>
+            </div>
+            {status && <p role="status" style={{margin:"0 0 14px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",flexWrap:"wrap"}}>
+              <button type="button" onClick={closeIntake} style={{padding:"9px 16px",background:"#f8fafc",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Cancel</button>
+              <button type="button" onClick={closeIntake} style={{padding:"9px 16px",background:"#f1f5f9",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Close</button>
+              <button type="button" onClick={() => setStatus(`Interest saved locally for ${selectedPlan.name}.`)} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Save Interest</button>
+              <button type="button" onClick={() => setStatus(`Continue selected for ${selectedPlan.name}. Backend intake is not connected yet.`)} style={{padding:"9px 16px",background:selectedPlan.color,color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Continue</button>
+            </div>
+          </section>
+        </div>
+      )}
     </CDMLayout>
   );
 }

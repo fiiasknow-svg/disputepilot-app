@@ -13,6 +13,10 @@ export default function Page() {
   const router = useRouter();
   const [billing, setBilling] = useState<"monthly"|"annual">("annual");
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:22};
+  function selectPlan(planName: string) {
+    const plan = planName.toLowerCase();
+    router.push(`/billing/subscription?plan=${encodeURIComponent(plan)}&billing=${billing}`);
+  }
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:900}}>
@@ -48,7 +52,11 @@ export default function Page() {
               <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:20,textAlign:"left"}}>
                 {p.features.map(f=><div key={f} style={{fontSize:13,color:"#374151"}}>✓ {f}</div>)}
               </div>
-              <button style={{width:"100%",padding:"10px 0",background:p.color,color:"#fff",border:"none",borderRadius:8,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+              <button
+                type="button"
+                onClick={() => selectPlan(p.name)}
+                style={{width:"100%",padding:"10px 0",background:p.color,color:"#fff",border:"none",borderRadius:8,fontWeight:700,fontSize:14,cursor:"pointer"}}
+              >
                 {billing==="annual"?"Switch to Annual":"Get Started"}
               </button>
             </div>

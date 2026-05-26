@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
 const INITIAL_POSTS = [
-  { author: "Marcus J.", initials: "MJ", color: "#3b82f6", time: "2h ago", cat: "Success Story", title: "Removed 14 negative items in 60 days - here's what worked", likes: 47, replies: 23, pinned: true },
-  { author: "Sarah K.", initials: "SK", color: "#10b981", time: "5h ago", cat: "Question", title: "Best script for handling 'I'll think about it' objections?", likes: 18, replies: 31, pinned: false },
-  { author: "Tony R.", initials: "TR", color: "#8b5cf6", time: "1d ago", cat: "Strategy", title: "How I got 3 referral partnerships with local realtors in 2 weeks", likes: 62, replies: 14, pinned: false },
-  { author: "Diane P.", initials: "DP", color: "#f59e0b", time: "1d ago", cat: "Question", title: "Anyone using AI to draft dispute letters? What's your workflow?", likes: 29, replies: 44, pinned: false },
-  { author: "Carlos M.", initials: "CM", color: "#ef4444", time: "2d ago", cat: "Tips & Tricks", title: "The pay-for-delete letter template that gets results consistently", likes: 84, replies: 19, pinned: false },
-  { author: "Tasha W.", initials: "TW", color: "#14b8a6", time: "3d ago", cat: "Success Story", title: "Hit $20K/month - sharing my exact service structure and pricing", likes: 103, replies: 56, pinned: false },
-  { author: "Greg L.", initials: "GL", color: "#64748b", time: "4d ago", cat: "Legal / Compliance", title: "State-by-state breakdown of credit repair licensing requirements (2026)", likes: 71, replies: 12, pinned: false },
+  { author: "Marcus J.", initials: "MJ", color: "#3b82f6", time: "2h ago", cat: "Success Story", channel: "General Discussion", title: "Removed 14 negative items in 60 days - here's what worked", likes: 47, replies: 23, pinned: true },
+  { author: "Sarah K.", initials: "SK", color: "#10b981", time: "5h ago", cat: "Question", channel: "Getting Started", title: "Best script for handling 'I'll think about it' objections?", likes: 18, replies: 31, pinned: false },
+  { author: "Tony R.", initials: "TR", color: "#8b5cf6", time: "1d ago", cat: "Strategy", channel: "Marketing & Growth", title: "How I got 3 referral partnerships with local realtors in 2 weeks", likes: 62, replies: 14, pinned: false },
+  { author: "Diane P.", initials: "DP", color: "#f59e0b", time: "1d ago", cat: "Question", channel: "Dispute Strategy", title: "Anyone using AI to draft dispute letters? What's your workflow?", likes: 29, replies: 44, pinned: false },
+  { author: "Carlos M.", initials: "CM", color: "#ef4444", time: "2d ago", cat: "Tips & Tricks", channel: "Dispute Strategy", title: "The pay-for-delete letter template that gets results consistently", likes: 84, replies: 19, pinned: false },
+  { author: "Tasha W.", initials: "TW", color: "#14b8a6", time: "3d ago", cat: "Success Story", channel: "Revenue & Pricing", title: "Hit $20K/month - sharing my exact service structure and pricing", likes: 103, replies: 56, pinned: false },
+  { author: "Greg L.", initials: "GL", color: "#64748b", time: "4d ago", cat: "Legal / Compliance", channel: "Legal & Compliance", title: "State-by-state breakdown of credit repair licensing requirements (2026)", likes: 71, replies: 12, pinned: false },
 ];
 
 const CATS = ["All", "Success Story", "Strategy", "Tips & Tricks", "Question", "Legal / Compliance", "General"];
@@ -33,16 +33,19 @@ const CHANNELS = [
   { icon: "RP", name: "Revenue & Pricing", members: 421, desc: "Package pricing, upsells, and revenue" },
 ];
 
-type Post = typeof INITIAL_POSTS[number] & { author: string; initials: string; color: string; time: string; cat: string; title: string; likes: number; replies: number; pinned: boolean };
+type Post = typeof INITIAL_POSTS[number] & { author: string; initials: string; color: string; time: string; cat: string; channel: string; title: string; likes: number; replies: number; pinned: boolean };
 
 const LOCAL_KEY = "disputepilot.community.posts";
 
 export default function Page() {
   const router = useRouter();
   const [cat, setCat] = useState("All");
+  const [channel, setChannel] = useState("General Discussion");
+  const [channelTouched, setChannelTouched] = useState(false);
   const [newPost, setNewPost] = useState(false);
   const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS as Post[]);
   const [draft, setDraft] = useState({ category: "Strategy", title: "", content: "" });
+  const [validation, setValidation] = useState("");
 
   useEffect(() => {
     try {
@@ -63,22 +66,27 @@ export default function Page() {
     }
   }, [posts]);
 
-  const filtered = cat === "All" ? posts : posts.filter((post) => post.cat === cat);
+  const filtered = posts.filter((post) => (!channelTouched || post.channel === channel) && (cat === "All" || post.cat === cat));
   const card: React.CSSProperties = { background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", padding: 20 };
 
   function closeModal() {
     setNewPost(false);
     setDraft({ category: "Strategy", title: "", content: "" });
+    setValidation("");
   }
 
   function submitPost() {
-    if (!draft.title.trim() || !draft.content.trim()) return;
+    if (!draft.title.trim() || !draft.content.trim()) {
+      setValidation("Enter a title and content before posting.");
+      return;
+    }
     const nextPost: Post = {
       author: "You",
       initials: "YO",
       color: "#1e3a5f",
       time: "just now",
       cat: draft.category || "Strategy",
+      channel,
       title: draft.title.trim(),
       likes: 0,
       replies: 0,
@@ -119,16 +127,32 @@ export default function Page() {
                 Channels
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {CHANNELS.map((channel) => (
-                  <div key={channel.name} style={{ padding: "8px 10px", borderRadius: 7, cursor: "pointer", background: "#f8fafc" }}>
+                {CHANNELS.map((communityChannel) => (
+                  <button
+                    key={communityChannel.name}
+                    type="button"
+                    aria-pressed={communityChannel.name === channel}
+                    onClick={() => {
+                      setChannel(communityChannel.name);
+                      setChannelTouched(true);
+                    }}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 7,
+                      cursor: "pointer",
+                      background: communityChannel.name === channel ? "#eff6ff" : "#f8fafc",
+                      border: communityChannel.name === channel ? "1px solid #93c5fd" : "1px solid transparent",
+                      textAlign: "left",
+                    }}
+                  >
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <span style={{ fontSize: 16 }}>{channel.icon}</span>
+                      <span style={{ fontSize: 16 }}>{communityChannel.icon}</span>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{channel.name}</div>
-                        <div style={{ fontSize: 11, color: "#94a3b8" }}>{channel.members.toLocaleString()} members</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{communityChannel.name}</div>
+                        <div style={{ fontSize: 11, color: "#94a3b8" }}>{communityChannel.members.toLocaleString()} members</div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -154,6 +178,9 @@ export default function Page() {
           </div>
 
           <div>
+            <div role="status" aria-live="polite" style={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+              Showing {channel}
+            </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
               {CATS.map((value) => (
                 <button
@@ -208,6 +235,11 @@ export default function Page() {
                   </div>
                 </div>
               ))}
+              {!filtered.length && (
+                <div style={{ ...card, color: "#64748b", fontSize: 14 }}>
+                  No posts match {channelTouched ? channel : "all channels"} with the {cat} category filter.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -221,7 +253,10 @@ export default function Page() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 5 }}>Category</label>
               <select
                 value={draft.category}
-                onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}
+                onChange={(event) => {
+                  setDraft((current) => ({ ...current, category: event.target.value }));
+                  setValidation("");
+                }}
                 style={{ width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" as const, background: "#fff" }}
               >
                 {CATS.filter((value) => value !== "All").map((value) => (
@@ -233,7 +268,10 @@ export default function Page() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 5 }}>Title</label>
               <input
                 value={draft.title}
-                onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
+                onChange={(event) => {
+                  setDraft((current) => ({ ...current, title: event.target.value }));
+                  setValidation("");
+                }}
                 placeholder="What's your post about?"
                 style={{ width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box" as const }}
               />
@@ -242,12 +280,20 @@ export default function Page() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 5 }}>Content</label>
               <textarea
                 value={draft.content}
-                onChange={(event) => setDraft((current) => ({ ...current, content: event.target.value }))}
+                onChange={(event) => {
+                  setDraft((current) => ({ ...current, content: event.target.value }));
+                  setValidation("");
+                }}
                 rows={4}
                 placeholder={"Share your experience, ask a question, or post a tip\u2026"}
                 style={{ width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, resize: "vertical", boxSizing: "border-box" as const }}
               />
             </div>
+            {validation && (
+              <div role="alert" style={{ margin: "0 0 14px", color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 7, padding: "9px 12px", fontSize: 13, fontWeight: 700 }}>
+                {validation}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={closeModal} style={{ padding: "9px 20px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, fontWeight: 600, cursor: "pointer" }}>
                 Cancel

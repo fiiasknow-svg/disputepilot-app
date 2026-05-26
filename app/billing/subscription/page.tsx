@@ -36,6 +36,22 @@ export default function Page() {
     } catch {}
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get("plan");
+    const billing = params.get("billing");
+    if (!plan || !billing) return;
+
+    const planLabel = `${plan.charAt(0).toUpperCase()}${plan.slice(1)} Plan`;
+    const cadenceLabel = billing === "annual" ? "annual" : "monthly";
+    setMembership((current) => ({
+      ...current,
+      plan: planLabel,
+      status: "Selection pending",
+      message: `${planLabel} selected with ${cadenceLabel} billing. Confirm in a connected billing provider before charging payments.`,
+    }));
+  }, []);
+
   function updateMembership(next: Membership) {
     setMembership(next);
     window.localStorage.setItem(LOCAL_SUBSCRIPTION_KEY, JSON.stringify(next));
