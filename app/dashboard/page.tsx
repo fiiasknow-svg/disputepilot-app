@@ -1,6 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -10,6 +10,31 @@ type RevFilter = "Today"|"Custom"|"Last 30 Days"|"YTD"|"All Time";
 type TaskTab = "Pending"|"Completed"|"Current"|"Archive"|"All";
 type TaskItem = {id:number,text:string,done:boolean,archived?:boolean};
 type MessageItem = {id:number,tab:"Customer"|"Affiliate"|"Text",from:string,subject:string,date:string,read:boolean};
+type DashboardReminder = {id:number,title:string,date:string,time:string,recurring:boolean,endDate:string};
+
+const DASHBOARD_REMINDERS_KEY = "disputepilot.dashboard-reminders";
+const DASHBOARD_TASKS_KEY = "disputepilot.dashboard-tasks";
+const DEFAULT_TASKS: TaskItem[] = [
+  {id:1,text:"Review new client applications",done:false},
+  {id:2,text:"Send Round 2 dispute letters",done:false},
+  {id:3,text:"Follow up on overdue invoices",done:true},
+  {id:4,text:"Archive completed onboarding checklist",done:true,archived:true},
+];
+
+function readStored<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const stored = window.localStorage.getItem(key);
+    return stored ? (JSON.parse(stored) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStored<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
 
 export default function Page() {
   const router = useRouter();
@@ -34,7 +59,8 @@ export default function Page() {
   const [messageLimit, setMessageLimit] = useState(1);
   const [messageStatus, setMessageStatus] = useState("Showing latest messages.");
   const [taskTab, setTaskTab] = useState<TaskTab>("Pending");
-  const [reminders, setReminders] = useState<{id:number,title:string,date:string,time:string,recurring:boolean,endDate:string}[]>([]);
+  const [reminders, setReminders] = useState<DashboardReminder[]>([]);
+  const [storageReady, setStorageReady] = useState(false);
   const [selectedReminderId, setSelectedReminderId] = useState<number | null>(null);
   const [reminderStatus, setReminderStatus] = useState("Select a calendar day to schedule a reminder.");
   const [calMonth, setCalMonth] = useState(now.getMonth());
@@ -55,12 +81,21 @@ export default function Page() {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newTaskText, setNewTaskText] = useState("");
   const [taskStatus, setTaskStatus] = useState("");
-  const [tasks, setTasks] = useState<TaskItem[]>([
-    {id:1,text:"Review new client applications",done:false},
-    {id:2,text:"Send Round 2 dispute letters",done:false},
-    {id:3,text:"Follow up on overdue invoices",done:true},
-    {id:4,text:"Archive completed onboarding checklist",done:true,archived:true},
-  ]);
+  const [tasks, setTasks] = useState<TaskItem[]>(DEFAULT_TASKS);
+
+  useEffect(() => {
+    setReminders(readStored<DashboardReminder[]>(DASHBOARD_REMINDERS_KEY, []));
+    setTasks(readStored<TaskItem[]>(DASHBOARD_TASKS_KEY, DEFAULT_TASKS));
+    setStorageReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (storageReady) writeStored(DASHBOARD_REMINDERS_KEY, reminders);
+  }, [reminders, storageReady]);
+
+  useEffect(() => {
+    if (storageReady) writeStored(DASHBOARD_TASKS_KEY, tasks);
+  }, [storageReady, tasks]);
 
   const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
   const firstDay = new Date(calYear, calMonth, 1).getDay();
@@ -104,6 +139,14 @@ export default function Page() {
     setTaskStatus("Task form ready. Add the next task below.");
     taskSectionRef.current?.scrollIntoView({behavior:"smooth", block:"center"});
     window.setTimeout(() => taskInputRef.current?.focus(), 0);
+  }
+
+  function showAllTasks() {
+    setTaskTab("All");
+    setShowTaskForm(false);
+    setTaskStatus("Showing all tasks.");
+    taskSectionRef.current?.scrollIntoView({behavior:"smooth", block:"center"});
+    taskSectionRef.current?.focus();
   }
 
   function runCustomerSearch() {
@@ -518,7 +561,7 @@ export default function Page() {
             <h3 style={{margin:0,fontSize:15,fontWeight:700,color:"#1e293b"}}>Tasks</h3>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>{setShowTaskForm(o=>!o);setTaskStatus("Task form ready.");}} style={{...btn("#1e3a5f"),padding:"5px 12px",fontSize:12}}>Add</button>
-              <button onClick={()=>router.push("/dashboard")} style={{...btn("#f1f5f9","#475569"),padding:"5px 12px",fontSize:12}}>See All</button>
+              <button onClick={showAllTasks} style={{...btn("#f1f5f9","#475569"),padding:"5px 12px",fontSize:12}}>See All</button>
             </div>
           </div>
           <div style={{display:"flex",gap:6,marginBottom:14}}>

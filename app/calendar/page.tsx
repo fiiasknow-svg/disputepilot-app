@@ -22,10 +22,14 @@ type EventItem = {
   title: string;
   date: string;
   allDay: boolean;
+  type: string;
+  agent: string;
 };
 
 const REMINDER_KEY = "disputepilot.calendar-reminders";
 const EVENT_KEY = "disputepilot.calendar-events-lite";
+const EVENT_TYPES = ["Meeting", "Deadline", "Follow Up"] as const;
+const AGENTS = ["Assigned Agent", "Unassigned"] as const;
 const TABS = [
   { id: "all", label: "Reminder" },
   { id: "scheduled", label: "Scheduled Reminder" },
@@ -66,9 +70,17 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["id"]>("all");
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [storageReady, setStorageReady] = useState(false);
   const [notice, setNotice] = useState("");
+  const [eventFormError, setEventFormError] = useState("");
   const [showEventForm, setShowEventForm] = useState(false);
   const [showEventTools, setShowEventTools] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedDate, setSelectedDate] = useState(dateValue(today));
+  const [eventView, setEventView] = useState<"Month" | "Week" | "Day" | "Agenda">("Month");
+  const [eventTypeFilter, setEventTypeFilter] = useState("All Types");
+  const [agentFilter, setAgentFilter] = useState("All Agents");
+  const [upcomingOnly, setUpcomingOnly] = useState(false);
   const [reminderForm, setReminderForm] = useState({
     customer: "",
     title: "",
@@ -78,20 +90,27 @@ export default function Page() {
     endTime: "09:30",
     type: "Follow Up",
   });
-  const [eventForm, setEventForm] = useState({ title: "", date: dateValue(today), allDay: false });
+  const [eventForm, setEventForm] = useState({ title: "", date: dateValue(today), allDay: false, type: "Meeting", agent: "Assigned Agent" });
 
   useEffect(() => {
     setReminders(readStored<Reminder[]>(REMINDER_KEY, []));
-    setEvents(readStored<EventItem[]>(EVENT_KEY, []));
+    setEvents(
+      readStored<EventItem[]>(EVENT_KEY, []).map((event) => ({
+        ...event,
+        type: event.type || "Meeting",
+        agent: event.agent || "Unassigned",
+      })),
+    );
+    setStorageReady(true);
   }, []);
 
   useEffect(() => {
-    writeStored(REMINDER_KEY, reminders);
-  }, [reminders]);
+    if (storageReady) writeStored(REMINDER_KEY, reminders);
+  }, [reminders, storageReady]);
 
   useEffect(() => {
-    writeStored(EVENT_KEY, events);
-  }, [events]);
+    if (storageReady) writeStored(EVENT_KEY, events);
+  }, [events, storageReady]);
 
   const visibleReminders = useMemo(() => {
     if (activeTab === "all") return reminders;
@@ -99,8 +118,8 @@ export default function Page() {
   }, [activeTab, reminders]);
 
   const monthDays = useMemo(() => {
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const year = visibleMonth.getFullYear();
+    const month = visibleMonth.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const previousMonthDays = new Date(year, month, 0).getDate();
@@ -124,10 +143,37 @@ export default function Page() {
     }
 
     return cells;
-  }, []);
+  }, [visibleMonth]);
+
+  const visibleEvents = useMemo(() => {
+    const start = dateValue(today);
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + 30);
+    const end = dateValue(endDate);
+
+    return events.filter((event) => {
+      if (eventTypeFilter !== "All Types" && event.type !== eventTypeFilter) return false;
+      if (agentFilter !== "All Agents" && event.agent !== agentFilter) return false;
+      if (upcomingOnly && (event.date < start || event.date > end)) return false;
+      return true;
+    });
+  }, [agentFilter, eventTypeFilter, events, upcomingOnly]);
+
+  const selectedReminders = useMemo(
+    () => reminders.filter((reminder) => reminder.scheduleDate === selectedDate),
+    [reminders, selectedDate],
+  );
+
+  const selectedEvents = useMemo(
+    () => events.filter((event) => event.date === selectedDate),
+    [events, selectedDate],
+  );
 
   function addReminder() {
-    if (!reminderForm.customer.trim() || !reminderForm.title.trim()) return;
+    if (!reminderForm.customer.trim() || !reminderForm.title.trim()) {
+      setNotice("Enter customer and reminder title before saving.");
+      return;
+    }
     const status: ReminderStatus = reminderForm.scheduleDate < dateValue(today) ? "past-due" : "scheduled";
     setReminders((current) => [
       {
@@ -167,17 +213,34 @@ export default function Page() {
   }
 
   function addEvent() {
-    if (!eventForm.title.trim()) return;
-    setEvents((current) => [{ id: `event-${Date.now()}`, title: eventForm.title.trim(), date: eventForm.date, allDay: eventForm.allDay }, ...current]);
-    setEventForm({ title: "", date: dateValue(today), allDay: false });
+    if (!eventForm.title.trim()) {
+      setEventFormError("Enter an event title before adding the event.");
+      return;
+    }
+    setEvents((current) => [{ id: `event-${Date.now()}`, title: eventForm.title.trim(), date: eventForm.date, allDay: eventForm.allDay, type: eventForm.type, agent: eventForm.agent }, ...current]);
+    setEventForm({ title: "", date: dateValue(today), allDay: false, type: "Meeting", agent: "Assigned Agent" });
+    setEventFormError("");
     setShowEventForm(false);
     setNotice("Event saved.");
   }
 
   function exportIcal() {
     const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//DisputePilot//Reminder//EN"];
+    const escapeIcal = (value: string) => value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
     events.forEach((event) => {
-      lines.push("BEGIN:VEVENT", `DTSTART:${event.date.replace(/-/g, "")}`, `SUMMARY:${event.title}`, `UID:${event.id}@disputepilot`, "END:VEVENT");
+      const details = [`Type: ${event.type}`, `Agent: ${event.agent}`].filter(Boolean).join("\\n");
+      lines.push("BEGIN:VEVENT", `DTSTART:${event.date.replace(/-/g, "")}`, `SUMMARY:${escapeIcal(event.title)}`, `DESCRIPTION:${escapeIcal(details)}`, `UID:${event.id}@disputepilot`, "END:VEVENT");
+    });
+    reminders.forEach((reminder) => {
+      lines.push(
+        "BEGIN:VTODO",
+        `DUE:${reminder.scheduleDate.replace(/-/g, "")}`,
+        `SUMMARY:${escapeIcal(reminder.title)}`,
+        `DESCRIPTION:${escapeIcal(`Customer: ${reminder.customer}\\nType: ${reminder.type}`)}`,
+        `UID:${reminder.id}@disputepilot`,
+        reminder.status === "read" ? "STATUS:COMPLETED" : "STATUS:NEEDS-ACTION",
+        "END:VTODO",
+      );
     });
     lines.push("END:VCALENDAR");
     const blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });
@@ -186,6 +249,19 @@ export default function Page() {
     anchor.download = "calendar.ics";
     anchor.click();
     URL.revokeObjectURL(anchor.href);
+  }
+
+  function selectCalendarDate(date: string) {
+    setSelectedDate(date);
+    setReminderForm((form) => ({ ...form, scheduleDate: date, endDate: date }));
+    setNotice(`Selected date: ${date}. Reminder scheduled and end dates are ready.`);
+  }
+
+  function goToToday() {
+    const current = new Date();
+    const currentDate = dateValue(current);
+    setVisibleMonth(new Date(current.getFullYear(), current.getMonth(), 1));
+    selectCalendarDate(currentDate);
   }
 
   const shell: React.CSSProperties = { padding: 24, maxWidth: 1240 };
@@ -212,12 +288,12 @@ export default function Page() {
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <button type="button" onClick={exportIcal} style={button}>Export iCal</button>
-            <button type="button" onClick={() => setShowEventForm(true)} style={button}>+ Add Event</button>
+            <button type="button" onClick={() => { setShowEventForm(true); setEventFormError(""); }} style={button}>+ Add Event</button>
           </div>
         </div>
 
         {notice && (
-          <div role="status" style={{ ...panel, borderColor: "#bbf7d0", background: "#f0fdf4", color: "#166534", padding: 10, marginBottom: 14, fontSize: 13 }}>
+          <div role={notice.startsWith("Enter") ? "alert" : "status"} style={{ ...panel, borderColor: notice.startsWith("Enter") ? "#fed7aa" : "#bbf7d0", background: notice.startsWith("Enter") ? "#fff7ed" : "#f0fdf4", color: notice.startsWith("Enter") ? "#b45309" : "#166534", padding: 10, marginBottom: 14, fontSize: 13 }}>
             {notice}
           </div>
         )}
@@ -296,10 +372,10 @@ export default function Page() {
         <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 0.9fr) minmax(320px, 1.1fr)", gap: 16 }}>
           <section style={{ ...panel, padding: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <button type="button" style={button} aria-label="Previous month">{"<"}</button>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#1f2937" }}>{monthName(today)}</div>
-              <button type="button" style={button} aria-label="Next month">{">"}</button>
-              <button type="button" style={button}>Today</button>
+              <button type="button" onClick={() => setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))} style={button} aria-label="Previous month">{"<"}</button>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#1f2937" }}>{monthName(visibleMonth)}</div>
+              <button type="button" onClick={() => setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))} style={button} aria-label="Next month">{">"}</button>
+              <button type="button" onClick={goToToday} style={button}>Today</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", fontSize: 11, fontWeight: 800, color: "#64748b", textAlign: "center", marginBottom: 6 }}>
               {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => <div key={day}>{day}</div>)}
@@ -308,24 +384,35 @@ export default function Page() {
               {monthDays.map((day) => {
                 const hasReminder = reminders.some((reminder) => reminder.scheduleDate === day.date);
                 return (
-                  <div
+                  <button
                     key={`${day.date}-${day.label}`}
+                    type="button"
+                    onClick={() => selectCalendarDate(day.date)}
+                    aria-pressed={selectedDate === day.date}
+                    aria-label={`${day.date}${day.muted ? " outside visible month" : ""}`}
                     style={{
                       minHeight: 42,
                       borderRight: "1px solid #e5e7eb",
                       borderBottom: "1px solid #e5e7eb",
                       padding: 6,
                       color: day.muted ? "#94a3b8" : "#1f2937",
-                      background: day.date === dateValue(today) ? "#eff6ff" : "#fff",
+                      background: selectedDate === day.date ? "#dbeafe" : day.date === dateValue(today) ? "#eff6ff" : "#fff",
                       position: "relative",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      font: "inherit",
+                      fontWeight: selectedDate === day.date ? 800 : 400,
                     }}
                   >
                     {day.label}
                     {hasReminder && <span aria-label="Reminder Scheduled" style={{ position: "absolute", width: 7, height: 7, borderRadius: 99, background: "#3b82f6", right: 6, bottom: 6 }} />}
-                  </div>
+                  </button>
                 );
               })}
             </div>
+            <p style={{ margin: "10px 0 0", fontSize: 12, color: "#2563eb", fontWeight: 700 }}>
+              Selected date: {selectedDate}. {selectedReminders.length} reminder{selectedReminders.length === 1 ? "" : "s"} and {selectedEvents.length} event{selectedEvents.length === 1 ? "" : "s"} on this date.
+            </p>
           </section>
 
           <section style={{ ...panel, padding: 16 }}>
@@ -384,32 +471,35 @@ export default function Page() {
           {showEventTools && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12, alignItems: "center" }}>
               {["Month", "Week", "Day", "Agenda"].map((view) => (
-                <button key={view} type="button" style={button}>
+                <button key={view} type="button" onClick={() => setEventView(view as typeof eventView)} aria-pressed={eventView === view} style={{ ...button, background: eventView === view ? "#1e3a5f" : "#fff", borderColor: eventView === view ? "#1e3a5f" : "#cbd5e1", color: eventView === view ? "#fff" : "#1f2937" }}>
                   {view}
                 </button>
               ))}
               <span style={{ fontSize: 12, color: "#475569", fontWeight: 800 }}>Event Types</span>
-              <select aria-label="Event Types" defaultValue="All Types" style={{ ...input, width: "auto", minWidth: 132, background: "#fff" }}>
+              <select aria-label="Event Types" value={eventTypeFilter} onChange={(event) => setEventTypeFilter(event.target.value)} style={{ ...input, width: "auto", minWidth: 132, background: "#fff" }}>
                 <option>All Types</option>
-                <option>Meeting</option>
-                <option>Deadline</option>
-                <option>Follow Up</option>
+                {EVENT_TYPES.map((type) => <option key={type}>{type}</option>)}
               </select>
-              <select aria-label="All Agents" defaultValue="All Agents" style={{ ...input, width: "auto", minWidth: 132, background: "#fff" }}>
+              <select aria-label="All Agents" value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} style={{ ...input, width: "auto", minWidth: 132, background: "#fff" }}>
                 <option>All Agents</option>
-                <option>Assigned Agent</option>
-                <option>Unassigned</option>
+                {AGENTS.map((agent) => <option key={agent}>{agent}</option>)}
               </select>
-              <button type="button" style={button}>Upcoming (30 days)</button>
+              <button type="button" onClick={() => setUpcomingOnly((active) => !active)} aria-pressed={upcomingOnly} style={{ ...button, background: upcomingOnly ? "#1e3a5f" : "#fff", borderColor: upcomingOnly ? "#1e3a5f" : "#cbd5e1", color: upcomingOnly ? "#fff" : "#1f2937" }}>Upcoming (30 days)</button>
+              <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 800 }}>
+                Showing {eventView} view. Agent is a local event filter.
+              </span>
             </div>
           )}
-          {events.length === 0 ? (
+          {visibleEvents.length === 0 ? (
             <p style={{ margin: showEventTools ? 0 : "12px 0 0", fontSize: 13, color: "#64748b" }}>No events saved.</p>
           ) : (
             <div style={{ display: "grid", gap: 6, marginTop: showEventTools ? 0 : 12 }}>
-              {events.map((event) => (
+              {visibleEvents.map((event) => (
                 <div key={event.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, padding: 8, background: "#f8fafc" }}>
-                  <strong>{event.title}</strong>
+                  <div>
+                    <strong>{event.title}</strong>
+                    <div style={{ color: "#64748b", fontSize: 12 }}>{event.type} - {event.agent}</div>
+                  </div>
                   <span>{event.allDay ? `${event.date} - All day` : event.date}</span>
                 </div>
               ))}
@@ -421,6 +511,7 @@ export default function Page() {
           <div role="dialog" aria-modal="true" aria-label="New Event" style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 1000 }}>
             <div style={{ width: 420, maxWidth: "100%", background: "#fff", borderRadius: 6, padding: 22 }}>
               <h2 style={{ margin: "0 0 14px", fontSize: 18 }}>New Event</h2>
+              {eventFormError && <div role="alert" style={{ border: "1px solid #fed7aa", background: "#fff7ed", color: "#b45309", borderRadius: 4, padding: 9, marginBottom: 12, fontSize: 13 }}>{eventFormError}</div>}
               <div style={{ display: "grid", gap: 12 }}>
                 <div>
                   <label style={label}>Title</label>
@@ -429,6 +520,18 @@ export default function Page() {
                 <div>
                   <label style={label}>Date</label>
                   <input type="date" value={eventForm.date} onChange={(event) => setEventForm((form) => ({ ...form, date: event.target.value }))} style={input} />
+                </div>
+                <div>
+                  <label style={label}>Event Type</label>
+                  <select aria-label="Event Type" value={eventForm.type} onChange={(event) => setEventForm((form) => ({ ...form, type: event.target.value }))} style={{ ...input, background: "#fff" }}>
+                    {EVENT_TYPES.map((type) => <option key={type}>{type}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={label}>Assigned Agent</label>
+                  <select aria-label="Assigned Agent" value={eventForm.agent} onChange={(event) => setEventForm((form) => ({ ...form, agent: event.target.value }))} style={{ ...input, background: "#fff" }}>
+                    {AGENTS.map((agent) => <option key={agent}>{agent}</option>)}
+                  </select>
                 </div>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155", fontWeight: 700 }}>
                   <input
