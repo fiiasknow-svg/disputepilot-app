@@ -24,6 +24,7 @@ test('website lead form saves, publishes, previews, and hydrates settings', asyn
   await page.getByRole('button', { name: 'Preview' }).click();
   const modal = page.getByRole('heading', { name: 'Form Preview' }).locator('xpath=../..');
   await expect(modal.getByText('Custom Website Intake')).toBeVisible();
+  await expect(modal.getByText(/Standard branded website layout|Compact single-column layout|Wide two-column layout/)).toBeVisible();
   await expect(modal.getByPlaceholder('Address')).toHaveCount(0);
   await modal.getByRole('button', { name: 'Send Request' }).click();
   await expect(modal.getByText(/Preview submission captured locally/i)).toBeVisible();
@@ -51,10 +52,12 @@ test('affiliate website form saves, publishes, previews, and hydrates settings',
   await page.getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText(/published locally/i)).toBeVisible();
   await expect(page.getByText('/public/forms/affiliate-website-form')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Copy Embed' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Preview' }).click();
   const modal = page.getByRole('heading', { name: 'Form Preview' }).locator('xpath=../..');
   await expect(modal.getByText('Custom Affiliate Signup')).toBeVisible();
+  await expect(modal.getByText(/Affiliate\/referral partner layout|Website branded referral layout/)).toBeVisible();
   await expect(modal.getByPlaceholder('City')).toHaveCount(0);
   await modal.getByRole('button', { name: 'Send Referral' }).click();
   await expect(modal.getByText(/Preview referral captured locally/i)).toBeVisible();
@@ -62,4 +65,14 @@ test('affiliate website form saves, publishes, previews, and hydrates settings',
   await page.reload();
   await expect(page.getByLabel('Custom Title')).toHaveValue('Custom Affiliate Signup');
   await expect(page.getByLabel('Button Text')).toHaveValue('Send Referral');
+});
+
+test('website form style choices visibly change preview layout labels', async ({ page }) => {
+  await page.goto(`${BASE_URL}/leads/website-lead-form`);
+  await page.getByLabel('Short Form').check();
+  await expect(page.getByText('Compact single-column layout').first()).toBeVisible();
+  await page.getByLabel('Wide Form').check();
+  await expect(page.getByText('Wide two-column layout').first()).toBeVisible();
+  await page.getByLabel('Affiliate').check();
+  await expect(page.getByText('Affiliate/referral copy layout').first()).toBeVisible();
 });

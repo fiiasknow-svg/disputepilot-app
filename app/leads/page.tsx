@@ -66,6 +66,29 @@ function writeArchivedLeadIds(ids: Set<string>) {
   window.localStorage.setItem(LOCAL_ARCHIVED_LEAD_IDS_KEY, JSON.stringify([...ids]));
 }
 
+function websiteAutoArchiveEnabled() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(LOCAL_AUTO_ARCHIVE_KEY) === "true";
+}
+
+function isWebsiteSource(source: string) {
+  return String(source || "").toLowerCase() === "website";
+}
+
+function markWebsiteLeadsArchivedIfNeeded<T extends { id: string; source?: string; archived?: boolean }>(rows: T[]) {
+  if (!websiteAutoArchiveEnabled()) return { rows, applied: 0 };
+  const archivedIds = readArchivedLeadIds();
+  let applied = 0;
+  const nextRows = rows.map(row => {
+    if (!isWebsiteSource(row.source || "")) return row;
+    archivedIds.add(String(row.id));
+    applied++;
+    return { ...row, archived: true };
+  });
+  if (applied) writeArchivedLeadIds(archivedIds);
+  return { rows: nextRows, applied };
+}
+
 function parseCSVLine(line: string) {
   const values: string[] = [];
   let current = "";
@@ -339,13 +362,15 @@ export default function Page() {
     setError("");
     const full_name = `${form.first_name} ${form.last_name}`.trim();
     const now = new Date().toISOString();
-    const payload = {
+    const basePayload = {
       ...sanitizeLead(form),
       full_name,
       id: editing?.id || `local-lead-${Date.now()}`,
       created_at: editing?.created_at || now,
       updated_at: now,
     };
+    const autoArchiveResult = editing ? { rows: [basePayload], applied: 0 } : markWebsiteLeadsArchivedIfNeeded([basePayload]);
+    const payload = autoArchiveResult.rows[0];
     let accountId = null;
     try {
       accountId = await getAccountId();
@@ -384,9 +409,10 @@ export default function Page() {
     setShowForm(false);
     setEditing(null);
     setForm({ ...EMPTY_FORM });
-    setNotice(remoteError
+    const archiveSuffix = autoArchiveResult.applied ? " Auto-archive applied: Website source lead is in Archive." : "";
+    setNotice((remoteError
       ? `${editing ? "Updated" : "Saved"} lead: ${full_name} (local row visible; Supabase sync failed)`
-      : editing ? `Updated lead: ${full_name}` : `Saved lead: ${full_name}`);
+      : editing ? `Updated lead: ${full_name}` : `Saved lead: ${full_name}`) + archiveSuffix);
     if (remoteError) setError(`Supabase sync failed: ${remoteError}`);
   }
 
@@ -622,7 +648,7 @@ export default function Page() {
     const dataLines = hasHeader ? lines.slice(1) : lines;
 
     const now = new Date().toISOString();
-    const rows = dataLines.map((line, index) => {
+    const parsedRows = dataLines.map((line, index) => {
       const vals = parseCSVLine(line);
       const obj: any = {};
       headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
@@ -641,6 +667,8 @@ export default function Page() {
         updated_at: now,
       };
     }).filter(row => row.first_name || row.last_name || row.email || row.phone);
+    const autoArchiveResult = markWebsiteLeadsArchivedIfNeeded(parsedRows);
+    const rows = autoArchiveResult.rows;
 
     if (!rows.length) {
       setImportError("No usable lead rows were found. Include name, email, phone, source, or status values.");
@@ -665,9 +693,10 @@ export default function Page() {
 
     setShowImport(false);
     setImportText("");
-    setNotice(remoteError
+    const archiveSuffix = autoArchiveResult.applied ? ` Auto-archive applied to ${autoArchiveResult.applied} Website source lead${autoArchiveResult.applied === 1 ? "" : "s"}.` : "";
+    setNotice((remoteError
       ? `Imported ${rows.length} lead${rows.length === 1 ? "" : "s"} locally. Supabase sync failed, so local fallback is visible now.`
-      : `Imported ${rows.length} lead${rows.length === 1 ? "" : "s"}.`);
+      : `Imported ${rows.length} lead${rows.length === 1 ? "" : "s"}.`) + archiveSuffix);
     if (remoteError) setError(`Supabase import failed: ${remoteError}`);
   }
 
@@ -1083,20 +1112,30 @@ export default function Page() {
                   setNotice("");
                   setError("");
                   const targets = leads.filter(l=>selected.has(l.id)&&l.email);
+                  if (!targets.length) {
+                    setBulkEmailSending(false);
+                    setShowBulkEmail(false);
+                    setError("No selected leads have an email address. No email was sent.");
+                    return;
+                  }
                   const results = await Promise.all(targets.map(l=>
                     fetch("/api/send-email",{method:"POST",headers:{"Content-Type":"application/json"},
                       body:JSON.stringify({to:l.email,subject:bulkEmailSubject,body:bulkEmailBody})})
                     .then(async r=>({ ok:r.ok, email:l.email, err: r.ok ? null : (await r.json().catch(()=>({}))).error || r.statusText }))
+                    .catch(err=>({ ok:false, email:l.email, err: err?.message || "Network error" }))
                   ));
                   setBulkEmailSending(false);
                   setShowBulkEmail(false);
                   setBulkEmailSubject(""); setBulkEmailBody("");
                   const failed = results.filter(r=>!r.ok);
                   if (failed.length) {
-                    setNotice(`Queued/sent ${results.length - failed.length} email${results.length - failed.length === 1 ? "" : "s"} locally; ${failed.length} failed through the email API.`);
-                    setError(`Email API failures: ${failed.map(f=>`${f.email}: ${f.err}`).join("; ")}`);
+                    const sent = results.length - failed.length;
+                    if (sent) {
+                      setNotice(`Sent ${sent} email${sent === 1 ? "" : "s"}. ${failed.length} failed through the email API.`);
+                    }
+                    setError(`Email was not sent to ${failed.length} lead${failed.length === 1 ? "" : "s"}. Check email setup/auth configuration. API failures: ${failed.map(f=>`${f.email}: ${f.err}`).join("; ")}`);
                   } else {
-                    setNotice(`Email queued/sent to ${targets.length} lead${targets.length!==1?"s":""}.`);
+                    setNotice(`Email sent to ${targets.length} lead${targets.length!==1?"s":""}.`);
                   }
                 }}
                 style={{ padding:"9px 20px", background:"#1e3a5f", color:"#fff", border:"none", borderRadius:7, fontWeight:700, cursor:"pointer", opacity:bulkEmailSending?0.6:1 }}>

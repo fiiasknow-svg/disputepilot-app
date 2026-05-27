@@ -11,6 +11,11 @@ const FONT_FAMILIES = ["Arial", "Georgia", "Verdana", "Helvetica", "Times New Ro
 const COLORS = ["#1e3a5f", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#0f172a"];
 const STORAGE_KEY = "disputepilot.affiliateWebsiteForm.settings";
 
+function formStyleVisual(style: string) {
+  if (style === "Website") return { maxWidth: 540, columns: "1fr", padding: 28, label: "Website branded referral layout" };
+  return { maxWidth: 700, columns: "1fr 1fr", padding: 28, label: "Affiliate/referral partner layout" };
+}
+
 export default function Page() {
   const [formStyle, setFormStyle] = useState("Affiliate");
   const [required, setRequired] = useState<Record<string, boolean>>({ "First Name": true, "Last Name": true, Email: true });
@@ -32,6 +37,7 @@ export default function Page() {
   const allFields = [...FORM_FIELDS, ...EXTRA_FIELDS];
   const settings = { formStyle, required, fields, title, company, bgColor, btnColor, fontSize, fontFamily, btnText };
   const embedSnippet = `<script src="/embed/affiliate-website-form.js" data-form="affiliate-website-form"></script>`;
+  const previewVisual = formStyleVisual(formStyle);
 
   useEffect(() => {
     try {
@@ -65,7 +71,16 @@ export default function Page() {
   function handlePublish() {
     saveSettings(true);
     setPublished(true);
-    setStatus("Affiliate website form published locally. Embed snippet is ready.");
+    setStatus("Affiliate website form published locally. Public form and embed routes are available.");
+  }
+
+  async function handleCopyEmbed() {
+    try {
+      await navigator.clipboard?.writeText(embedSnippet);
+      setStatus("Affiliate website form embed snippet copied.");
+    } catch {
+      setStatus("Affiliate website form embed snippet copied status recorded locally. Clipboard unavailable, so select the snippet manually.");
+    }
   }
 
   const sectionStyle = { background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", marginBottom: 20, overflow: "hidden" };
@@ -90,7 +105,8 @@ export default function Page() {
           <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", marginBottom: 6 }}>Published embed</div>
             <code style={{ display: "block", whiteSpace: "normal", overflowWrap: "anywhere", fontSize: 12, color: "#475569" }}>{embedSnippet}</code>
-            <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>Public URL placeholder: /public/forms/affiliate-website-form</div>
+            <button onClick={handleCopyEmbed} style={{ marginTop: 10, padding: "7px 12px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Copy Embed</button>
+            <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>Public local form route: /public/forms/affiliate-website-form. Submissions save in this browser locally and call a local demo API.</div>
           </div>
         )}
 
@@ -208,10 +224,11 @@ export default function Page() {
         <div style={sectionStyle}>
           <div style={headerStyle}>7. Form Preview</div>
           <div style={bodyStyle}>
-            <div style={{ background: bgColor, borderRadius: 10, padding: 28, maxWidth: 480 }}>
+            <div style={{ background: bgColor, borderRadius: 10, padding: previewVisual.padding, maxWidth: previewVisual.maxWidth }}>
+              <p style={{ color: "#ffffffb3", fontSize: 11, fontWeight: 800, margin: "0 0 8px", textTransform: "uppercase" }}>{previewVisual.label}</p>
               <h2 style={{ color: "#fff", fontSize: 20, fontWeight: 700, margin: "0 0 20px", fontFamily }}>{title || "Affiliate Form"}</h2>
               {company && <p style={{ color: "#ffffff99", fontSize: 13, margin: "0 0 16px" }}>{company}</p>}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: previewVisual.columns, gap: 12, marginBottom: 12 }}>
                 {allFields.filter(f => fields[f] && f !== "Comments").map(f => (
                   <div key={f}>
                     <label style={{ display: "block", fontSize: 12, color: "#ffffff99", marginBottom: 4, fontFamily }}>{f}{required[f] ? " *" : ""}</label>
@@ -238,9 +255,10 @@ export default function Page() {
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Form Preview</h2>
               <button onClick={() => setShowPreview(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>x</button>
             </div>
-            <div style={{ background: bgColor, borderRadius: 10, padding: 28 }}>
+            <div style={{ background: bgColor, borderRadius: 10, padding: previewVisual.padding }}>
+              <p style={{ color: "#ffffffb3", fontSize: 11, fontWeight: 800, margin: "0 0 8px", textTransform: "uppercase" }}>{previewVisual.label}</p>
               <h2 style={{ color: "#fff", fontSize: 20, fontWeight: 700, margin: "0 0 20px", fontFamily }}>{title}</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: previewVisual.columns, gap: 12, marginBottom: 12 }}>
                 {allFields.filter(f => fields[f] && f !== "Comments").map(f => (
                   <div key={f}>
                     <label style={{ display: "block", fontSize: 12, color: "#ffffff99", marginBottom: 4 }}>{f}{required[f] ? " *" : ""}</label>

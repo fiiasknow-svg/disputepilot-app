@@ -14,6 +14,8 @@ const STATUS_C: Record<string, string> = {
   "Pending Referrals": "#8b5cf6",
 };
 const LOCAL_AFFILIATES_KEY = "disputepilot.affiliates";
+const LOCAL_AFFILIATE_COMMISSIONS_KEY = "disputepilot.affiliates.commissions";
+const LOCAL_AFFILIATE_DOCUMENTS_KEY = "disputepilot.affiliates.documents";
 
 const EMPTY_FORM = {
   full_name: "",
@@ -37,6 +39,20 @@ function readLocalAffiliates() {
 function writeLocalAffiliates(affiliates: any[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(LOCAL_AFFILIATES_KEY, JSON.stringify(affiliates));
+}
+
+function readLocalRows(key: string) {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(window.localStorage.getItem(key) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalRows(key: string, rows: any[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(key, JSON.stringify(rows));
 }
 
 function affiliateName(affiliate: any) {
@@ -77,9 +93,18 @@ export default function Page() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [removeTarget, setRemoveTarget] = useState<any | null>(null);
+  const [commissions, setCommissions] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [showCommissionForm, setShowCommissionForm] = useState(false);
+  const [showDocumentForm, setShowDocumentForm] = useState(false);
+  const [commissionForm, setCommissionForm] = useState({ affiliate: "", amount: "", status: "Pending", period: "", notes: "" });
+  const [documentForm, setDocumentForm] = useState({ affiliate: "", name: "", type: "Agreement", status: "Received", notes: "" });
 
   useEffect(() => {
     load();
+    setCommissions(readLocalRows(LOCAL_AFFILIATE_COMMISSIONS_KEY));
+    setDocuments(readLocalRows(LOCAL_AFFILIATE_DOCUMENTS_KEY));
   }, []);
 
   async function getAccountId() {
@@ -215,6 +240,52 @@ export default function Page() {
     }
   }
 
+  function addCommission() {
+    if (!commissionForm.affiliate || !commissionForm.amount) return;
+    const row = {
+      id: `local-commission-${Date.now()}`,
+      ...commissionForm,
+      created_at: new Date().toISOString(),
+    };
+    const next = [row, ...commissions];
+    setCommissions(next);
+    writeLocalRows(LOCAL_AFFILIATE_COMMISSIONS_KEY, next);
+    setCommissionForm({ affiliate: "", amount: "", status: "Pending", period: "", notes: "" });
+    setShowCommissionForm(false);
+    setNotice("Added local commission row.");
+  }
+
+  function addDocument() {
+    if (!documentForm.affiliate || !documentForm.name) return;
+    const row = {
+      id: `local-document-${Date.now()}`,
+      ...documentForm,
+      created_at: new Date().toISOString(),
+    };
+    const next = [row, ...documents];
+    setDocuments(next);
+    writeLocalRows(LOCAL_AFFILIATE_DOCUMENTS_KEY, next);
+    setDocumentForm({ affiliate: "", name: "", type: "Agreement", status: "Received", notes: "" });
+    setShowDocumentForm(false);
+    setNotice("Added local document metadata row.");
+  }
+
+  function removeCommission(id: string) {
+    if (!window.confirm("Remove this local commission row?")) return;
+    const next = commissions.filter(row => row.id !== id);
+    setCommissions(next);
+    writeLocalRows(LOCAL_AFFILIATE_COMMISSIONS_KEY, next);
+    setNotice("Removed local commission row.");
+  }
+
+  function removeDocument(id: string) {
+    if (!window.confirm("Remove this local document row?")) return;
+    const next = documents.filter(row => row.id !== id);
+    setDocuments(next);
+    writeLocalRows(LOCAL_AFFILIATE_DOCUMENTS_KEY, next);
+    setNotice("Removed local document metadata row.");
+  }
+
   const filtered = affiliates.filter(affiliate => affiliateStatus(affiliate).toLowerCase() === filterTab.toLowerCase());
   const inp: React.CSSProperties = {
     width: "100%",
@@ -311,7 +382,7 @@ export default function Page() {
                       <td style={{ padding: "11px 14px", fontSize: 13, color: "#64748b", maxWidth: 220, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{affiliate.notes || "-"}</td>
                       <td style={{ padding: "11px 14px" }}>
                         <button
-                          onClick={() => remove(affiliate.id)}
+                          onClick={() => setRemoveTarget(affiliate)}
                           style={{ fontSize: 12, padding: "4px 10px", background: "#fff", border: "1px solid #fca5a5", borderRadius: 5, cursor: "pointer", color: "#ef4444", fontWeight: 600 }}
                         >
                           Remove
@@ -324,8 +395,56 @@ export default function Page() {
             </div>
           </>
         ) : (
-          <div style={{ padding: "32px 0", color: "#94a3b8", fontSize: 14, textAlign: "center" }}>
-            No documents or commission records yet.
+          <div style={{ padding: "18px 0" }}>
+            <div style={{ marginBottom: 14, padding: 12, border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 8, color: "#92400e", fontSize: 13, fontWeight: 700 }}>
+              Documents and commissions are stored locally in this browser until backend persistence is added.
+            </div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <button onClick={() => setShowCommissionForm(true)} style={{ background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Add Commission</button>
+              <button onClick={() => setShowDocumentForm(true)} style={{ background: "#0f766e", color: "#fff", border: "none", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Add Document</button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ padding: "11px 14px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontWeight: 800, color: "#1e293b", fontSize: 14 }}>Commission Summary</div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead><tr>{["Affiliate", "Amount", "Status", "Period", "Action"].map(header => <th key={header} style={{ textAlign: "left", padding: "9px 10px", fontSize: 11, color: "#64748b" }}>{header}</th>)}</tr></thead>
+                  <tbody>
+                    {commissions.length === 0 ? (
+                      <tr><td colSpan={5} style={{ padding: 18, color: "#94a3b8", fontSize: 13 }}>No local commission rows yet.</td></tr>
+                    ) : commissions.map(row => (
+                      <tr key={row.id} style={{ borderTop: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "9px 10px", fontSize: 13, fontWeight: 600 }}>{row.affiliate}</td>
+                        <td style={{ padding: "9px 10px", fontSize: 13 }}>${row.amount}</td>
+                        <td style={{ padding: "9px 10px", fontSize: 13 }}>{row.status}</td>
+                        <td style={{ padding: "9px 10px", fontSize: 13 }}>{row.period || "-"}</td>
+                        <td style={{ padding: "9px 10px" }}><button onClick={() => removeCommission(row.id)} style={{ border: "1px solid #fecaca", background: "#fff5f5", color: "#dc2626", borderRadius: 5, padding: "4px 8px", fontSize: 12 }}>Remove</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+
+              <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ padding: "11px 14px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontWeight: 800, color: "#1e293b", fontSize: 14 }}>Document Metadata</div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead><tr>{["Affiliate", "Document", "Type", "Status", "Action"].map(header => <th key={header} style={{ textAlign: "left", padding: "9px 10px", fontSize: 11, color: "#64748b" }}>{header}</th>)}</tr></thead>
+                  <tbody>
+                    {documents.length === 0 ? (
+                      <tr><td colSpan={5} style={{ padding: 18, color: "#94a3b8", fontSize: 13 }}>No local document rows yet.</td></tr>
+                    ) : documents.map(row => (
+                      <tr key={row.id} style={{ borderTop: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "9px 10px", fontSize: 13, fontWeight: 600 }}>{row.affiliate}</td>
+                        <td style={{ padding: "9px 10px", fontSize: 13 }}>{row.name}</td>
+                        <td style={{ padding: "9px 10px", fontSize: 13 }}>{row.type}</td>
+                        <td style={{ padding: "9px 10px", fontSize: 13 }}>{row.status}</td>
+                        <td style={{ padding: "9px 10px" }}><button onClick={() => removeDocument(row.id)} style={{ border: "1px solid #fecaca", background: "#fff5f5", color: "#dc2626", borderRadius: 5, padding: "4px 8px", fontSize: 12 }}>Remove</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            </div>
           </div>
         )}
 
@@ -372,6 +491,61 @@ export default function Page() {
                 <button onClick={save} disabled={saving} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>
                   {saving ? "Saving..." : "Add Affiliate"}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCommissionForm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: 430 }}>
+              <h2 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 800 }}>Add Commission</h2>
+              <div style={{ display: "grid", gap: 12 }}>
+                <input aria-label="Commission Affiliate" placeholder="Affiliate name" value={commissionForm.affiliate} onChange={e => setCommissionForm(f => ({ ...f, affiliate: e.target.value }))} style={inp} />
+                <input aria-label="Commission Amount" placeholder="Amount" type="number" value={commissionForm.amount} onChange={e => setCommissionForm(f => ({ ...f, amount: e.target.value }))} style={inp} />
+                <input aria-label="Commission Period" placeholder="Period, e.g. May 2026" value={commissionForm.period} onChange={e => setCommissionForm(f => ({ ...f, period: e.target.value }))} style={inp} />
+                <select aria-label="Commission Status" value={commissionForm.status} onChange={e => setCommissionForm(f => ({ ...f, status: e.target.value }))} style={inp}>
+                  {["Pending", "Approved", "Paid", "Held"].map(status => <option key={status}>{status}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+                <button onClick={() => setShowCommissionForm(false)} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff" }}>Cancel</button>
+                <button onClick={addCommission} style={{ padding: "8px 16px", border: "none", borderRadius: 7, background: "#1e3a5f", color: "#fff", fontWeight: 700 }}>Add Commission</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDocumentForm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: 430 }}>
+              <h2 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 800 }}>Add Document</h2>
+              <div style={{ display: "grid", gap: 12 }}>
+                <input aria-label="Document Affiliate" placeholder="Affiliate name" value={documentForm.affiliate} onChange={e => setDocumentForm(f => ({ ...f, affiliate: e.target.value }))} style={inp} />
+                <input aria-label="Document Name" placeholder="Document name" value={documentForm.name} onChange={e => setDocumentForm(f => ({ ...f, name: e.target.value }))} style={inp} />
+                <select aria-label="Document Type" value={documentForm.type} onChange={e => setDocumentForm(f => ({ ...f, type: e.target.value }))} style={inp}>
+                  {["Agreement", "W-9", "Invoice", "Referral Proof", "Other"].map(type => <option key={type}>{type}</option>)}
+                </select>
+                <select aria-label="Document Status" value={documentForm.status} onChange={e => setDocumentForm(f => ({ ...f, status: e.target.value }))} style={inp}>
+                  {["Received", "Missing", "Needs Review", "Approved"].map(status => <option key={status}>{status}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+                <button onClick={() => setShowDocumentForm(false)} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff" }}>Cancel</button>
+                <button onClick={addDocument} style={{ padding: "8px 16px", border: "none", borderRadius: 7, background: "#0f766e", color: "#fff", fontWeight: 700 }}>Add Document</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {removeTarget && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 390 }}>
+              <h2 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 800 }}>Remove Affiliate?</h2>
+              <p style={{ color: "#64748b", fontSize: 14, margin: "0 0 20px" }}>Remove {affiliateName(removeTarget)} from the local affiliate list? This action cannot be undone.</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setRemoveTarget(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
+                <button onClick={() => { const target = removeTarget; setRemoveTarget(null); remove(target.id); }} style={{ padding: "9px 20px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Confirm Remove</button>
               </div>
             </div>
           </div>

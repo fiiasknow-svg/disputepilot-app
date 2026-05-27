@@ -11,6 +11,13 @@ const FONT_FAMILIES = ["Arial", "Georgia", "Verdana", "Helvetica", "Times New Ro
 const COLORS = ["#1e3a5f", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#0f172a"];
 const STORAGE_KEY = "disputepilot.websiteLeadForm.settings";
 
+function formStyleVisual(style: string) {
+  if (style === "Short Form") return { maxWidth: 420, columns: "1fr", padding: 20, label: "Compact single-column layout" };
+  if (style === "Wide Form") return { maxWidth: 760, columns: "1fr 1fr", padding: 28, label: "Wide two-column layout" };
+  if (style === "Affiliate") return { maxWidth: 620, columns: "1fr 1fr", padding: 28, label: "Affiliate/referral copy layout" };
+  return { maxWidth: 520, columns: "1fr", padding: 28, label: "Standard branded website layout" };
+}
+
 export default function Page() {
   const [formStyle, setFormStyle] = useState("Website");
   const [required, setRequired] = useState<Record<string, boolean>>({ "First Name": true, "Last Name": true, Email: true });
@@ -33,6 +40,7 @@ export default function Page() {
 
   const settings = { formStyle, required, fields, title, company, bgColor, btnColor, fontSize, fontFamily, btnText };
   const embedSnippet = `<script src="/embed/website-lead-form.js" data-form="website-lead-form"></script>`;
+  const previewVisual = formStyleVisual(formStyle);
 
   useEffect(() => {
     try {
@@ -66,7 +74,7 @@ export default function Page() {
   function handlePublish() {
     saveSettings(true);
     setPublished(true);
-    setStatus("Website lead form published locally. Embed snippet is ready.");
+    setStatus("Website lead form published locally. Public form and embed routes are available.");
   }
 
   async function handleCopyEmbed() {
@@ -101,7 +109,7 @@ export default function Page() {
             <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", marginBottom: 6 }}>Published embed</div>
             <code style={{ display: "block", whiteSpace: "normal", overflowWrap: "anywhere", fontSize: 12, color: "#475569" }}>{embedSnippet}</code>
             <button onClick={handleCopyEmbed} style={{ marginTop: 10, padding: "7px 12px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Copy Embed</button>
-            <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>Local placeholder public URL only: /public/forms/website-lead-form. No public backend route is created here.</div>
+            <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>Public local form route: /public/forms/website-lead-form. Submissions save in this browser locally and call a local demo API.</div>
           </div>
         )}
 
@@ -216,10 +224,11 @@ export default function Page() {
         <div style={sectionStyle}>
           <div style={headerStyle}>7. Form Preview</div>
           <div style={bodyStyle}>
-            <div style={{ background: bgColor, borderRadius: 10, padding: 28, maxWidth: 480 }}>
+            <div style={{ background: bgColor, borderRadius: 10, padding: previewVisual.padding, maxWidth: previewVisual.maxWidth }}>
+              <p style={{ color: "#ffffffb3", fontSize: 11, fontWeight: 800, margin: "0 0 8px", textTransform: "uppercase" }}>{previewVisual.label}</p>
               <h2 style={{ color: "#fff", fontSize: 20, fontWeight: 700, margin: "0 0 20px", fontFamily }}>{title || "Lead Form"}</h2>
               {company && <p style={{ color: "#ffffff99", fontSize: 13, margin: "0 0 16px" }}>{company}</p>}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: previewVisual.columns, gap: 12, marginBottom: 12 }}>
                 {allFields.filter(f => fields[f] && f !== "Comments").map(f => (
                   <div key={f}>
                     <label style={{ display: "block", fontSize: 12, color: "#ffffff99", marginBottom: 4, fontFamily }}>{f}{required[f] ? " *" : ""}</label>
@@ -247,9 +256,10 @@ export default function Page() {
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Form Preview</h2>
               <button onClick={() => setShowPreview(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>x</button>
             </div>
-            <div style={{ background: bgColor, borderRadius: 10, padding: 28 }}>
+            <div style={{ background: bgColor, borderRadius: 10, padding: previewVisual.padding }}>
+              <p style={{ color: "#ffffffb3", fontSize: 11, fontWeight: 800, margin: "0 0 8px", textTransform: "uppercase" }}>{previewVisual.label}</p>
               <h2 style={{ color: "#fff", fontSize: 20, fontWeight: 700, margin: "0 0 20px", fontFamily }}>{title}</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: previewVisual.columns, gap: 12, marginBottom: 12 }}>
                 {allFields.filter(f => fields[f] && f !== "Comments").map(f => (
                   <div key={f}>
                     <label style={{ display: "block", fontSize: 12, color: "#ffffff99", marginBottom: 4 }}>{f}{required[f] ? " *" : ""}</label>
