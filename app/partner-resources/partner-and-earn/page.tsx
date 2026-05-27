@@ -13,8 +13,19 @@ const TIERS = [
 export default function Page() {
   const router = useRouter();
   const [refCount, setRefCount] = useState(10);
+  const [status, setStatus] = useState("");
   const monthly = refCount >= 31 ? refCount*100 : refCount >= 16 ? refCount*60 : refCount >= 6 ? refCount*40 : refCount*25;
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:22};
+  async function copyReferralLink() {
+    const link = `${window.location.origin}/signup?ref=local-demo-partner`;
+    try {
+      await navigator.clipboard?.writeText?.(link);
+    } catch {
+      // Clipboard permission can be unavailable in automated or locked-down browsers.
+    }
+    window.localStorage.setItem("disputepilot.partnerReferralLink", link);
+    setStatus(`Local demo referral link copied: ${link}. Backend partner tracking is not connected.`);
+  }
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:1000}}>
@@ -22,6 +33,14 @@ export default function Page() {
         <div style={{marginBottom:24}}>
           <h1 style={{fontSize:24,fontWeight:800,margin:"0 0 6px",color:"#1e293b"}}>Partner & Earn</h1>
           <p style={{color:"#64748b",fontSize:15,margin:0}}>Refer other credit repair businesses to DisputePilot and earn recurring monthly commissions for every active referral.</p>
+        </div>
+        <div style={{...card,marginBottom:24,display:"flex",justifyContent:"space-between",gap:14,alignItems:"center",flexWrap:"wrap"}}>
+          <div>
+            <h2 style={{fontSize:16,fontWeight:800,margin:"0 0 4px",color:"#1e293b"}}>Your Local Referral Link</h2>
+            <p style={{fontSize:13,color:"#64748b",margin:0}}>Copies a local/demo app URL only. Real referral tracking is not connected.</p>
+          </div>
+          <button type="button" onClick={copyReferralLink} style={{padding:"10px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Copy Referral Link</button>
+          {status && <p role="status" style={{width:"100%",margin:"0",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
           {TIERS.map(t=>(

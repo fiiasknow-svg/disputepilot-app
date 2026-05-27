@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -12,7 +13,19 @@ const PRODUCTS = [
 
 export default function Page() {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState("");
+  const [referral, setReferral] = useState({ businessName: "", contact: "", monthlyRevenue: "", fundingAmount: "", notes: "" });
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:22};
+  function submitReferral() {
+    if (!referral.businessName.trim() || !referral.contact.trim()) {
+      setStatus("Enter business name and contact before submitting the local referral.");
+      return;
+    }
+    const existing = JSON.parse(window.localStorage.getItem("disputepilot.businessFundingReferrals") || "[]");
+    window.localStorage.setItem("disputepilot.businessFundingReferrals", JSON.stringify([{ ...referral, savedAt: new Date().toISOString() }, ...existing]));
+    setStatus("Local funding referral saved. No backend partner submission was sent.");
+  }
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:1000}}>
@@ -24,6 +37,13 @@ export default function Page() {
         <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"16px 20px",marginBottom:24,display:"flex",gap:12}}>
           <span style={{fontSize:20}}>💡</span>
           <div style={{fontSize:13,color:"#166534",lineHeight:1.6}}><strong>Why this is powerful:</strong> Many of your clients are small business owners. After you repair their personal credit, they become eligible for business funding they couldn't access before. You've already built the relationship — this is a natural next conversation that earns you $200–$2,000 per referral.</div>
+        </div>
+        <div style={{...card,marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+          <div>
+            <h2 style={{fontSize:16,fontWeight:800,margin:"0 0 4px",color:"#1e293b"}}>Funding Referral Intake</h2>
+            <p style={{fontSize:13,color:"#64748b",margin:0}}>Save referral details locally until a funding partner backend is connected.</p>
+          </div>
+          <button type="button" onClick={() => { setOpen(true); setStatus(""); }} style={{padding:"10px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Submit Funding Referral</button>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:24}}>
           {PRODUCTS.map(p=>(
@@ -70,6 +90,32 @@ export default function Page() {
           </div>
         </div>
       </div>
+      {open && (
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <section role="dialog" aria-modal="true" aria-labelledby="funding-referral-title" style={{background:"#fff",borderRadius:10,padding:24,width:540,maxWidth:"100%",boxShadow:"0 12px 40px rgba(15,23,42,0.22)"}}>
+            <h2 id="funding-referral-title" style={{fontSize:20,fontWeight:800,margin:"0 0 8px",color:"#1e293b"}}>Submit Funding Referral</h2>
+            <p style={{fontSize:13,color:"#64748b",lineHeight:1.6,margin:"0 0 12px"}}>Local/no backend partner submission. Use this to collect referral details only.</p>
+            {[
+              ["Business Name", "businessName"],
+              ["Contact", "contact"],
+              ["Monthly Revenue", "monthlyRevenue"],
+              ["Funding Amount", "fundingAmount"],
+            ].map(([label,key]) => (
+              <div key={key} style={{marginBottom:10}}>
+                <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>{label}</label>
+                <input aria-label={label} value={referral[key as keyof typeof referral]} onChange={(event)=>setReferral(current=>({...current,[key]:event.target.value}))} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7}} />
+              </div>
+            ))}
+            <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>Notes</label>
+            <textarea aria-label="Notes" value={referral.notes} onChange={(event)=>setReferral(current=>({...current,notes:event.target.value}))} rows={3} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,resize:"vertical",marginBottom:12}} />
+            {status && <p role="status" style={{margin:"0 0 14px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button type="button" onClick={() => setOpen(false)} style={{padding:"9px 16px",background:"#f8fafc",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Cancel</button>
+              <button type="button" onClick={submitReferral} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Submit Referral</button>
+            </div>
+          </section>
+        </div>
+      )}
     </CDMLayout>
   );
 }

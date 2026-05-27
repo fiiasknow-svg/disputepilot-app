@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -11,7 +12,24 @@ const PROCESSORS = [
 
 export default function Page() {
   const router = useRouter();
+  const [selectedProcessor, setSelectedProcessor] = useState<(typeof PROCESSORS)[number] | null>(null);
+  const [status, setStatus] = useState("");
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:22};
+  const checklist = "Prepare business license, EIN, articles of incorporation, voided check, processing history, owner ID, and a clear credit repair business description.";
+  function saveInterest(processor: string) {
+    const next = { processor, savedAt: new Date().toISOString(), checklist };
+    const existing = JSON.parse(window.localStorage.getItem("disputepilot.merchantProcessorInterests") || "[]");
+    window.localStorage.setItem("disputepilot.merchantProcessorInterests", JSON.stringify([next, ...existing]));
+    setStatus(`Local interest saved for ${processor}. Partner URL not connected.`);
+  }
+  async function copyChecklist(processor: string) {
+    try {
+      await navigator.clipboard?.writeText?.(`${processor} merchant account checklist: ${checklist}`);
+    } catch {
+      // Clipboard permission can be unavailable in automated or locked-down browsers.
+    }
+    setStatus(`Local checklist copied for ${processor}. Partner URL not connected.`);
+  }
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:1000}}>
@@ -48,6 +66,9 @@ export default function Page() {
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {p.pros.map(pr=><span key={pr} style={{background:"#f0fdf4",color:"#166534",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:600}}>✓ {pr}</span>)}
               </div>
+              <button type="button" onClick={() => { setSelectedProcessor(p); setStatus(""); }} style={{marginTop:14,padding:"9px 14px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>
+                Request Processor Link
+              </button>
             </div>
           ))}
         </div>
@@ -60,6 +81,24 @@ export default function Page() {
           </ol>
         </div>
       </div>
+      {selectedProcessor && (
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <section role="dialog" aria-modal="true" aria-labelledby="merchant-request-title" style={{background:"#fff",borderRadius:10,padding:24,width:520,maxWidth:"100%",boxShadow:"0 12px 40px rgba(15,23,42,0.22)"}}>
+            <h2 id="merchant-request-title" style={{fontSize:20,fontWeight:800,margin:"0 0 8px",color:"#1e293b"}}>Request Processor Link</h2>
+            <p style={{fontSize:14,color:"#475569",lineHeight:1.6,margin:"0 0 12px"}}>Selected processor: <strong>{selectedProcessor.name}</strong>. This is a local request only; a real partner application URL is not connected.</p>
+            <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:14,marginBottom:14}}>
+              <strong style={{display:"block",fontSize:13,color:"#1e293b",marginBottom:6}}>What to prepare</strong>
+              <p style={{fontSize:13,color:"#475569",lineHeight:1.6,margin:0}}>{checklist}</p>
+            </div>
+            {status && <p role="status" style={{margin:"0 0 14px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",flexWrap:"wrap"}}>
+              <button type="button" onClick={() => setSelectedProcessor(null)} style={{padding:"9px 16px",background:"#f8fafc",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Cancel</button>
+              <button type="button" onClick={() => copyChecklist(selectedProcessor.name)} style={{padding:"9px 16px",background:"#fff",border:"1px solid #1e3a5f",color:"#1e3a5f",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Copy Local Checklist</button>
+              <button type="button" onClick={() => saveInterest(selectedProcessor.name)} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Save Interest</button>
+            </div>
+          </section>
+        </div>
+      )}
     </CDMLayout>
   );
 }

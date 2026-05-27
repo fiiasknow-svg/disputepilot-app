@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -25,7 +26,25 @@ const PRODUCTS = [
 
 export default function Page() {
   const router = useRouter();
+  const [status, setStatus] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<(typeof PRODUCTS)[number] | null>(null);
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:20};
+  async function copyAffiliateLink(product: (typeof PRODUCTS)[number]) {
+    const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const link = `${window.location.origin}/partner-resources/rebuild-credit-affiliate?demoProduct=${slug}&localOnly=true`;
+    try {
+      await navigator.clipboard?.writeText?.(link);
+    } catch {
+      // Clipboard permission can be unavailable in automated or locked-down browsers.
+    }
+    setStatus(`${product.name} local/demo tracking link copied. This is not a real affiliate URL.`);
+  }
+  function requestLink(product: (typeof PRODUCTS)[number]) {
+    const existing = JSON.parse(window.localStorage.getItem("disputepilot.rebuildAffiliateRequests") || "[]");
+    window.localStorage.setItem("disputepilot.rebuildAffiliateRequests", JSON.stringify([{ product: product.name, savedAt: new Date().toISOString() }, ...existing]));
+    setSelectedProduct(product);
+    setStatus(`Local setup request saved for ${product.name}. Real affiliate URL not connected.`);
+  }
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:1000}}>
@@ -38,6 +57,7 @@ export default function Page() {
           <span style={{fontSize:20}}>💡</span>
           <div style={{fontSize:13,color:"#166534",lineHeight:1.6}}><strong>Strategy tip:</strong> Dispute removal + credit building works faster than dispute removal alone. Always recommend at least one credit builder product to clients with fewer than 3 open positive accounts. Your clients get better results, and you earn an extra commission.</div>
         </div>
+        {status && <p role="status" style={{margin:"0 0 16px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
         <div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:24}}>
           {PRODUCTS.map(p=>(
             <div key={p.name} style={{...card,display:"flex",gap:16,alignItems:"flex-start",borderLeft:`4px solid ${p.color}`}}>
@@ -55,6 +75,14 @@ export default function Page() {
                 </div>
                 <p style={{margin:"0 0 8px",fontSize:13,color:"#374151",lineHeight:1.6}}>{p.desc}</p>
                 <div style={{fontSize:12,color:"#64748b"}}>✅ <strong>Ideal for:</strong> {p.ideal}</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:12}}>
+                  <button type="button" onClick={() => copyAffiliateLink(p)} style={{padding:"8px 12px",background:p.color,color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>
+                    {p.name === "Experian Boost" ? "Copy Free Tool Link" : "Copy Affiliate Link"}
+                  </button>
+                  <button type="button" onClick={() => requestLink(p)} style={{padding:"8px 12px",background:"#fff",color:"#1e3a5f",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:800,cursor:"pointer"}}>
+                    Request Link
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -68,6 +96,18 @@ export default function Page() {
           </ol>
         </div>
       </div>
+      {selectedProduct && (
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <section role="dialog" aria-modal="true" aria-labelledby="rebuild-request-title" style={{background:"#fff",borderRadius:10,padding:24,width:480,maxWidth:"100%",boxShadow:"0 12px 40px rgba(15,23,42,0.22)"}}>
+            <h2 id="rebuild-request-title" style={{fontSize:20,fontWeight:800,margin:"0 0 8px",color:"#1e293b"}}>Request Link</h2>
+            <p style={{fontSize:14,color:"#475569",lineHeight:1.6,margin:"0 0 14px"}}>Local request saved for <strong>{selectedProduct.name}</strong>. {selectedProduct.name === "Experian Boost" ? "Experian Boost is marked as a recommended free tool with no commission." : "A real product affiliate URL is not configured."}</p>
+            {status && <p role="status" style={{margin:"0 0 14px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              <button type="button" onClick={() => setSelectedProduct(null)} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Close</button>
+            </div>
+          </section>
+        </div>
+      )}
     </CDMLayout>
   );
 }

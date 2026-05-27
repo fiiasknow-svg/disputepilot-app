@@ -36,6 +36,7 @@ const CHANNELS = [
 type Post = typeof INITIAL_POSTS[number] & { author: string; initials: string; color: string; time: string; cat: string; channel: string; title: string; likes: number; replies: number; pinned: boolean };
 
 const LOCAL_KEY = "disputepilot.community.posts";
+const REPLIES_KEY = "disputepilot.community.replies";
 
 export default function Page() {
   const router = useRouter();
@@ -46,6 +47,10 @@ export default function Page() {
   const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS as Post[]);
   const [draft, setDraft] = useState({ category: "Strategy", title: "", content: "" });
   const [validation, setValidation] = useState("");
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [replyDraft, setReplyDraft] = useState("");
+  const [replyValidation, setReplyValidation] = useState("");
+  const [localReplies, setLocalReplies] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     try {
@@ -53,6 +58,12 @@ export default function Page() {
       if (!stored) return;
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length) setPosts(parsed);
+    } catch {
+      // Ignore local storage issues.
+    }
+    try {
+      const storedReplies = window.localStorage.getItem(REPLIES_KEY);
+      if (storedReplies) setLocalReplies(JSON.parse(storedReplies));
     } catch {
       // Ignore local storage issues.
     }
@@ -65,6 +76,14 @@ export default function Page() {
       // Ignore local storage issues.
     }
   }, [posts]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(REPLIES_KEY, JSON.stringify(localReplies));
+    } catch {
+      // Ignore local storage issues.
+    }
+  }, [localReplies]);
 
   const filtered = posts.filter((post) => (!channelTouched || post.channel === channel) && (cat === "All" || post.cat === cat));
   const card: React.CSSProperties = { background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", padding: 20 };
@@ -94,6 +113,22 @@ export default function Page() {
     };
     setPosts((current) => [nextPost, ...current]);
     closeModal();
+  }
+
+  function addReply() {
+    if (!selectedPost) return;
+    if (!replyDraft.trim()) {
+      setReplyValidation("Enter a reply before posting.");
+      return;
+    }
+    setLocalReplies((current) => ({
+      ...current,
+      [selectedPost.title]: [...(current[selectedPost.title] || []), replyDraft.trim()],
+    }));
+    setPosts((current) => current.map((post) => post.title === selectedPost.title ? { ...post, replies: post.replies + 1 } : post));
+    setSelectedPost((current) => current ? { ...current, replies: current.replies + 1 } : current);
+    setReplyDraft("");
+    setReplyValidation("");
   }
 
   return (
@@ -203,7 +238,7 @@ export default function Page() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {filtered.map((post, index) => (
-                <div key={`${post.title}-${index}`} style={{ ...card, cursor: "pointer", border: post.pinned ? "2px solid #fde68a" : "none" }}>
+                <div key={`${post.title}-${index}`} onClick={() => { setSelectedPost(post); setReplyDraft(""); setReplyValidation(""); }} style={{ ...card, cursor: "pointer", border: post.pinned ? "2px solid #fde68a" : "none" }}>
                   {post.pinned && <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", marginBottom: 6 }}>Pinned</div>}
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: post.color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
@@ -303,6 +338,38 @@ export default function Page() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {selectedPost && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="community-detail-title" style={{ background: "#fff", borderRadius: 12, padding: 28, maxWidth: 620, width: "92%", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
+              <div>
+                <h2 id="community-detail-title" style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 800, color: "#1e293b" }}>{selectedPost.title}</h2>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{selectedPost.channel} / {selectedPost.cat} / {selectedPost.author}</div>
+              </div>
+              <button type="button" onClick={() => setSelectedPost(null)} style={{ padding: "7px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 7, fontWeight: 700, cursor: "pointer" }}>Close</button>
+            </div>
+            <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.6, margin: "0 0 14px" }}>
+              This local community thread stores posts and replies in this browser. Use it for visible discussion notes until a shared community backend is connected.
+            </p>
+            <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, marginBottom: 14 }}>
+              <strong style={{ display: "block", fontSize: 13, color: "#1e293b", marginBottom: 8 }}>Replies ({selectedPost.replies})</strong>
+              {(localReplies[selectedPost.title] || []).length ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {localReplies[selectedPost.title].map((reply, index) => <div key={`${reply}-${index}`} style={{ fontSize: 13, color: "#374151", background: "#fff", borderRadius: 7, padding: "8px 10px" }}><strong>You:</strong> {reply}</div>)}
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>No local replies yet.</p>
+              )}
+            </div>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 5 }}>Add Reply</label>
+            <textarea aria-label="Add Reply" value={replyDraft} onChange={(event) => { setReplyDraft(event.target.value); setReplyValidation(""); }} rows={3} style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", border: "1px solid #cbd5e1", borderRadius: 7, resize: "vertical", marginBottom: 10 }} />
+            {replyValidation && <div role="alert" style={{ margin: "0 0 12px", color: "#b45309", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 7, padding: "9px 12px", fontSize: 13, fontWeight: 700 }}>{replyValidation}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" onClick={addReply} style={{ padding: "9px 16px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontWeight: 800, cursor: "pointer" }}>Post Reply</button>
+            </div>
+          </section>
         </div>
       )}
     </CDMLayout>

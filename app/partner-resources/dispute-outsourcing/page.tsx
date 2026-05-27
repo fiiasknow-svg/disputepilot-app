@@ -23,10 +23,30 @@ export default function Page() {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<(typeof PRICING)[number] | null>(null);
   const [status, setStatus] = useState("");
+  const [intakeOpen, setIntakeOpen] = useState(false);
+  const [intake, setIntake] = useState({ contact: "", clientCount: "", notes: "" });
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:22};
   function closeIntake() {
     setSelectedPlan(null);
     setStatus("");
+    setIntakeOpen(false);
+    setIntake({ contact: "", clientCount: "", notes: "" });
+  }
+  function saveInterest() {
+    if (!selectedPlan) return;
+    const existing = JSON.parse(window.localStorage.getItem("disputepilot.disputeOutsourcingInterests") || "[]");
+    window.localStorage.setItem("disputepilot.disputeOutsourcingInterests", JSON.stringify([{ plan: selectedPlan.name, savedAt: new Date().toISOString() }, ...existing]));
+    setStatus(`Interest saved locally for ${selectedPlan.name}.`);
+  }
+  function saveIntake() {
+    if (!selectedPlan) return;
+    if (!intake.contact.trim() || !intake.clientCount.trim()) {
+      setStatus("Enter contact and client count before saving intake.");
+      return;
+    }
+    const existing = JSON.parse(window.localStorage.getItem("disputepilot.disputeOutsourcingIntakes") || "[]");
+    window.localStorage.setItem("disputepilot.disputeOutsourcingIntakes", JSON.stringify([{ plan: selectedPlan.name, ...intake, savedAt: new Date().toISOString() }, ...existing]));
+    setStatus(`Local intake saved for ${selectedPlan.name}. Backend outsourcing intake is not connected.`);
   }
   return (
     <CDMLayout>
@@ -83,20 +103,35 @@ export default function Page() {
             <p style={{fontSize:14,color:"#64748b",margin:"0 0 16px",lineHeight:1.5}}>
               Selected plan: <strong style={{color:"#1e293b"}}>{selectedPlan.name}</strong>. We will collect client volume, turnaround needs, and account setup details before any real service begins.
             </p>
-            <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:14,marginBottom:16}}>
+            {!intakeOpen && <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:14,marginBottom:16}}>
               <div style={{fontSize:13,fontWeight:800,color:"#1e293b",marginBottom:8}}>Next steps</div>
               <ol style={{margin:"0 0 0 18px",padding:0,color:"#475569",fontSize:13,lineHeight:1.7}}>
                 <li>Confirm current dispute volume and preferred plan.</li>
                 <li>Review client file access and documentation requirements.</li>
                 <li>Connect a real intake or billing workflow before processing starts.</li>
               </ol>
-            </div>
+            </div>}
+            {intakeOpen && (
+              <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:14,marginBottom:16}}>
+                <h3 style={{fontSize:15,fontWeight:800,color:"#1e293b",margin:"0 0 10px"}}>Local Intake Form</h3>
+                <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>Contact</label>
+                <input aria-label="Contact" value={intake.contact} onChange={(event)=>setIntake(current=>({...current,contact:event.target.value}))} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,marginBottom:10}} />
+                <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>Client Count</label>
+                <input aria-label="Client Count" value={intake.clientCount} onChange={(event)=>setIntake(current=>({...current,clientCount:event.target.value}))} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,marginBottom:10}} />
+                <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>Notes</label>
+                <textarea aria-label="Notes" value={intake.notes} onChange={(event)=>setIntake(current=>({...current,notes:event.target.value}))} rows={3} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,resize:"vertical"}} />
+              </div>
+            )}
             {status && <p role="status" style={{margin:"0 0 14px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
             <div style={{display:"flex",gap:10,justifyContent:"flex-end",flexWrap:"wrap"}}>
               <button type="button" onClick={closeIntake} style={{padding:"9px 16px",background:"#f8fafc",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Cancel</button>
               <button type="button" onClick={closeIntake} style={{padding:"9px 16px",background:"#f1f5f9",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Close</button>
-              <button type="button" onClick={() => setStatus(`Interest saved locally for ${selectedPlan.name}.`)} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Save Interest</button>
-              <button type="button" onClick={() => setStatus(`Continue selected for ${selectedPlan.name}. Backend intake is not connected yet.`)} style={{padding:"9px 16px",background:selectedPlan.color,color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Continue</button>
+              <button type="button" onClick={saveInterest} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Save Interest</button>
+              {intakeOpen ? (
+                <button type="button" onClick={saveIntake} style={{padding:"9px 16px",background:selectedPlan.color,color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Save Intake</button>
+              ) : (
+                <button type="button" onClick={() => { setIntakeOpen(true); setStatus(""); }} style={{padding:"9px 16px",background:selectedPlan.color,color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Continue</button>
+              )}
             </div>
           </section>
         </div>

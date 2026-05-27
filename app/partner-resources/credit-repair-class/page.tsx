@@ -15,7 +15,29 @@ const MODULES = [
 export default function Page() {
   const router = useRouter();
   const [activeModule, setActiveModule] = useState<number|null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [status, setStatus] = useState("");
+  const [setup, setSetup] = useState({ businessName: "", contact: "", notes: "" });
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:22};
+  async function copySalesLink() {
+    const link = `${window.location.origin}/partner-resources/credit-repair-class?demoSalesLink=local-only`;
+    try {
+      await navigator.clipboard?.writeText?.(link);
+    } catch {
+      // Clipboard permission can be unavailable in automated or locked-down browsers.
+    }
+    setStatus(`Local/demo course sales link copied: ${link}. No hosted sales page is connected.`);
+  }
+  function saveSetupRequest() {
+    if (!setup.businessName.trim() || !setup.contact.trim()) {
+      setStatus("Enter business name and contact before saving setup.");
+      return;
+    }
+    const existing = JSON.parse(window.localStorage.getItem("disputepilot.creditRepairClassSetupRequests") || "[]");
+    window.localStorage.setItem("disputepilot.creditRepairClassSetupRequests", JSON.stringify([{ ...setup, savedAt: new Date().toISOString() }, ...existing]));
+    setStatus("Local white-label setup request saved. Backend course setup is not connected.");
+  }
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:1000}}>
@@ -33,6 +55,11 @@ export default function Page() {
               {[["6","Modules"],["34","Lessons"],["4.5hr","Content"],["100%","White-Label"]].map(([v,l])=>(
                 <div key={l} style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:900}}>{v}</div><div style={{fontSize:11,opacity:0.8}}>{l}</div></div>
               ))}
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:18}}>
+              <button type="button" onClick={() => { setSetupOpen(true); setStatus(""); }} style={{padding:"9px 12px",background:"#fff",color:"#1e3a5f",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Request White-Label Setup</button>
+              <button type="button" onClick={() => setPreviewOpen(true)} style={{padding:"9px 12px",background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.5)",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Preview Course</button>
+              <button type="button" onClick={copySalesLink} style={{padding:"9px 12px",background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.5)",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Copy Sales Link</button>
             </div>
           </div>
           <div style={card}>
@@ -52,6 +79,7 @@ export default function Page() {
             </div>
           </div>
         </div>
+        {status && <p role="status" style={{margin:"0 0 16px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
         <div style={card}>
           <h3 style={{fontSize:15,fontWeight:800,margin:"0 0 16px",color:"#1e293b"}}>Course Modules</h3>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -75,6 +103,38 @@ export default function Page() {
           </div>
         </div>
       </div>
+      {(setupOpen || previewOpen) && (
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          {setupOpen ? (
+            <section role="dialog" aria-modal="true" aria-labelledby="course-setup-title" style={{background:"#fff",borderRadius:10,padding:24,width:520,maxWidth:"100%",boxShadow:"0 12px 40px rgba(15,23,42,0.22)"}}>
+              <h2 id="course-setup-title" style={{fontSize:20,fontWeight:800,margin:"0 0 8px",color:"#1e293b"}}>Request White-Label Setup</h2>
+              <p style={{fontSize:13,color:"#64748b",lineHeight:1.6,margin:"0 0 12px"}}>Local request only. No hosted academy setup backend is connected.</p>
+              <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>Business Name</label>
+              <input aria-label="Business Name" value={setup.businessName} onChange={(event)=>setSetup(current=>({...current,businessName:event.target.value}))} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,marginBottom:10}} />
+              <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>Contact</label>
+              <input aria-label="Contact" value={setup.contact} onChange={(event)=>setSetup(current=>({...current,contact:event.target.value}))} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,marginBottom:10}} />
+              <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>Notes</label>
+              <textarea aria-label="Notes" value={setup.notes} onChange={(event)=>setSetup(current=>({...current,notes:event.target.value}))} rows={3} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,resize:"vertical",marginBottom:12}} />
+              {status && <p role="status" style={{margin:"0 0 14px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                <button type="button" onClick={() => setSetupOpen(false)} style={{padding:"9px 16px",background:"#f8fafc",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Cancel</button>
+                <button type="button" onClick={saveSetupRequest} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Save Request</button>
+              </div>
+            </section>
+          ) : (
+            <section role="dialog" aria-modal="true" aria-labelledby="course-preview-title" style={{background:"#fff",borderRadius:10,padding:24,width:560,maxWidth:"100%",boxShadow:"0 12px 40px rgba(15,23,42,0.22)"}}>
+              <h2 id="course-preview-title" style={{fontSize:20,fontWeight:800,margin:"0 0 8px",color:"#1e293b"}}>Preview Course</h2>
+              <p style={{fontSize:13,color:"#64748b",lineHeight:1.6,margin:"0 0 12px"}}>Previewing local course modules. No hosted academy video source is connected from this offer page.</p>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+                {MODULES.slice(0,3).map(module => <div key={module.n} style={{padding:"10px 12px",border:"1px solid #e2e8f0",borderRadius:7,fontSize:13,color:"#374151"}}><strong>{module.title}</strong> - {module.desc}</div>)}
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end"}}>
+                <button type="button" onClick={() => setPreviewOpen(false)} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Close</button>
+              </div>
+            </section>
+          )}
+        </div>
+      )}
     </CDMLayout>
   );
 }

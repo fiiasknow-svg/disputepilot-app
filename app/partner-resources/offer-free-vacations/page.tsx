@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -11,7 +12,17 @@ const PACKAGES = [
 
 export default function Page() {
   const router = useRouter();
+  const [selectedPackage, setSelectedPackage] = useState<(typeof PACKAGES)[number] | null>(null);
+  const [recipient, setRecipient] = useState({ name: "", email: "" });
+  const [status, setStatus] = useState("");
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:22};
+  function saveCertificateInterest(action: "saved" | "note") {
+    if (!selectedPackage) return;
+    const existing = JSON.parse(window.localStorage.getItem("disputepilot.vacationCertificateInterests") || "[]");
+    const record = { packageName: selectedPackage.dest, recipient, action, savedAt: new Date().toISOString() };
+    window.localStorage.setItem("disputepilot.vacationCertificateInterests", JSON.stringify([record, ...existing]));
+    setStatus(action === "note" ? `Local activation note generated for ${selectedPackage.dest}. No vacation partner activation was submitted.` : `Local certificate interest saved for ${selectedPackage.dest}. No vacation partner backend is connected.`);
+  }
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:1000}}>
@@ -31,6 +42,7 @@ export default function Page() {
               </div>
             ))}
           </div>
+          <button type="button" onClick={() => { setSelectedPackage(PACKAGES[0]); setStatus(""); }} style={{marginTop:18,padding:"10px 16px",background:"#fff",color:"#7e22ce",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Get Vacation Certificates</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:16,marginBottom:24}}>
           {PACKAGES.map(p=>(
@@ -51,6 +63,9 @@ export default function Page() {
               <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                 {p.included.map(i=><span key={i} style={{background:"#f0fdf4",color:"#166534",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:600}}>✓ {i}</span>)}
               </div>
+              <button type="button" onClick={() => { setSelectedPackage(p); setStatus(""); }} style={{marginTop:14,padding:"9px 14px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>
+                Select Package
+              </button>
             </div>
           ))}
         </div>
@@ -63,6 +78,24 @@ export default function Page() {
           </ol>
         </div>
       </div>
+      {selectedPackage && (
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <section role="dialog" aria-modal="true" aria-labelledby="vacation-setup-title" style={{background:"#fff",borderRadius:10,padding:24,width:520,maxWidth:"100%",boxShadow:"0 12px 40px rgba(15,23,42,0.22)"}}>
+            <h2 id="vacation-setup-title" style={{fontSize:20,fontWeight:800,margin:"0 0 8px",color:"#1e293b"}}>Vacation Certificate Setup</h2>
+            <p style={{fontSize:14,color:"#475569",lineHeight:1.6,margin:"0 0 12px"}}>Package: <strong>{selectedPackage.dest}</strong>. This is local only; no vacation activation partner is connected.</p>
+            <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>Recipient / Client Name</label>
+            <input aria-label="Recipient / Client Name" value={recipient.name} onChange={(event)=>setRecipient(current=>({...current,name:event.target.value}))} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,marginBottom:10}} />
+            <label style={{display:"block",fontSize:13,fontWeight:700,color:"#374151",marginBottom:5}}>Recipient Email</label>
+            <input aria-label="Recipient Email" value={recipient.email} onChange={(event)=>setRecipient(current=>({...current,email:event.target.value}))} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,marginBottom:12}} />
+            {status && <p role="status" style={{margin:"0 0 14px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",flexWrap:"wrap"}}>
+              <button type="button" onClick={() => setSelectedPackage(null)} style={{padding:"9px 16px",background:"#f8fafc",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Cancel</button>
+              <button type="button" onClick={() => saveCertificateInterest("note")} style={{padding:"9px 16px",background:"#fff",border:"1px solid #1e3a5f",color:"#1e3a5f",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Generate Local Activation Note</button>
+              <button type="button" onClick={() => saveCertificateInterest("saved")} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Save Certificate Interest</button>
+            </div>
+          </section>
+        </div>
+      )}
     </CDMLayout>
   );
 }

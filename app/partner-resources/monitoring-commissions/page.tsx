@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -11,7 +12,24 @@ const PROVIDERS = [
 
 export default function Page() {
   const router = useRouter();
+  const [selectedProvider, setSelectedProvider] = useState<(typeof PROVIDERS)[number] | null>(null);
+  const [status, setStatus] = useState("");
   const card: React.CSSProperties={background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:22};
+  function saveInterest(provider: string) {
+    const existing = JSON.parse(window.localStorage.getItem("disputepilot.monitoringAffiliateInterests") || "[]");
+    window.localStorage.setItem("disputepilot.monitoringAffiliateInterests", JSON.stringify([{ provider, savedAt: new Date().toISOString() }, ...existing]));
+    setStatus(`Local affiliate interest saved for ${provider}. Real provider link is not connected.`);
+  }
+  async function copyDemoLink(provider: string) {
+    const slug = provider.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const link = `${window.location.origin}/partner-resources/monitoring-commissions?demoProvider=${slug}&localOnly=true`;
+    try {
+      await navigator.clipboard?.writeText?.(link);
+    } catch {
+      // Clipboard permission can be unavailable in automated or locked-down browsers.
+    }
+    setStatus(`Local demo tracking link copied for ${provider}. This is not a real provider affiliate URL.`);
+  }
   return (
     <CDMLayout>
       <div style={{padding:24,maxWidth:1000}}>
@@ -49,6 +67,9 @@ export default function Page() {
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   {p.features.map(f=><span key={f} style={{background:p.color+"15",color:p.color,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:600}}>{f}</span>)}
                 </div>
+                <button type="button" onClick={() => { setSelectedProvider(p); setStatus(""); }} style={{marginTop:14,padding:"9px 14px",background:p.color,color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>
+                  Request Affiliate Link
+                </button>
               </div>
             </div>
           ))}
@@ -73,6 +94,21 @@ export default function Page() {
           </div>
         </div>
       </div>
+      {selectedProvider && (
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <section role="dialog" aria-modal="true" aria-labelledby="monitoring-request-title" style={{background:"#fff",borderRadius:10,padding:24,width:520,maxWidth:"100%",boxShadow:"0 12px 40px rgba(15,23,42,0.22)"}}>
+            <h2 id="monitoring-request-title" style={{fontSize:20,fontWeight:800,margin:"0 0 8px",color:"#1e293b"}}>Request Affiliate Link</h2>
+            <p style={{fontSize:14,color:"#475569",lineHeight:1.6,margin:"0 0 12px"}}>Selected provider: <strong>{selectedProvider.name}</strong>. No real affiliate URL is configured in this local app.</p>
+            <p style={{fontSize:13,color:"#64748b",lineHeight:1.6,margin:"0 0 14px"}}>Use the local demo link only for internal tracking notes until a provider account and affiliate URL are connected.</p>
+            {status && <p role="status" style={{margin:"0 0 14px",color:"#166534",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:7,padding:"9px 12px",fontSize:13,fontWeight:700}}>{status}</p>}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",flexWrap:"wrap"}}>
+              <button type="button" onClick={() => setSelectedProvider(null)} style={{padding:"9px 16px",background:"#f8fafc",border:"1px solid #cbd5e1",borderRadius:7,fontWeight:700,cursor:"pointer"}}>Cancel</button>
+              <button type="button" onClick={() => copyDemoLink(selectedProvider.name)} style={{padding:"9px 16px",background:"#fff",border:"1px solid #1e3a5f",color:"#1e3a5f",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Copy Local Tracking Link</button>
+              <button type="button" onClick={() => saveInterest(selectedProvider.name)} style={{padding:"9px 16px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,fontWeight:800,cursor:"pointer"}}>Save Interest</button>
+            </div>
+          </section>
+        </div>
+      )}
     </CDMLayout>
   );
 }
