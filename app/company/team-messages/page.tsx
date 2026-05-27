@@ -1,9 +1,10 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 type Reply = { from: string; role: string; body: string; date: string };
 type Message = { id: number; from: string; role: string; to: string; subject: string; body: string; date: string; read: boolean; priority: "normal" | "high"; replies: Reply[] };
+const MESSAGE_STORAGE_KEY = "disputepilot.teamMessages.local";
 
 const SAMPLE: Message[] = [
   { id: 1, from: "Admin", role: "Admin", to: "All Staff", subject: "New client onboarded — Ana", body: "Just wanted to let the team know that Ana has been added as a new client. Please make sure her initial dispute is filed by end of week. She is in the priority queue and needs attention ASAP.", date: "2026-04-18T09:30:00", read: false, priority: "high", replies: [] },
@@ -32,6 +33,21 @@ function fmtDate(iso: string) {
 const inp: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14, boxSizing: "border-box", color: "#1e293b" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 };
 
+function readMessages() {
+  if (typeof window === "undefined") return SAMPLE;
+  try {
+    const raw = window.localStorage.getItem(MESSAGE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) as Message[] : SAMPLE;
+  } catch {
+    return SAMPLE;
+  }
+}
+
+function writeMessages(messages: Message[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(MESSAGE_STORAGE_KEY, JSON.stringify(messages));
+}
+
 export default function Page() {
   const [messages, setMessages] = useState<Message[]>(SAMPLE);
   const [selected, setSelected] = useState<Message | null>(null);
@@ -41,6 +57,17 @@ export default function Page() {
   const [inboxTab, setInboxTab] = useState<"inbox" | "sent">("inbox");
   const [search, setSearch] = useState("");
   const [composeError, setComposeError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setMessages(readMessages());
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) writeMessages(messages);
+  }, [messages, hydrated]);
 
   const unread = messages.filter(m => !m.read).length;
 
@@ -59,15 +86,18 @@ export default function Page() {
     setMessages(ms => ms.map(m => m.id === msg.id ? { ...m, read: true } : m));
     setSelected({ ...msg, read: true });
     setReply("");
+    if (!msg.read) setNotice("Message marked read locally.");
   }
 
   function markAllRead() {
     setMessages(ms => ms.map(m => ({ ...m, read: true })));
+    setNotice("Marked all messages read locally.");
   }
 
   function deleteMsg(id: number) {
     setMessages(ms => ms.filter(m => m.id !== id));
     if (selected?.id === id) setSelected(null);
+    setNotice("Message archived locally. Team delivery backend is not connected.");
   }
 
   function sendReply() {
@@ -76,6 +106,7 @@ export default function Page() {
     setMessages(ms => ms.map(m => m.id === selected.id ? { ...m, replies: [...m.replies, r] } : m));
     setSelected(s => s ? { ...s, replies: [...s.replies, r] } : s);
     setReply("");
+    setNotice("Reply saved locally. Team delivery backend is not connected.");
   }
 
   function sendNew() {
@@ -92,6 +123,14 @@ export default function Page() {
     setForm({ to: "All Staff", subject: "", body: "", priority: "normal" });
     setComposeError("");
     setShowCompose(false);
+    setInboxTab("sent");
+    setNotice("Message saved to Sent locally. Team delivery backend is not connected.");
+  }
+
+  function closeCompose() {
+    setShowCompose(false);
+    setComposeError("");
+    setForm({ to: "All Staff", subject: "", body: "", priority: "normal" });
   }
 
   return (
@@ -116,6 +155,12 @@ export default function Page() {
             </button>
           </div>
         </div>
+
+        {notice && (
+          <div role="status" aria-live="polite" style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, fontWeight: 700 }}>
+            {notice}
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: selected ? "360px 1fr" : "1fr", gap: 20 }}>
           {/* Left panel */}
@@ -249,7 +294,7 @@ export default function Page() {
             <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 520 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1e293b" }}>New Message</h2>
-                <button onClick={() => setShowCompose(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8" }}>×</button>
+                <button onClick={closeCompose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8" }}>×</button>
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={lbl}>To</label>
@@ -279,7 +324,7 @@ export default function Page() {
               </div>
               {composeError && <p role="alert" style={{ margin: "0 0 14px", color: "#b45309", fontSize: 13, fontWeight: 700 }}>{composeError}</p>}
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setShowCompose(false)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
+                <button onClick={closeCompose} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
                 <button onClick={sendNew} style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Send Message</button>
               </div>
             </div>

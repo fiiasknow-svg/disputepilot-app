@@ -8,6 +8,9 @@ const ROLE_C: Record<string,string> = { Admin:"#1e3a5f", Manager:"#8b5cf6", "Dis
 const DEPARTMENTS = ["Operations","Sales","Disputes","Billing","Support","Compliance","Management"];
 const AVATAR_COLORS = ["#1e3a5f","#3b82f6","#8b5cf6","#10b981","#f59e0b","#ef4444","#06b6d4","#ec4899"];
 const PAGE_SIZES = [25,50,100];
+const EMPLOYEE_STORAGE_KEY = "disputepilot.employees.local";
+const INVITE_STORAGE_KEY = "disputepilot.employees.pendingInvites";
+const TASK_STORAGE_KEY = "disputepilot.employees.tasks";
 
 // Role permissions matrix
 const PERMISSIONS: Record<string, Record<string,boolean>> = {
@@ -36,6 +39,22 @@ function relTime(iso?: string) {
 }
 
 const EMPTY_FORM = { first_name:"", last_name:"", email:"", phone:"", role:"Dispute Specialist", status:"active", department:"Operations", title:"", notes:"" };
+const EMPTY_TASK_FORM = { title:"", due:"", notes:"" };
+
+function readStorage<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(key: string, value: unknown) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
 
 function employeeName(emp: any) {
   return emp.name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim();
@@ -64,6 +83,33 @@ function employeePayload(form: typeof EMPTY_FORM, accountId: string | null, incl
   if (accountId) payload.account_id = accountId;
 
   return payload;
+}
+
+function employeeFromForm(form: typeof EMPTY_FORM, id?: string) {
+  const name = `${form.first_name} ${form.last_name}`.trim() || form.email;
+  return {
+    id: id || crypto.randomUUID(),
+    name,
+    first_name: form.first_name,
+    last_name: form.last_name,
+    email: form.email,
+    phone: form.phone,
+    role: form.role,
+    status: form.status,
+    department: form.department,
+    title: form.title,
+    notes: form.notes,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    local_only: true,
+  };
+}
+
+function mergeEmployees(remote: any[], local: any[]) {
+  const byId = new Map<string, any>();
+  remote.forEach(emp => byId.set(emp.id, emp));
+  local.forEach(emp => byId.set(emp.id, { ...(byId.get(emp.id) || {}), ...emp }));
+  return [...byId.values()];
 }
 
 function supabaseErrorParts(error: any) {
@@ -120,15 +166,23 @@ export default function Page() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<"employees"|"roles">("employees");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any|null>(null);
   const [deleteId, setDeleteId] = useState<string|null>(null);
+  const [bulkRemoveOpen, setBulkRemoveOpen] = useState(false);
   const [viewActivity, setViewActivity] = useState<any|null>(null);
   const [viewPerms, setViewPerms] = useState<any|null>(null);
+  const [viewTasks, setViewTasks] = useState<any|null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("Dispute Specialist");
+  const [inviteError, setInviteError] = useState("");
   const [inviteSent, setInviteSent] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<any[]>([]);
+  const [tasksByEmployee, setTasksByEmployee] = useState<Record<string, any[]>>({});
+  const [taskForm, setTaskForm] = useState({...EMPTY_TASK_FORM});
+  const [localHydrated, setLocalHydrated] = useState(false);
   const [form, setForm] = useState({...EMPTY_FORM});
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -136,6 +190,24 @@ export default function Page() {
   const [saveError, setSaveError] = useState("");
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [trainingOpen, setTrainingOpen] = useState(false);
+
+  useEffect(() => {
+    setPendingInvites(readStorage<any[]>(INVITE_STORAGE_KEY, []));
+    setTasksByEmployee(readStorage<Record<string, any[]>>(TASK_STORAGE_KEY, {}));
+    setLocalHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!loading) writeStorage(EMPLOYEE_STORAGE_KEY, employees);
+  }, [employees, loading]);
+
+  useEffect(() => {
+    if (localHydrated) writeStorage(INVITE_STORAGE_KEY, pendingInvites);
+  }, [pendingInvites, localHydrated]);
+
+  useEffect(() => {
+    if (localHydrated) writeStorage(TASK_STORAGE_KEY, tasksByEmployee);
+  }, [tasksByEmployee, localHydrated]);
 
   // Mock activity log per employee
   const activityLog: Record<string,any[]> = {};
@@ -179,6 +251,7 @@ export default function Page() {
   async function load() {
     setLoading(true);
     setErrorMessage("");
+    const localEmployees = readStorage<any[]>(EMPLOYEE_STORAGE_KEY, []);
     try {
       const accountId = await getAccountId();
 
@@ -187,7 +260,7 @@ export default function Page() {
         if(error) throw error;
 
         if(data?.length){
-          setEmployees(data);
+          setEmployees(mergeEmployees(data, localEmployees));
           setLoading(false);
           return;
         }
@@ -195,9 +268,9 @@ export default function Page() {
 
       const { data, error } = await supabase.from("employees").select("*").order("created_at",{ascending:false});
       if(error) throw error;
-      setEmployees(data||[]);
+      setEmployees(mergeEmployees(data||[], localEmployees));
     } catch (error) {
-      setEmployees([]);
+      setEmployees(localEmployees);
       setErrorMessage(`Could not load employees from Supabase. ${formatSaveError(error)}`);
     }
     setLoading(false);
@@ -230,6 +303,7 @@ export default function Page() {
     let accountId: string | null = null;
     let operation: "insert" | "update" = editing ? "update" : "insert";
     let payloadColumns: string[] = [];
+    const visibleEmployee = employeeFromForm(form, editing?.id);
     try {
       const accountContext = await getAccountContext();
       accountId = accountContext.accountId;
@@ -248,9 +322,12 @@ export default function Page() {
         if(error) throw error;
       }
 
+      setEmployees(current => editing
+        ? current.map(emp => emp.id === editing.id ? { ...emp, ...visibleEmployee, local_only: false } : emp)
+        : [{ ...visibleEmployee, local_only: false }, ...current]
+      );
       setSaving(false); setShowForm(false); setEditing(null); setForm({...EMPTY_FORM});
       setNotice(editing ? `Updated employee: ${form.first_name} ${form.last_name}`.trim() : `Added employee: ${form.first_name} ${form.last_name}`.trim());
-      load();
     } catch (error) {
       logEmployeeSaveFailure({
         accountIdResolved: Boolean(accountId),
@@ -258,8 +335,17 @@ export default function Page() {
         payloadColumns,
         error,
       });
-      setSaveError(formatSaveError(error));
+      const localMessage = formatSaveError(error);
+      setEmployees(current => editing
+        ? current.map(emp => emp.id === editing.id ? { ...emp, ...visibleEmployee, local_only: true } : emp)
+        : [{ ...visibleEmployee, local_only: true }, ...current]
+      );
+      setNotice(`${editing ? "Updated" : "Added"} employee locally; backend save unavailable.`);
+      setErrorMessage(`Supabase employee save failed: ${localMessage}`);
       setSaving(false);
+      setShowForm(false);
+      setEditing(null);
+      setForm({...EMPTY_FORM});
     }
   }
 
@@ -284,7 +370,7 @@ export default function Page() {
       remoteError = formatSaveError(error);
     }
     setDeleteId(null); setEmployees(e=>e.filter(x=>x.id!==id)); setSelected(s=>{const n=new Set(s);n.delete(id);return n;});
-    setNotice(remoteError ? "Removed employee locally." : "Removed employee.");
+    setNotice(remoteError ? "Removed locally; backend delete unavailable" : "Removed employee.");
     if(remoteError) setErrorMessage(`Supabase delete failed: ${remoteError}`);
   }
 
@@ -301,8 +387,8 @@ export default function Page() {
     } catch (error) {
       remoteError = formatSaveError(error);
     }
-    setEmployees(e=>e.filter(x=>!ids.includes(x.id))); setSelected(new Set());
-    setNotice(remoteError ? `Removed ${ids.length} employee${ids.length === 1 ? "" : "s"} locally.` : `Removed ${ids.length} employee${ids.length === 1 ? "" : "s"}.`);
+    setEmployees(e=>e.filter(x=>!ids.includes(x.id))); setSelected(new Set()); setBulkRemoveOpen(false);
+    setNotice(remoteError ? `Removed locally; backend delete unavailable (${ids.length} employee${ids.length === 1 ? "" : "s"})` : `Removed ${ids.length} employee${ids.length === 1 ? "" : "s"}.`);
     if(remoteError) setErrorMessage(`Supabase bulk delete failed: ${remoteError}`);
   }
 
@@ -321,7 +407,7 @@ export default function Page() {
     }
     setEmployees(e=>e.map(x=>ids.includes(x.id)?{...x,status}:x));
     setSelected(new Set()); setBulkStatusOpen(false);
-    setNotice(remoteError ? `Updated ${ids.length} employee${ids.length === 1 ? "" : "s"} locally.` : `Updated ${ids.length} employee${ids.length === 1 ? "" : "s"}.`);
+    setNotice(remoteError ? `Updated ${ids.length} employee${ids.length === 1 ? "" : "s"} locally; backend status update unavailable.` : `Updated ${ids.length} employee${ids.length === 1 ? "" : "s"}.`);
     if(remoteError) setErrorMessage(`Supabase bulk status update failed: ${remoteError}`);
   }
 
@@ -339,24 +425,39 @@ export default function Page() {
       remoteError = formatSaveError(error);
     }
     setEmployees(e=>e.map(x=>x.id===id?{...x,status}:x));
-    setNotice(remoteError ? "Updated employee status locally." : "Updated employee status.");
+    setNotice(remoteError ? "Updated employee status locally; backend status update unavailable." : "Updated employee status.");
     if(remoteError) setErrorMessage(`Supabase status update failed: ${remoteError}`);
   }
 
   function sendInvite() {
+    const email = inviteEmail.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setInviteError("Enter a valid email address.");
+      return;
+    }
+    setInviteError("");
+    setPendingInvites(invites => [{ id: crypto.randomUUID(), email, role: inviteRole, status:"Local pending - email delivery not connected", created_at: new Date().toISOString() }, ...invites]);
     setNotice("Invite queued locally. Email delivery is not connected yet.");
     setInviteSent(true);
     setTimeout(()=>{ setInviteSent(false); setShowInvite(false); setInviteEmail(""); setInviteRole("Dispute Specialist"); },2000);
   }
 
   function exportCSV() {
-    const hdrs=["First Name","Last Name","Email","Phone","Role","Department","Title","Status","Last Login","Added"];
-    const rows=filtered.map(e=>{
+    const selectedRows = selected.size ? filtered.filter(e => selected.has(e.id)) : filtered;
+    const hdrs=["First Name","Last Name","Email","Phone","Role","Department","Title","Notes","Status","Last Login","Added"];
+    const rows=selectedRows.map(e=>{
       const { firstName, lastName } = splitEmployeeName(e);
-      return [firstName,lastName,e.email,e.phone||"",e.role,e.department||"",e.title||"",e.status,e.last_login||"",e.created_at?.slice(0,10)||""].map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(",");
+      return [firstName,lastName,e.email,e.phone||"",e.role,e.department||"",e.title||"",e.notes||"",e.status,e.last_login||"",e.created_at?.slice(0,10)||""].map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(",");
     });
     const blob=new Blob([[hdrs.join(","),...rows].join("\n")],{type:"text/csv"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="employees.csv"; a.click();
+  }
+
+  function addTask() {
+    if(!viewTasks || !taskForm.title.trim()) return;
+    const task = { id: crypto.randomUUID(), title: taskForm.title.trim(), due: taskForm.due, notes: taskForm.notes, created_at: new Date().toISOString() };
+    setTasksByEmployee(current => ({ ...current, [viewTasks.id]: [...(current[viewTasks.id] || []), task] }));
+    setTaskForm({...EMPTY_TASK_FORM});
   }
 
   // Stats
@@ -398,20 +499,50 @@ export default function Page() {
         )}
 
         <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:4,marginBottom:14}}>
-          <div style={{display:"flex",borderBottom:"1px solid #e5e7eb",flexWrap:"wrap"}}>
-            <button type="button" style={{padding:"12px 18px",border:"none",borderRight:"1px solid #e5e7eb",background:"#1e3a5f",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",textTransform:"uppercase"}}>Employees Information</button>
-            <button type="button" style={{padding:"12px 18px",border:"none",borderRight:"1px solid #e5e7eb",background:"#f8fafc",color:"#334155",fontWeight:700,fontSize:12,cursor:"pointer",textTransform:"uppercase"}}>Roles & Permissions</button>
+          <div role="tablist" aria-label="Employees sections" style={{display:"flex",borderBottom:"1px solid #e5e7eb",flexWrap:"wrap"}}>
+            <button type="button" role="tab" aria-selected={activeTab==="employees"} onClick={()=>setActiveTab("employees")} style={{padding:"12px 18px",border:"none",borderRight:"1px solid #e5e7eb",background:activeTab==="employees"?"#1e3a5f":"#f8fafc",color:activeTab==="employees"?"#fff":"#334155",fontWeight:700,fontSize:12,cursor:"pointer",textTransform:"uppercase"}}>Employees Information</button>
+            <button type="button" role="tab" aria-selected={activeTab==="roles"} onClick={()=>setActiveTab("roles")} style={{padding:"12px 18px",border:"none",borderRight:"1px solid #e5e7eb",background:activeTab==="roles"?"#1e3a5f":"#f8fafc",color:activeTab==="roles"?"#fff":"#334155",fontWeight:700,fontSize:12,cursor:"pointer",textTransform:"uppercase"}}>Roles & Permissions</button>
           </div>
           <div style={{padding:"16px 18px"}}>
-            <p style={{margin:"0 0 14px",fontSize:14,color:"#475569"}}>In this area you can add, delete, manage and track your employees. You can monitor the employee's login time with the activity log.</p>
-            <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-              <button onClick={()=>{setEditing(null);setSaveError("");setForm({...EMPTY_FORM});setShowForm(true);}} style={{background:"#1e3a5f",color:"#fff",border:"none",borderRadius:4,padding:"9px 16px",cursor:"pointer",fontWeight:700,fontSize:12,textTransform:"uppercase"}}>Add New Employee</button>
-              <button type="button" onClick={() => setTrainingOpen(true)} style={simpleButton}>Training Videos</button>
-              <span style={{fontSize:14,fontWeight:700,color:"#374151"}}>Employee Quota = {total}/{employeeQuotaLimit} used</span>
-            </div>
+            {activeTab==="employees" ? (
+              <>
+                <p style={{margin:"0 0 14px",fontSize:14,color:"#475569"}}>In this area you can add, delete, manage and track your employees. You can monitor the employee's login time with the activity log.</p>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+                  <button onClick={()=>{setEditing(null);setSaveError("");setForm({...EMPTY_FORM});setShowForm(true);}} style={{background:"#1e3a5f",color:"#fff",border:"none",borderRadius:4,padding:"9px 16px",cursor:"pointer",fontWeight:700,fontSize:12,textTransform:"uppercase"}}>Add New Employee</button>
+                  <button type="button" onClick={() => setTrainingOpen(true)} style={simpleButton}>Training Videos</button>
+                  <span style={{fontSize:14,fontWeight:700,color:"#374151"}}>Employee Quota = {total}/{employeeQuotaLimit} used</span>
+                </div>
+              </>
+            ) : (
+              <div>
+                <p style={{margin:"0 0 14px",fontSize:14,color:"#475569"}}>Role permissions are read-only presets. Open an employee's Permissions action to review their role and edit role/status.</p>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
+                  {ROLES.map(role => {
+                    const allowed = Object.entries(PERMISSIONS[role] || {}).filter(([,has]) => has).length;
+                    return (
+                      <div key={role} style={{border:"1px solid #e5e7eb",borderRadius:6,padding:14,background:"#fff"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:8}}>
+                          <strong style={{fontSize:14,color:ROLE_C[role]||"#1f2937"}}>{role}</strong>
+                          <span style={{fontSize:12,color:"#64748b"}}>{allowed} permissions</span>
+                        </div>
+                        <div style={{display:"grid",gap:5}}>
+                          {Object.entries(PERM_LABELS).map(([key,label]) => (
+                            <span key={key} style={{fontSize:12,color:(PERMISSIONS[role]||{})[key]?"#166534":"#94a3b8"}}>
+                              {(PERMISSIONS[role]||{})[key] ? "Yes" : "No"} - {label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
+        {activeTab==="employees"&&(
+        <>
         {/* Bulk toolbar */}
         {selected.size>0&&(
           <div style={{background:"#1e3a5f",borderRadius:8,padding:"10px 16px",marginBottom:12,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
@@ -428,7 +559,7 @@ export default function Page() {
               )}
             </div>
             <button onClick={exportCSV} style={{padding:"6px 14px",border:"1px solid rgba(255,255,255,0.3)",borderRadius:6,background:"transparent",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:600}}>⬇ Export</button>
-            <button onClick={bulkDelete} style={{padding:"6px 14px",border:"1px solid #fca5a5",borderRadius:6,background:"transparent",color:"#fca5a5",cursor:"pointer",fontSize:13,fontWeight:600}}>🗑 Remove</button>
+            <button onClick={()=>setBulkRemoveOpen(true)} style={{padding:"6px 14px",border:"1px solid #fca5a5",borderRadius:6,background:"transparent",color:"#fca5a5",cursor:"pointer",fontSize:13,fontWeight:600}}>Remove</button>
             <button onClick={()=>setSelected(new Set())} style={{padding:"6px 14px",border:"none",background:"rgba(255,255,255,0.15)",color:"#fff",borderRadius:6,cursor:"pointer",fontSize:12}}>✕ Clear</button>
           </div>
         )}
@@ -462,10 +593,16 @@ export default function Page() {
                         <td style={{padding:"11px 12px"}}>
                           <input type="checkbox" checked={selected.has(emp.id)} onChange={()=>toggleSelect(emp.id)}/>
                         </td>
-                        <td style={{padding:"11px 12px",fontSize:13,color:"#1f2937",fontWeight:600}}>{name||"-"}</td>
+                        <td style={{padding:"11px 12px",fontSize:13,color:"#1f2937",fontWeight:600}}>
+                          <div>{name||"-"}</div>
+                          {emp.notes&&<div style={{fontSize:11,color:"#64748b",fontWeight:500,marginTop:3}}>Notes: {emp.notes}</div>}
+                        </td>
                         <td style={{padding:"11px 12px",fontSize:13,color:"#475569"}}>{emp.phone||"-"}</td>
                         <td style={{padding:"11px 12px",fontSize:13,color:"#475569"}}>{emp.email||"-"}</td>
-                        <td style={{padding:"11px 12px",fontSize:13,color:"#475569"}}>{emp.title||emp.role||"-"}</td>
+                        <td style={{padding:"11px 12px",fontSize:13,color:"#475569"}}>
+                          <div>{emp.title||emp.role||"-"}</div>
+                          <div style={{fontSize:11,color:"#64748b"}}>{emp.department||"-"} / {emp.role||"-"}</div>
+                        </td>
                         <td style={{padding:"11px 12px",fontSize:13,color:"#475569",whiteSpace:"nowrap"}}>{createdAt||"-"}</td>
                         <td style={{padding:"11px 12px"}}>
                           <button type="button" onClick={()=>toggleStatus(emp.id,emp.status)} style={{border:"1px solid #d1d5db",borderRadius:4,background:"#fff",padding:"4px 10px",fontSize:12,cursor:"pointer",color:emp.status==="active"?"#166534":"#64748b"}}>
@@ -475,11 +612,16 @@ export default function Page() {
                         <td style={{padding:"11px 12px"}}>
                           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                             <button onClick={()=>openEdit(emp)} title="Edit" aria-label={`Edit ${name||"employee"}`} style={{...simpleButton,padding:"5px 8px",fontSize:11}}>Edit</button>
+                            <button onClick={()=>setViewPerms(emp)} title="Permissions" aria-label={`Permissions ${name||"employee"}`} style={{...simpleButton,padding:"5px 8px",fontSize:11}}>Permissions</button>
                             <button onClick={()=>setDeleteId(emp.id)} title="Delete" aria-label={`Delete ${name||"employee"}`} style={{...simpleButton,padding:"5px 8px",fontSize:11,color:"#991b1b",borderColor:"#fecaca"}}>Delete</button>
                             <button onClick={()=>setViewActivity(emp)} title="Activity Log" aria-label={`Activity log ${name||"employee"}`} style={{...simpleButton,padding:"5px 8px",fontSize:11}}>Activity Log</button>
                           </div>
                         </td>
-                        <td style={{padding:"11px 12px",fontSize:13,color:"#64748b"}}>0</td>
+                        <td style={{padding:"11px 12px",fontSize:13,color:"#64748b"}}>
+                          <button type="button" onClick={()=>{setViewTasks(emp);setTaskForm({...EMPTY_TASK_FORM});}} style={{...simpleButton,padding:"5px 8px",fontSize:11}}>
+                            {(tasksByEmployee[emp.id] || []).length} Manage
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -507,6 +649,8 @@ export default function Page() {
             </div>
           )}
         </div>
+        </>
+        )}
 
         {trainingOpen&&(
           <div role="dialog" aria-modal="true" aria-labelledby="employee-training-title" onClick={()=>setTrainingOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}}>
@@ -532,6 +676,7 @@ export default function Page() {
         )}
 
         {/* ── ADD / EDIT MODAL ── */}
+        {activeTab==="employees"&&(
         <div style={{marginTop:18,background:"#fff",border:"1px solid #e5e7eb",borderRadius:4,padding:16}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:12}}>
             <div>
@@ -560,7 +705,21 @@ export default function Page() {
               {DEPARTMENTS.map(d=><option key={d} value={d}>{d}</option>)}
             </select>
           </div>
+          {pendingInvites.length>0&&(
+            <div style={{marginTop:14,borderTop:"1px solid #f1f5f9",paddingTop:12}}>
+              <h3 style={{margin:"0 0 8px",fontSize:13,color:"#374151"}}>Pending Local Invites</h3>
+              <div style={{display:"grid",gap:6}}>
+                {pendingInvites.map(invite => (
+                  <div key={invite.id} style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",fontSize:13,color:"#475569",border:"1px solid #e5e7eb",borderRadius:6,padding:"8px 10px"}}>
+                    <span>{invite.email} - {invite.role}</span>
+                    <span style={{color:"#b45309",fontWeight:700}}>{invite.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
+        )}
 
         {showForm&&(
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
@@ -715,16 +874,63 @@ export default function Page() {
                   {ROLES.map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
-              {inviteSent&&<div style={{background:"#f0fdf4",border:"1px solid #86efac",borderRadius:7,padding:"10px 14px",marginBottom:14,fontSize:13,color:"#166534",fontWeight:600}}>✓ Invite sent to {inviteEmail}</div>}
+              {inviteError&&<div role="alert" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"10px 14px",marginBottom:14,fontSize:13,color:"#991b1b",fontWeight:600}}>{inviteError}</div>}
+              {inviteSent&&<div style={{background:"#f0fdf4",border:"1px solid #86efac",borderRadius:7,padding:"10px 14px",marginBottom:14,fontSize:13,color:"#166534",fontWeight:600}}>Invite queued locally for {inviteEmail}; email delivery is not connected.</div>}
               <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-                <button onClick={()=>setShowInvite(false)} style={{padding:"9px 20px",border:"1px solid #e2e8f0",borderRadius:7,background:"#fff",cursor:"pointer"}}>Cancel</button>
-                <button onClick={sendInvite} disabled={!inviteEmail||inviteSent} style={{padding:"9px 20px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontWeight:700}}>{inviteSent?"Sent!":"Send Invite"}</button>
+                <button onClick={()=>{setShowInvite(false);setInviteError("");setInviteEmail("");setInviteRole("Dispute Specialist");}} style={{padding:"9px 20px",border:"1px solid #e2e8f0",borderRadius:7,background:"#fff",cursor:"pointer"}}>Cancel</button>
+                <button onClick={sendInvite} disabled={inviteSent} style={{padding:"9px 20px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,cursor:inviteSent?"not-allowed":"pointer",fontWeight:700,opacity:inviteSent?0.6:1}}>{inviteSent?"Queued":"Send Invite"}</button>
               </div>
             </div>
           </div>
         )}
 
         {/* ── DELETE CONFIRM ── */}
+        {viewTasks&&(
+          <div role="dialog" aria-modal="true" aria-labelledby="employee-tasks-title" style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+            <div style={{background:"#fff",borderRadius:12,padding:28,width:500,maxHeight:"92vh",overflowY:"auto"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <h2 id="employee-tasks-title" style={{margin:0,fontSize:17,fontWeight:700}}>Reminders/Tasks - {employeeName(viewTasks)}</h2>
+                <button onClick={()=>setViewTasks(null)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}}>x</button>
+              </div>
+              <div style={{display:"grid",gap:10,marginBottom:16}}>
+                {(tasksByEmployee[viewTasks.id] || []).length === 0 && <p style={{margin:0,color:"#64748b",fontSize:13}}>No local reminders yet.</p>}
+                {(tasksByEmployee[viewTasks.id] || []).map(task => (
+                  <div key={task.id} style={{border:"1px solid #e5e7eb",borderRadius:7,padding:10}}>
+                    <div style={{fontWeight:700,fontSize:13,color:"#1f2937"}}>{task.title}</div>
+                    {task.due&&<div style={{fontSize:12,color:"#64748b",marginTop:3}}>Due: {task.due}</div>}
+                    {task.notes&&<div style={{fontSize:12,color:"#64748b",marginTop:3}}>{task.notes}</div>}
+                  </div>
+                ))}
+              </div>
+              <div style={{borderTop:"1px solid #f1f5f9",paddingTop:14}}>
+                <label style={lbl}>Task title</label>
+                <input value={taskForm.title} onChange={e=>setTaskForm(f=>({...f,title:e.target.value}))} style={inp} placeholder="Follow up with employee"/>
+                <div style={{display:"grid",gridTemplateColumns:"1fr",gap:10,marginTop:10}}>
+                  <input type="date" value={taskForm.due} onChange={e=>setTaskForm(f=>({...f,due:e.target.value}))} style={inp}/>
+                  <textarea value={taskForm.notes} onChange={e=>setTaskForm(f=>({...f,notes:e.target.value}))} style={{...inp,minHeight:58,resize:"vertical"} as React.CSSProperties} placeholder="Local reminder notes"/>
+                </div>
+                <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:14}}>
+                  <button onClick={()=>setViewTasks(null)} style={{padding:"9px 20px",border:"1px solid #e2e8f0",borderRadius:7,background:"#fff",cursor:"pointer"}}>Close</button>
+                  <button onClick={addTask} disabled={!taskForm.title.trim()} style={{padding:"9px 20px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,cursor:taskForm.title.trim()?"pointer":"not-allowed",fontWeight:700,opacity:taskForm.title.trim()?1:0.5}}>Add Task</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {bulkRemoveOpen&&(
+          <div role="dialog" aria-modal="true" aria-labelledby="bulk-remove-title" style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+            <div style={{background:"#fff",borderRadius:12,padding:28,width:380}}>
+              <h2 id="bulk-remove-title" style={{margin:"0 0 10px",fontSize:17,fontWeight:700}}>Remove Selected Employees?</h2>
+              <p style={{color:"#64748b",fontSize:14,margin:"0 0 20px"}}>{selected.size} selected employee{selected.size === 1 ? "" : "s"} will be removed locally after confirmation. Backend delete will be attempted when available.</p>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                <button onClick={()=>setBulkRemoveOpen(false)} style={{padding:"9px 20px",border:"1px solid #e2e8f0",borderRadius:7,background:"#fff",cursor:"pointer"}}>Cancel</button>
+                <button onClick={bulkDelete} style={{padding:"9px 20px",background:"#ef4444",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontWeight:700}}>Remove</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {deleteId&&(
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
             <div style={{background:"#fff",borderRadius:12,padding:28,width:340}}>
