@@ -15,4 +15,6 @@ test('status row checkbox selects once and batch update works', async ({ page })
 
   await expect(page.getByRole('button', { name: /Update 1 Selected/ })).toHaveCount(0);
   await expect(page.getByRole('row').filter({ hasText: 'Capital One Platinum' })).toContainText('resolved');
+  await expect(page.getByRole('status')).toContainText(/Demo disputes updated locally/);
+  await expect(page.getByText(/Backend .* update failed/i)).toHaveCount(0);
 });

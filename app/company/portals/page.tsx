@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -83,6 +83,7 @@ const appLinks = [
     url: "https://apps.apple.com/us/app/client-tracking-portal/id1549632923",
   },
 ];
+const PORTALS_STORAGE_KEY = "dp_company_portals_settings";
 
 export default function PortalsPage() {
   const router = useRouter();
@@ -94,14 +95,31 @@ export default function PortalsPage() {
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState("");
 
+  useEffect(() => {
+    try {
+      const savedSettings = window.localStorage.getItem(PORTALS_STORAGE_KEY);
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        setForm({ ...defaults, ...parsed.form });
+        setSaved({ ...defaults, ...parsed.saved });
+        setLogoName(parsed.logoName || "No logo selected");
+        setSavedLogoName(parsed.savedLogoName || "No logo saved");
+      }
+    } catch {
+      setMessage("Could not load locally saved portal settings.");
+    }
+  }, []);
+
   function update(key: keyof typeof defaults, value: string | boolean) {
     setForm((current) => ({ ...current, [key]: value }));
     setMessage("");
   }
 
   function saveSettings() {
+    const nextSavedLogoName = logoName === "No logo selected" ? "No logo saved" : logoName;
     setSaved(form);
-    setSavedLogoName(logoName === "No logo selected" ? "No logo saved" : logoName);
+    setSavedLogoName(nextSavedLogoName);
+    window.localStorage.setItem(PORTALS_STORAGE_KEY, JSON.stringify({ form, saved: form, logoName, savedLogoName: nextSavedLogoName }));
     setMessage(`Portal and mobile app settings saved for ${form.branding}. Logo: ${logoName === "No logo selected" ? "No logo saved" : logoName}.`);
   }
 
@@ -339,7 +357,9 @@ export default function PortalsPage() {
             <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
               <h2 className="text-xl font-bold">{video.title} Training</h2>
               <p className="mt-2 text-sm leading-6 text-gray-700">{video.video}</p>
-              <div className="mt-4 flex min-h-56 items-center justify-center rounded-lg border bg-gray-100 text-sm font-semibold text-gray-600">Training video placeholder</div>
+              <div className="mt-4 flex min-h-56 items-center justify-center rounded-lg border bg-gray-100 p-6 text-center text-sm font-semibold text-gray-600">
+                Local training video placeholder. No hosted training video is connected.
+              </div>
               <div className="mt-5 flex justify-end">
                 <button className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={() => setVideo(null)}>Close</button>
               </div>

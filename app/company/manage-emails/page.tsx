@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 const TABS = ["Email Templates", "SMTP Settings", "Email Log"];
@@ -25,6 +25,10 @@ const EMAIL_LOG = [
   { id: 5, to: "olivia.m@email.com",       template: "Score Improvement Alert",   status: "opened",    sent: "2025-04-02 10:30" },
   { id: 6, to: "noah.garcia@email.com",    template: "Dispute Won Notification",  status: "opened",    sent: "2025-04-03 11:00" },
 ];
+type EmailLogRow = (typeof EMAIL_LOG)[number];
+const TEMPLATES_STORAGE_KEY = "dp_manage_emails_templates";
+const SMTP_STORAGE_KEY = "dp_manage_emails_smtp";
+const EMAIL_LOG_STORAGE_KEY = "dp_manage_emails_log";
 
 const TYPE_COLOR: Record<string, string> = {
   Onboarding: "#10b981", Dispute: "#3b82f6", Nurture: "#8b5cf6", Billing: "#f59e0b", Marketing: "#ef4444",
@@ -42,7 +46,10 @@ const lbl: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 6
 export default function Page() {
   const [tab, setTab] = useState("Email Templates");
   const [templates, setTemplates] = useState<Template[]>(SAMPLE);
+  const [emailLog, setEmailLog] = useState<EmailLogRow[]>(EMAIL_LOG);
+  const [loadedLocalState, setLoadedLocalState] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [deleteTemplate, setDeleteTemplate] = useState<Template | null>(null);
   const [preview, setPreview] = useState<Template | null>(null);
   const [form, setForm] = useState({ name: "", type: "Onboarding", subject: "", body: "" });
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -55,17 +62,41 @@ export default function Page() {
   const [logStatus, setLogStatus] = useState("All");
   const [resendId, setResendId] = useState<number | null>(null);
 
+  useEffect(() => {
+    try {
+      const savedTemplates = window.localStorage.getItem(TEMPLATES_STORAGE_KEY);
+      if (savedTemplates) setTemplates(JSON.parse(savedTemplates));
+      const savedSmtp = window.localStorage.getItem(SMTP_STORAGE_KEY);
+      if (savedSmtp) setSmtp(s => ({ ...s, ...JSON.parse(savedSmtp) }));
+      const savedLog = window.localStorage.getItem(EMAIL_LOG_STORAGE_KEY);
+      if (savedLog) setEmailLog(JSON.parse(savedLog));
+    } catch {
+      setMessage("Could not load locally saved email settings.");
+    }
+    setLoadedLocalState(true);
+  }, []);
+
+  useEffect(() => {
+    if (!loadedLocalState) return;
+    window.localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
+  }, [templates, loadedLocalState]);
+
+  useEffect(() => {
+    if (!loadedLocalState) return;
+    window.localStorage.setItem(EMAIL_LOG_STORAGE_KEY, JSON.stringify(emailLog));
+  }, [emailLog, loadedLocalState]);
+
   const filteredTemplates = useMemo(() => templates.filter(t => {
     const matchType = filterType === "All Types" || t.type === filterType;
     const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.subject.toLowerCase().includes(search.toLowerCase());
     return matchType && matchSearch;
   }), [templates, filterType, search]);
 
-  const filteredLog = useMemo(() => EMAIL_LOG.filter(l => {
+  const filteredLog = useMemo(() => emailLog.filter(l => {
     const matchStatus = logStatus === "All" || l.status === logStatus.toLowerCase();
     const matchSearch = !logSearch || l.to.includes(logSearch) || l.template.toLowerCase().includes(logSearch.toLowerCase());
     return matchStatus && matchSearch;
-  }), [logSearch, logStatus]);
+  }), [emailLog, logSearch, logStatus]);
 
   function saveTemplate() {
     if (!form.name || !form.subject) return;
@@ -101,23 +132,38 @@ export default function Page() {
   }
 
   async function testSmtp() {
+    const missing = [
+      ["SMTP Host", smtp.host],
+      ["Port", smtp.port],
+      ["Username", smtp.user],
+      ["Password / App Key", smtp.pass],
+      ["From Email", smtp.from_email],
+    ].filter(([, value]) => !String(value).trim()).map(([label]) => label);
+    if (missing.length) {
+      setSmtp(s => ({ ...s, tested: true, success: false }));
+      setMessage(`Send Test Email needs ${missing.join(", ")}. This is a local validation only; no real email was sent.`);
+      return;
+    }
     setTesting(true);
-    await new Promise(r => setTimeout(r, 1800));
+    await new Promise(r => setTimeout(r, 300));
     setSmtp(s => ({ ...s, tested: true, success: true }));
     setTesting(false);
-    setMessage("Local SMTP connection check completed. No real email was sent.");
+    setMessage("Local simulated test email passed. No real email was sent because backend email delivery is not connected.");
   }
 
   function saveSmtp() {
     setSmtp(s => ({ ...s, tested: true, success: true }));
-    setMessage(`SMTP settings saved for ${smtp.host}:${smtp.port}.`);
+    window.localStorage.setItem(SMTP_STORAGE_KEY, JSON.stringify({ ...smtp, tested: true, success: true }));
+    setMessage(`SMTP settings saved locally for ${smtp.host}:${smtp.port}. No backend SMTP connection was created.`);
   }
-  function resendEmail(row: (typeof EMAIL_LOG)[number]) {
+  function resendEmail(row: EmailLogRow) {
     setResendId(row.id);
-    setMessage(`Resend queued locally for ${row.to} using ${row.template}.`);
+    setEmailLog(log => log.map(item => item.id === row.id ? { ...item, status: "queued" } : item));
+    setMessage(`Resend queued locally for ${row.to} using ${row.template}. No real email was sent.`);
     setTimeout(() => {
       setResendId(null);
-      setMessage(`Resend marked sent locally for ${row.to}.`);
+      setEmailLog(log => log.map(item => item.id === row.id ? { ...item, status: "sent-local" } : item));
+      setMessage(`Resend marked sent locally for ${row.to}. No real email was sent.`);
     }, 500);
   }
 
@@ -215,7 +261,7 @@ export default function Page() {
                           <button onClick={() => setPreview(t)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#1e3a5f" }}>Preview</button>
                           <button onClick={() => editTemplate(t)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#374151" }}>Edit</button>
                           <button onClick={() => duplicate(t)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#64748b" }}>Duplicate</button>
-                          <button onClick={() => setTemplates(ts => ts.filter(x => x.id !== t.id))} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #fee2e2", borderRadius: 5, cursor: "pointer", background: "#fff", color: "#ef4444", fontWeight: 600 }}>Delete</button>
+                          <button onClick={() => setDeleteTemplate(t)} style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #fee2e2", borderRadius: 5, cursor: "pointer", background: "#fff", color: "#ef4444", fontWeight: 600 }}>Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -316,7 +362,7 @@ export default function Page() {
                 style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, width: 260, outline: "none" }} />
               <select value={logStatus} onChange={e => setLogStatus(e.target.value)}
                 style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, background: "#fff", cursor: "pointer", color: "#374151" }}>
-                {["All", "Delivered", "Opened", "Failed"].map(o => <option key={o}>{o}</option>)}
+                  {["All", "Delivered", "Opened", "Failed", "Queued", "Sent-local"].map(o => <option key={o}>{o}</option>)}
               </select>
               <span style={{ marginLeft: "auto", fontSize: 13, color: "#64748b" }}>{filteredLog.length} emails</span>
             </div>
@@ -338,7 +384,7 @@ export default function Page() {
                       <td style={{ padding: "12px 16px", fontSize: 14, color: "#1e293b", fontWeight: 500 }}>{l.to}</td>
                       <td style={{ padding: "12px 16px", fontSize: 13, color: "#475569" }}>{l.template}</td>
                       <td style={{ padding: "12px 16px" }}>
-                        <span style={{ ...STATUS_COLOR[l.status], borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" }}>{l.status}</span>
+                        <span style={{ ...(STATUS_COLOR[l.status] || { bg: "#fef9c3", text: "#854d0e" }), borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, textTransform: "capitalize" }}>{l.status}</span>
                       </td>
                       <td style={{ padding: "12px 16px", fontSize: 13, color: "#94a3b8" }}>{l.sent}</td>
                       <td style={{ padding: "12px 16px" }}>
@@ -417,6 +463,18 @@ export default function Page() {
                   <button onClick={() => { editTemplate(preview); setPreview(null); }} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151", fontSize: 13 }}>Edit</button>
                   <button onClick={() => setPreview(null)} style={{ padding: "8px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Close</button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {deleteTemplate && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 380 }}>
+              <h2 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>Delete Email Template?</h2>
+              <p style={{ color: "#64748b", fontSize: 14, marginBottom: 22 }}>Delete {deleteTemplate.name} from local email templates?</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setDeleteTemplate(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
+                <button onClick={() => { setTemplates(ts => ts.filter(x => x.id !== deleteTemplate.id)); setMessage(`Email template deleted locally: ${deleteTemplate.name}.`); setDeleteTemplate(null); }} style={{ padding: "9px 20px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Delete</button>
               </div>
             </div>
           </div>

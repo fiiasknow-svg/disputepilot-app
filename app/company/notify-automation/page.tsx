@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -43,6 +43,7 @@ const CHANNELS: { key: "email" | "sms" | "portal"; label: string; color: string 
   { key: "portal", label: "Portal", color: "#8b5cf6" },
 ];
 const MAIN_TABS = ["Notification Settings", "Automation Rules"];
+const NOTIFY_STORAGE_KEY = "dp_notify_automation_state";
 
 function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
   return (
@@ -65,6 +66,28 @@ export default function Page() {
   const [showNewRule, setShowNewRule] = useState(false);
   const [newRule, setNewRule] = useState({ name: "", trigger: "", action: "", delay: "Immediately", channel: "Email" });
   const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
+  const [deleteRule, setDeleteRule] = useState<AutoRule | null>(null);
+  const [loadedLocalState, setLoadedLocalState] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedState = window.localStorage.getItem(NOTIFY_STORAGE_KEY);
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (Array.isArray(parsed.events)) setEvents(parsed.events);
+        if (Array.isArray(parsed.rules)) setRules(parsed.rules);
+        if (typeof parsed.masterEmail === "boolean") setMasterEmail(parsed.masterEmail);
+        if (typeof parsed.masterSms === "boolean") setMasterSms(parsed.masterSms);
+        if (typeof parsed.masterPortal === "boolean") setMasterPortal(parsed.masterPortal);
+      }
+    } catch {}
+    setLoadedLocalState(true);
+  }, []);
+
+  useEffect(() => {
+    if (!loadedLocalState) return;
+    window.localStorage.setItem(NOTIFY_STORAGE_KEY, JSON.stringify({ events, rules, masterEmail, masterSms, masterPortal }));
+  }, [events, rules, masterEmail, masterSms, masterPortal, loadedLocalState]);
 
   function toggle(id: string, channel: "email" | "sms" | "portal") {
     setEvents(evs => evs.map(e => e.id === id ? { ...e, [channel]: !e[channel] } : e));
@@ -76,13 +99,30 @@ export default function Page() {
 
   function enableAll(channel: "email" | "sms" | "portal") {
     setEvents(evs => evs.map(e => ({ ...e, [channel]: true })));
+    if (channel === "email") setMasterEmail(true);
+    if (channel === "sms") setMasterSms(true);
+    if (channel === "portal") setMasterPortal(true);
   }
 
   function disableAll(channel: "email" | "sms" | "portal") {
     setEvents(evs => evs.map(e => ({ ...e, [channel]: false })));
+    if (channel === "email") setMasterEmail(false);
+    if (channel === "sms") setMasterSms(false);
+    if (channel === "portal") setMasterPortal(false);
   }
 
-  function save() { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+  function cascadeMaster(channel: "email" | "sms" | "portal", next: boolean) {
+    if (channel === "email") setMasterEmail(next);
+    if (channel === "sms") setMasterSms(next);
+    if (channel === "portal") setMasterPortal(next);
+    setEvents(evs => evs.map(e => ({ ...e, [channel]: next })));
+  }
+
+  function save() {
+    window.localStorage.setItem(NOTIFY_STORAGE_KEY, JSON.stringify({ events, rules, masterEmail, masterSms, masterPortal }));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
 
   function addRule() {
     if (!newRule.name || !newRule.trigger) return;
@@ -139,7 +179,7 @@ export default function Page() {
 
         {saved && (
           <div style={{ background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 14, color: "#15803d", fontSize: 14, fontWeight: 600 }}>
-            Notification settings saved successfully.
+            Notification and automation settings saved locally on this device. No automation jobs were executed.
           </div>
         )}
 
@@ -172,12 +212,12 @@ export default function Page() {
               <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 12 }}>Master Channel Switches</div>
               <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
                 {[
-                  { label: "All Email Notifications",  on: masterEmail,  set: setMasterEmail,  color: "#3b82f6" },
-                  { label: "All SMS Notifications",    on: masterSms,    set: setMasterSms,    color: "#10b981" },
-                  { label: "All Portal Notifications", on: masterPortal, set: setMasterPortal, color: "#8b5cf6" },
+                  { label: "All Email Notifications",  on: masterEmail,  channel: "email" as const,  color: "#3b82f6" },
+                  { label: "All SMS Notifications",    on: masterSms,    channel: "sms" as const,    color: "#10b981" },
+                  { label: "All Portal Notifications", on: masterPortal, channel: "portal" as const, color: "#8b5cf6" },
                 ].map(m => (
                   <div key={m.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <Toggle on={m.on} onChange={() => m.set(v => !v)} />
+                    <Toggle on={m.on} onChange={() => cascadeMaster(m.channel, !m.on)} />
                     <span style={{ fontSize: 13, fontWeight: 600, color: m.on ? m.color : "#94a3b8" }}>{m.label}</span>
                   </div>
                 ))}
@@ -286,7 +326,7 @@ export default function Page() {
                   <Toggle on={rule.active} onChange={() => setRules(rs => rs.map(r => r.id === rule.id ? { ...r, active: !r.active } : r))} />
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                     <button onClick={() => editRule(rule)} style={{ fontSize: 12, padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 5, cursor: "pointer", background: "#fff", fontWeight: 600, color: "#374151" }}>Edit</button>
-                    <button onClick={() => setRules(rs => rs.filter(r => r.id !== rule.id))} style={{ fontSize: 12, padding: "5px 10px", border: "1px solid #fee2e2", borderRadius: 5, cursor: "pointer", background: "#fff", color: "#ef4444", fontWeight: 600 }}>Delete</button>
+                    <button onClick={() => setDeleteRule(rule)} style={{ fontSize: 12, padding: "5px 10px", border: "1px solid #fee2e2", borderRadius: 5, cursor: "pointer", background: "#fff", color: "#ef4444", fontWeight: 600 }}>Delete</button>
                   </div>
                 </div>
               ))}
@@ -296,7 +336,7 @@ export default function Page() {
             </div>
 
             <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 8, padding: "12px 16px", marginTop: 20, fontSize: 13, color: "#0369a1" }}>
-              <strong>Tip:</strong> Automation rules run silently in the background. Use them to deliver timely follow-ups, reminders, and drip campaigns without manual effort.
+              <strong>Local setup only:</strong> Automation rules are saved locally on this device. No backend automation runner or real messages are connected.
             </div>
           </div>
         )}
@@ -337,6 +377,18 @@ export default function Page() {
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => { setShowNewRule(false); setEditingRuleId(null); }} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
                 <button onClick={addRule} style={{ padding: "9px 22px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{editingRuleId ? "Save Rule" : "Create Rule"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {deleteRule && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 380 }}>
+              <h2 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>Delete Automation Rule?</h2>
+              <p style={{ color: "#64748b", fontSize: 14, marginBottom: 22 }}>Delete {deleteRule.name} from local automation rules?</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setDeleteRule(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
+                <button onClick={() => { setRules(rs => rs.filter(r => r.id !== deleteRule.id)); setDeleteRule(null); setSaved(true); setTimeout(() => setSaved(false), 2500); }} style={{ padding: "9px 20px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Delete</button>
               </div>
             </div>
           </div>

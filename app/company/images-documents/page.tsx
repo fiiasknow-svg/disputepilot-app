@@ -1,10 +1,11 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 const FILE_TABS = ["All Files", "Images", "Documents"];
 const CATEGORIES = ["All Categories", "Branding", "Contracts", "Templates", "Client Docs", "Bureau Responses"];
 type FileItem = { id: number; name: string; type: "image" | "document"; ext: string; size: string; sizeKB: number; uploaded: string; category: string; objectUrl?: string };
+const FILES_STORAGE_KEY = "dp_images_documents_files";
 
 const SAMPLE: FileItem[] = [
   { id: 1, name: "company-logo.png",           type: "image",    ext: "PNG",  size: "84 KB",  sizeKB: 84,  uploaded: "2025-01-15", category: "Branding" },
@@ -40,7 +41,35 @@ export default function Page() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [loadedLocalState, setLoadedLocalState] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const filesRef = useRef<FileItem[]>([]);
+
+  useEffect(() => {
+    try {
+      const savedFiles = window.localStorage.getItem(FILES_STORAGE_KEY);
+      if (savedFiles) setFiles(JSON.parse(savedFiles));
+    } catch {
+      setMessage("Could not load locally saved file metadata.");
+    }
+    setLoadedLocalState(true);
+  }, []);
+
+  useEffect(() => {
+    if (!loadedLocalState) return;
+    const metadataOnly = files.map(({ objectUrl, ...file }) => file);
+    window.localStorage.setItem(FILES_STORAGE_KEY, JSON.stringify(metadataOnly));
+  }, [files, loadedLocalState]);
+
+  useEffect(() => { filesRef.current = files; }, [files]);
+
+  useEffect(() => {
+    return () => {
+      filesRef.current.forEach(file => {
+        if (file.objectUrl) URL.revokeObjectURL(file.objectUrl);
+      });
+    };
+  }, []);
 
   const visible = useMemo(() => files.filter(f => {
     const matchTab = fileTab === "All Files" || (fileTab === "Images" && f.type === "image") || (fileTab === "Documents" && f.type === "document");
@@ -63,12 +92,12 @@ export default function Page() {
       return { id: Date.now() + index, name: file.name, type: isImg ? "image" as const : "document" as const, ext, size: fmtKB(kb), sizeKB: kb, uploaded: new Date().toISOString().slice(0, 10), category: isImg ? "Branding" : "Client Docs", objectUrl: URL.createObjectURL(file) };
     });
     setFiles(prev => [...uploaded, ...prev]);
-    setMessage(`${uploaded.map(file => file.name).join(", ")} uploaded to Images & Documents.`);
+    setMessage(`${uploaded.map(file => file.name).join(", ")} uploaded to Images & Documents. Current-session download works; metadata was saved locally because backend storage is not connected.`);
   }
 
   function downloadFile(file: FileItem) {
     if (!file.objectUrl) {
-      setMessage(`${file.name} is a sample document and is not available for download.`);
+      setMessage(`${file.name} is stored locally as metadata; file download requires re-upload because backend storage is not connected.`);
       return;
     }
     const link = document.createElement("a");
@@ -119,6 +148,10 @@ export default function Page() {
             {message}
           </div>
         )}
+
+        <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: 8, padding: "10px 16px", marginBottom: 14, color: "#92400e", fontSize: 13, fontWeight: 600 }}>
+          Stored locally as metadata; file download requires re-upload because backend storage is not connected.
+        </div>
 
         {/* Stats */}
         <div style={{ display: "flex", gap: 14, marginBottom: 20, marginTop: 10 }}>
@@ -198,7 +231,7 @@ export default function Page() {
                           </div>
                           <div>
                             <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>{f.name}</div>
-                            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>{f.ext}</div>
+                            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>{f.ext}{!f.objectUrl ? " - Download unavailable until re-uploaded" : ""}</div>
                           </div>
                         </div>
                       </td>
@@ -278,7 +311,7 @@ export default function Page() {
               <p style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>This action cannot be undone and the file will be permanently removed.</p>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => setDeleteId(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontWeight: 600, color: "#374151" }}>Cancel</button>
-                <button onClick={() => { const removed = files.find(x => x.id === deleteId); setFiles(f => f.filter(x => x.id !== deleteId)); setDeleteId(null); setMessage(`${removed?.name || "File"} deleted.`); }}
+                <button onClick={() => { const removed = files.find(x => x.id === deleteId); if (removed?.objectUrl) URL.revokeObjectURL(removed.objectUrl); setFiles(f => f.filter(x => x.id !== deleteId)); setDeleteId(null); setMessage(`${removed?.name || "File"} deleted.`); }}
                   style={{ padding: "9px 20px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Delete</button>
               </div>
             </div>

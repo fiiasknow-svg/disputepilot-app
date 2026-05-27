@@ -27,6 +27,7 @@ type GeneralSettings = {
 };
 type Plan = {id:number;name:string;price:number;interval:"monthly"|"quarterly"|"annual";features:string;active:boolean};
 type Tag = {id:number;name:string;color:string};
+type IntegrationSetup = { provider: string; account: string; token: string; webhook?: string; configuredAt: string };
 
 const GENERAL_SETTINGS_STORAGE_KEY = "dp_configuration_general_settings";
 const ROUND_SETTINGS_STORAGE_KEY = "dp_configuration_round_settings";
@@ -34,6 +35,7 @@ const NOTIFICATION_SETTINGS_STORAGE_KEY = "dp_configuration_notification_setting
 const PORTAL_SETTINGS_STORAGE_KEY = "dp_configuration_portal_settings";
 const SERVICE_PLANS_STORAGE_KEY = "dp_configuration_service_plans";
 const TAGS_STORAGE_KEY = "dp_configuration_tags";
+const INTEGRATIONS_STORAGE_KEY = "dp_configuration_integrations";
 const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
   company_name:"", company_email:"", company_phone:"", company_address:"",
   timezone:"America/New_York", date_format:"MM/DD/YYYY", currency:"USD",
@@ -77,6 +79,9 @@ export default function Page() {
   const [passwordForm, setPasswordForm] = useState({current:"",next:"",confirm:""});
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [copiedWebhook, setCopiedWebhook] = useState("");
+  const [integrationSetups, setIntegrationSetups] = useState<Record<string, IntegrationSetup>>({});
+  const [setupProvider, setSetupProvider] = useState<string | null>(null);
+  const [setupForm, setSetupForm] = useState({ account: "", token: "", webhook: "" });
 
   // ── statuses ──────────────────────────────────────────────────────────────
   const [statuses,    setStatuses]    = useState<Status[]>([]);
@@ -203,6 +208,8 @@ export default function Page() {
       if (savedPlans) setPlans(JSON.parse(savedPlans));
       const savedTags = window.localStorage.getItem(TAGS_STORAGE_KEY);
       if (savedTags) setTags(JSON.parse(savedTags));
+      const savedIntegrations = window.localStorage.getItem(INTEGRATIONS_STORAGE_KEY);
+      if (savedIntegrations) setIntegrationSetups(JSON.parse(savedIntegrations));
       const requestedTab = new URLSearchParams(window.location.search).get("tab") || window.location.hash.replace("#", "");
       const normalizedTab = TABS.find(t => t.toLowerCase() === requestedTab.toLowerCase());
       if (normalizedTab) setTab(normalizedTab);
@@ -340,6 +347,37 @@ export default function Page() {
     setCopiedWebhook(label);
     setNotice(`${label} copied.`);
     setTimeout(()=>setCopiedWebhook(""),2000);
+  }
+
+  function openIntegrationSetup(provider: string) {
+    const existing = integrationSetups[provider];
+    setSetupProvider(provider);
+    setSetupForm({ account: existing?.account || "", token: "", webhook: existing?.webhook || "" });
+    setNotice("");
+    setError("");
+  }
+
+  function saveIntegrationSetup() {
+    if (!setupProvider) return;
+    if (!setupForm.account.trim() || !setupForm.token.trim()) {
+      setError(`Enter local account and secret fields for ${setupProvider}.`);
+      return;
+    }
+    const next = {
+      ...integrationSetups,
+      [setupProvider]: {
+        provider: setupProvider,
+        account: setupForm.account.trim(),
+        token: "saved-local-secret",
+        webhook: setupForm.webhook.trim(),
+        configuredAt: new Date().toISOString(),
+      },
+    };
+    setIntegrationSetups(next);
+    window.localStorage.setItem(INTEGRATIONS_STORAGE_KEY, JSON.stringify(next));
+    setNotice(`${setupProvider} setup saved locally. Secrets are masked and no real backend connection was made.`);
+    setSetupProvider(null);
+    setSetupForm({ account: "", token: "", webhook: "" });
   }
 
   const SAVE_BTN=(label:string,saving:boolean,saved:boolean,onClick:()=>void)=>(
@@ -765,24 +803,31 @@ export default function Page() {
             {SH("Connected Services")}
             <div style={{padding:20,display:"flex",flexDirection:"column",gap:10}}>
               {([
-                {name:"Supabase",desc:"Database & authentication",key:"NEXT_PUBLIC_SUPABASE_URL",val:process.env.NEXT_PUBLIC_SUPABASE_URL,icon:"🗄"},
-                {name:"OpenAI",desc:"AI letter generation & analysis",key:"OPENAI_API_KEY",val:"Configured in server env",icon:"🤖"},
-                {name:"Stripe",desc:"Payment processing",key:"STRIPE_SECRET_KEY",val:"Configured in server env",icon:"💳"},
-                {name:"Twilio",desc:"SMS notifications",key:"TWILIO_ACCOUNT_SID",val:null,icon:"📱"},
-                {name:"SendGrid",desc:"Transactional email",key:"SENDGRID_API_KEY",val:null,icon:"✉"},
-                {name:"DocuSign",desc:"Document e-signatures",key:"DOCUSIGN_API_KEY",val:null,icon:"✍"},
-              ]).map(({name,desc,key,val,icon})=>(
+                {name:"Supabase",desc:"Database & authentication",key:"NEXT_PUBLIC_SUPABASE_URL",val:process.env.NEXT_PUBLIC_SUPABASE_URL,icon:"🗄", configurable:false},
+                {name:"OpenAI",desc:"AI letter generation & analysis",key:"OPENAI_API_KEY",val:"Configured in server env",icon:"🤖", configurable:false},
+                {name:"Stripe",desc:"Payment processing",key:"STRIPE_SECRET_KEY",val:"Configured in server env",icon:"💳", configurable:false},
+                {name:"Twilio",desc:"SMS notifications",key:"TWILIO_ACCOUNT_SID",val:null,icon:"📱", configurable:true},
+                {name:"SendGrid",desc:"Transactional email",key:"SENDGRID_API_KEY",val:null,icon:"✉", configurable:true},
+                {name:"DocuSign",desc:"Document e-signatures",key:"DOCUSIGN_API_KEY",val:null,icon:"✍", configurable:true},
+                {name:"Zapier/Webhooks",desc:"Workflow handoff and inbound automation",key:"ZAPIER_WEBHOOK_URL",val:null,icon:"🔗", configurable:true},
+              ]).map(({name,desc,key,val,icon,configurable})=>{
+                const localSetup = integrationSetups[name];
+                const configured = Boolean(val || localSetup);
+                return (
                 <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#f8fafc",borderRadius:8}}>
                   <div style={{display:"flex",gap:12,alignItems:"center"}}>
                     <span style={{fontSize:22}}>{icon}</span>
                     <div>
                       <div style={{fontSize:14,fontWeight:700,color:"#1e293b"}}>{name}</div>
-                      <div style={{fontSize:12,color:"#94a3b8"}}>{desc} · <code style={{fontSize:11}}>{key}</code></div>
+                      <div style={{fontSize:12,color:"#94a3b8"}}>{desc} · <code style={{fontSize:11}}>{key}</code>{localSetup ? ` · Local setup for ${localSetup.account}` : ""}</div>
                     </div>
                   </div>
-                  <span style={{fontSize:12,background:val?"#dcfce7":"#fee2e2",color:val?"#166534":"#991b1b",borderRadius:20,padding:"3px 12px",fontWeight:700}}>{val?"✓ Configured":"Not Set"}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:12,background:configured?"#dcfce7":"#fee2e2",color:configured?"#166534":"#991b1b",borderRadius:20,padding:"3px 12px",fontWeight:700}}>{configured?"Configured":"Not Set"}</span>
+                    {configurable&&<button onClick={()=>openIntegrationSetup(name)} style={{fontSize:12,padding:"5px 12px",background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,cursor:"pointer",fontWeight:700,color:"#1e3a5f"}}>{localSetup?"Configure":"Setup"}</button>}
+                  </div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
 
@@ -834,6 +879,30 @@ export default function Page() {
               <button onClick={addStatus} disabled={savingSt} style={{padding:"9px 20px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontWeight:700}}>
                 {savingSt?"Saving…":"Add Status"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {setupProvider&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+          <div style={{background:"#fff",borderRadius:12,padding:28,width:430,boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
+            <h2 style={{margin:"0 0 8px",fontSize:18,fontWeight:700}}>{setupProvider} Setup</h2>
+            <p style={{margin:"0 0 18px",fontSize:13,color:"#64748b"}}>Local setup only. Secrets are masked in localStorage and no real provider connection or backend secret storage is created.</p>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:5}}>Account / Sender ID</label>
+              <input value={setupForm.account} onChange={e=>setSetupForm(f=>({...f,account:e.target.value}))} placeholder={`${setupProvider} account identifier`} style={inp}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:5}}>API Key / Secret</label>
+              <input type="password" value={setupForm.token} onChange={e=>setSetupForm(f=>({...f,token:e.target.value}))} placeholder="Stored locally as masked configured status" style={inp}/>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:5}}>Webhook URL (Optional)</label>
+              <input value={setupForm.webhook} onChange={e=>setSetupForm(f=>({...f,webhook:e.target.value}))} placeholder="https://hooks.example.com/..." style={inp}/>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>{setSetupProvider(null);setSetupForm({account:"",token:"",webhook:""});}} style={{padding:"9px 20px",border:"1px solid #e2e8f0",borderRadius:7,background:"#fff",cursor:"pointer",fontWeight:600}}>Cancel</button>
+              <button onClick={saveIntegrationSetup} style={{padding:"9px 20px",background:"#1e3a5f",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontWeight:700}}>Save Setup</button>
             </div>
           </div>
         </div>

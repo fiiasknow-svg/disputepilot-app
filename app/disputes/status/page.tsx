@@ -43,6 +43,12 @@ export default function Page() {
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [batchStatus, setBatchStatus] = useState("sent");
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [statusError, setStatusError] = useState("");
+
+  function isDemoDisputeId(id: string) {
+    return id.startsWith("demo-status-") || id.startsWith("demo-") || id.startsWith("fallback-");
+  }
 
   async function getAccountId() {
     const { data: userData } = await supabase.auth.getUser();
@@ -89,21 +95,45 @@ export default function Page() {
   useEffect(() => { load(); }, []);
 
   async function updateStatus(id: string, status: string) {
-    const accountId = await getAccountId().catch(() => null);
-    const query = supabase.from("disputes").update({ status }).eq("id", id);
-    if (accountId) await query.eq("account_id", accountId);
-    else await query;
+    setStatusMessage("");
+    setStatusError("");
+    if (isDemoDisputeId(id)) {
+      setStatusMessage(`Demo dispute updated locally to ${status}. No backend update was attempted.`);
+    } else {
+      try {
+        const accountId = await getAccountId().catch(() => null);
+        const query = supabase.from("disputes").update({ status }).eq("id", id);
+        const { error } = accountId ? await query.eq("account_id", accountId) : await query;
+        if (error) throw error;
+        setStatusMessage(`Dispute status updated to ${status}.`);
+      } catch (err: any) {
+        setStatusError(`Backend status update failed. ${err?.message || err?.code || "Unknown Supabase error"}`);
+        return;
+      }
+    }
     setDisputes(ds => ds.map(d => d.id === id ? { ...d, status } : d));
     if (selected?.id === id) setSelected((s: any) => ({ ...s, status }));
   }
 
   async function batchUpdateStatus() {
     const ids = Array.from(checkedIds);
-    const accountId = await getAccountId().catch(() => null);
-    await Promise.all(ids.map(id => {
-      const query = supabase.from("disputes").update({ status: batchStatus }).eq("id", id);
-      return accountId ? query.eq("account_id", accountId) : query;
-    }));
+    setStatusMessage("");
+    setStatusError("");
+    const realIds = ids.filter(id => !isDemoDisputeId(id));
+    try {
+      if (realIds.length) {
+        const accountId = await getAccountId().catch(() => null);
+        await Promise.all(realIds.map(async id => {
+          const query = supabase.from("disputes").update({ status: batchStatus }).eq("id", id);
+          const { error } = accountId ? await query.eq("account_id", accountId) : await query;
+          if (error) throw error;
+        }));
+      }
+      setStatusMessage(realIds.length ? `Selected disputes updated to ${batchStatus}. Demo rows were updated locally.` : `Demo disputes updated locally to ${batchStatus}. No backend update was attempted.`);
+    } catch (err: any) {
+      setStatusError(`Backend batch status update failed. ${err?.message || err?.code || "Unknown Supabase error"}`);
+      return;
+    }
     setDisputes(ds => ds.map(d => checkedIds.has(d.id) ? { ...d, status: batchStatus } : d));
     setCheckedIds(new Set());
     setShowBatchModal(false);
@@ -202,6 +232,17 @@ export default function Page() {
             <button onClick={load} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>↻ Refresh</button>
           </div>
         </div>
+
+        {statusMessage && (
+          <div role="status" style={{ background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 14, color: "#15803d", fontSize: 14, fontWeight: 600 }}>
+            {statusMessage}
+          </div>
+        )}
+        {statusError && (
+          <div role="alert" style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 16px", marginBottom: 14, color: "#b91c1c", fontSize: 14, fontWeight: 600 }}>
+            {statusError}
+          </div>
+        )}
 
         {/* Stats Row */}
         <div style={{ display: "flex", gap: 14, marginBottom: 24, flexWrap: "wrap" as const }}>
