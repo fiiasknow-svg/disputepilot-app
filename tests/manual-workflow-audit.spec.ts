@@ -831,7 +831,7 @@ test("manual workflow audit", async ({ context }) => {
       await page.getByLabel("Notes / Description").fill("Manual audit company settings.");
       await page.getByRole("button", { name: "Save Company", exact: true }).click();
 
-      await expect(page.getByRole("status")).toContainText(`Company profile saved for ${companyName}.`);
+      await expect(page.getByRole("status")).toContainText(`Company profile saved locally for ${companyName}.`);
       await expect(page.getByText("Contact", { exact: true })).toBeVisible();
       await expect(page.getByText(companyName, { exact: true })).toBeVisible();
 

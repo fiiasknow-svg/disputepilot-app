@@ -20,8 +20,10 @@ export default function Page() {
     creditMonitoring: { SmartCredit: false, MyFreeScore360: false, IdentityIQ: false },
   });
   const [finishStatus, setFinishStatus] = useState("");
+  const [publicSignupUrl, setPublicSignupUrl] = useState("/public/forms/self-service-signup");
 
   useEffect(() => {
+    setPublicSignupUrl(`${window.location.origin}/public/forms/self-service-signup`);
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -38,12 +40,17 @@ export default function Page() {
     }
   }, []);
 
-  const embedCode = `<iframe src="https://portal.disputepilot.com/signup?company=${encodeURIComponent(companyName)}" width="100%" height="600" frameborder="0"></iframe>`;
+  const embedCode = `<iframe src="${publicSignupUrl}?company=${encodeURIComponent(companyName)}" width="100%" height="600" frameborder="0"></iframe>`;
 
-  function copyEmbed() {
-    navigator.clipboard.writeText(embedCode);
-    setEmbedCopied(true);
-    setTimeout(() => setEmbedCopied(false), 2000);
+  async function copyEmbed() {
+    try {
+      await navigator.clipboard?.writeText(embedCode);
+      setEmbedCopied(true);
+      setFinishStatus("Local self-service signup embed code copied. The iframe route hydrates saved wizard settings in this browser.");
+      setTimeout(() => setEmbedCopied(false), 2000);
+    } catch {
+      setFinishStatus("Local self-service signup embed code is ready. Clipboard unavailable, so select the code manually.");
+    }
   }
   function updateWizard(key: keyof typeof wizard, value: any) {
     setWizard((current) => ({ ...current, [key]: value }));
@@ -208,7 +215,7 @@ export default function Page() {
         return (
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#1e293b" }}>Embed Code</h2>
-            <p style={{ fontSize: 14, color: "#64748b", marginBottom: 16 }}>Paste this code into your website to display the signup form.</p>
+            <p style={{ fontSize: 14, color: "#64748b", marginBottom: 16 }}>Paste this code into your website to display the local signup form. It does not use portal.disputepilot.com or Stripe charging.</p>
             <div style={{ background: "#0f172a", borderRadius: 8, padding: 20, marginBottom: 16, position: "relative" }}>
               <pre style={{ color: "#7dd3fc", fontSize: 12, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-all" as const }}>{embedCode}</pre>
             </div>
@@ -216,6 +223,7 @@ export default function Page() {
               style={{ padding: "10px 24px", background: embedCopied ? "#10b981" : "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {embedCopied ? "Copied!" : "Copy Embed Code"}
             </button>
+            {finishStatus && <p role="status" style={{ margin: "16px 0 0", color: finishStatus.startsWith("Complete") ? "#b45309" : "#166534", fontSize: 13, fontWeight: 700 }}>{finishStatus}</p>}
           </div>
         );
       default:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Contract = {
   id: string;
@@ -15,6 +15,7 @@ const initialContracts: Contract[] = [
   { id: "CON-001", name: "Credit Repair Service Agreement", type: "Template", recipient: "Maria Johnson", status: "Ready to Sign", body: "Standard credit repair service agreement terms are ready for review." },
   { id: "CON-002", name: "Monthly Billing Authorization", type: "Document", recipient: "James Williams", status: "Sent", body: "Monthly billing authorization was sent for local signature tracking." },
 ];
+const STORAGE_KEY = "dp_digital_contracts";
 
 export default function DigitalContractsPage() {
   const [contracts, setContracts] = useState(initialContracts);
@@ -22,10 +23,32 @@ export default function DigitalContractsPage() {
   const [selected, setSelected] = useState<Contract | null>(null);
   const [workflow, setWorkflow] = useState("Contracts");
   const [message, setMessage] = useState("");
+  const [validation, setValidation] = useState("");
   const [form, setForm] = useState({ name: "", type: "Contract", recipient: "", body: "Client agrees to the selected credit repair services and billing terms." });
 
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        setContracts(JSON.parse(saved));
+        setMessage("Digital contracts loaded from local storage.");
+      }
+    } catch {
+      setMessage("Saved local digital contracts could not be loaded.");
+    }
+  }, []);
+
+  function persist(next: Contract[], nextMessage: string) {
+    setContracts(next);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setMessage(nextMessage);
+  }
+
   function createContract() {
-    if (!form.name.trim() || !form.recipient.trim()) return;
+    if (!form.name.trim() || !form.recipient.trim()) {
+      setValidation("Enter Contract Name and Recipient before saving a local contract.");
+      return;
+    }
     const contract = {
       id: `CON-${String(contracts.length + 1).padStart(3, "0")}`,
       name: form.name.trim(),
@@ -34,15 +57,15 @@ export default function DigitalContractsPage() {
       status: "Draft",
       body: form.body,
     };
-    setContracts((current) => [contract, ...current]);
+    persist([contract, ...contracts], `Digital contract saved locally for ${contract.recipient}.`);
     setForm({ name: "", type: "Contract", recipient: "", body: "Client agrees to the selected credit repair services and billing terms." });
     setShowCreate(false);
-    setMessage(`Digital contract saved for ${contract.recipient}.`);
+    setValidation("");
   }
 
   function sendContract(contract: Contract) {
-    setContracts((current) => current.map((item) => item.id === contract.id ? { ...item, status: "Sent" } : item));
-    setMessage(`${contract.name} sent to ${contract.recipient}.`);
+    const next = contracts.map((item) => item.id === contract.id ? { ...item, status: "Sent locally - no email/e-sign sent" } : item);
+    persist(next, `${contract.name} marked sent locally for ${contract.recipient}. No email or e-signature request was sent.`);
   }
 
   return (
@@ -58,7 +81,7 @@ export default function DigitalContractsPage() {
         </button>
       </div>
 
-      {message && <div className="rounded border border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800">{message}</div>}
+      {message && <div role="status" className="rounded border border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800">{message}</div>}
 
       <section className="rounded-xl border bg-white p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap gap-2">
@@ -100,7 +123,7 @@ export default function DigitalContractsPage() {
                 <td className="p-3">
                   <div className="flex gap-2">
                     <button className="rounded border px-3 py-1 font-semibold" onClick={() => setSelected(contract)}>View</button>
-                    <button className="rounded border px-3 py-1 font-semibold" onClick={() => sendContract(contract)}>Send</button>
+                    <button className="rounded border px-3 py-1 font-semibold" onClick={() => sendContract(contract)}>Mark Sent Locally</button>
                   </div>
                 </td>
               </tr>
@@ -114,11 +137,12 @@ export default function DigitalContractsPage() {
           <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-lg">
             <h2 className="text-lg font-bold">New Digital Contract</h2>
             <div className="mt-4 grid gap-4">
-              <label className="text-sm font-semibold text-gray-700">Contract Name<input className="mt-1 w-full rounded border p-2 font-normal text-gray-900" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></label>
-              <label className="text-sm font-semibold text-gray-700">Recipient<input className="mt-1 w-full rounded border p-2 font-normal text-gray-900" value={form.recipient} onChange={(e) => setForm((f) => ({ ...f, recipient: e.target.value }))} /></label>
+              <label className="text-sm font-semibold text-gray-700">Contract Name<input className="mt-1 w-full rounded border p-2 font-normal text-gray-900" value={form.name} onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setValidation(""); }} /></label>
+              <label className="text-sm font-semibold text-gray-700">Recipient<input className="mt-1 w-full rounded border p-2 font-normal text-gray-900" value={form.recipient} onChange={(e) => { setForm((f) => ({ ...f, recipient: e.target.value })); setValidation(""); }} /></label>
               <label className="text-sm font-semibold text-gray-700">Type<select className="mt-1 w-full rounded border p-2 font-normal text-gray-900" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}><option>Contract</option><option>Template</option><option>Document</option></select></label>
               <label className="text-sm font-semibold text-gray-700">Contract Body<textarea className="mt-1 min-h-28 w-full rounded border p-2 font-normal text-gray-900" value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} /></label>
             </div>
+            {validation && <p className="mt-4 text-sm font-semibold text-amber-700">{validation}</p>}
             <div className="mt-5 flex justify-end gap-2">
               <button className="rounded border px-4 py-2 font-semibold" onClick={() => setShowCreate(false)}>Cancel</button>
               <button className="rounded bg-blue-600 px-4 py-2 font-semibold text-white" onClick={createContract}>Save Contract</button>
@@ -134,10 +158,10 @@ export default function DigitalContractsPage() {
             <p className="mt-2 text-sm text-gray-700">Recipient: {selected.recipient}</p>
             <p className="text-sm text-gray-700">Status: {selected.status}</p>
             <p className="mt-3 whitespace-pre-wrap rounded border bg-gray-50 p-3 text-sm text-gray-700">{selected.body}</p>
-            <p className="mt-4 rounded border bg-gray-50 p-3 text-sm text-gray-700">This contract is ready for review, sending, or signing.</p>
+            <p className="mt-4 rounded border bg-gray-50 p-3 text-sm text-gray-700">This contract is ready for local review and local sent-status tracking. Email and e-signature delivery are not connected.</p>
             <div className="mt-5 flex justify-end gap-2">
               <button className="rounded border px-4 py-2 font-semibold" onClick={() => setSelected(null)}>Close</button>
-              <button className="rounded bg-blue-600 px-4 py-2 font-semibold text-white" onClick={() => { sendContract(selected); setSelected(null); }}>Send Contract</button>
+              <button className="rounded bg-blue-600 px-4 py-2 font-semibold text-white" onClick={() => { sendContract(selected); setSelected(null); }}>Mark Contract Sent Locally</button>
             </div>
           </div>
         </div>

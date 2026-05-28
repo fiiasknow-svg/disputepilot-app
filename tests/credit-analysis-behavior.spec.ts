@@ -99,6 +99,7 @@ test('print report calls browser print', async ({ page }) => {
     };
   });
   await selectFirstClientAndLoad(page);
+  await expect(page.getByText(/PDF Report|Download PDF/i)).toHaveCount(0);
   const printed = page.evaluate(() => new Promise<boolean>(resolve => {
     window.addEventListener('print-called', () => resolve(true), { once: true });
   }));

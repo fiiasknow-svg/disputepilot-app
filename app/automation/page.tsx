@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
 type Workflow = {
@@ -38,6 +39,7 @@ const DEFAULT_WORKFLOWS: Workflow[] = [
 ];
 
 export default function AutomationPage() {
+  const router = useRouter();
   const [globalEnabled, setGlobalEnabled] = useState(true);
   const [workflows, setWorkflows] = useState<Workflow[]>(DEFAULT_WORKFLOWS);
   const [activeIntegration, setActiveIntegration] = useState("Zapier");
@@ -130,13 +132,18 @@ export default function AutomationPage() {
           </div>
 
           <div className="mb-4 grid gap-3 md:grid-cols-3">
-            {["Zapier", "Go-HighLevel", "Website Lead Nurturing"].map((name) => (
+            {[
+              { name: "Zapier", href: "/automation/zapier" },
+              { name: "Go-HighLevel", href: "/automation/go-highlevel" },
+              { name: "Website Lead Nurturing", href: "/automation/website-lead-nurturing" },
+            ].map(({ name, href }) => (
               <button
                 key={name}
                 aria-pressed={activeIntegration === name}
                 onClick={() => {
                   setActiveIntegration(name);
-                  setStatus(`${name} selected as the active automation integration.`);
+                  setStatus(`Opening ${name} local configuration route.`);
+                  router.push(href);
                 }}
                 className={`rounded-lg border p-3 text-left text-sm ${activeIntegration === name ? "border-blue-500 bg-blue-50 text-blue-900" : "border-slate-200 bg-white text-slate-700"}`}
               >

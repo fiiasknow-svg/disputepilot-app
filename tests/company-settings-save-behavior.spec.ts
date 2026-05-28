@@ -14,8 +14,12 @@ test('company settings can be edited, saved, and reset', async ({ page }) => {
 
   await page.getByRole('button', { name: /Save Company/i }).click();
 
-  await expect(page.getByText(`Company profile saved for ${companyName}.`)).toBeVisible();
+  await expect(page.getByText(`Company profile saved locally for ${companyName}.`)).toBeVisible();
   await expect(page.getByRole('definition').filter({ hasText: companyName })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByLabel('Company Name')).toHaveValue(companyName);
+  await expect(page.getByText('Company profile loaded from local storage.')).toBeVisible();
 
   await page.getByLabel('Company Name').fill('Unsaved Company');
   await page.getByRole('button', { name: /^Cancel$/i }).click();

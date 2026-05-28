@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 const SAMPLE_ARTICLES = [
@@ -22,6 +22,7 @@ const SAMPLE_ARTICLES = [
 
 const TYPE_C: Record<string, string> = { Educational: "#3b82f6", Guide: "#10b981", Legal: "#8b5cf6", Strategy: "#f59e0b" };
 const STATUS_C: Record<string, string> = { Published: "#10b981", Draft: "#f59e0b" };
+const STORAGE_KEY = "dp_portal_content_articles";
 
 export default function Page() {
   const [articles, setArticles] = useState(SAMPLE_ARTICLES);
@@ -29,6 +30,26 @@ export default function Page() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", type: "Educational" });
   const [validation, setValidation] = useState("");
+  const [status, setStatus] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<(typeof SAMPLE_ARTICLES)[number] | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        setArticles(JSON.parse(saved));
+        setStatus("Portal content loaded from local storage.");
+      }
+    } catch {
+      setStatus("Saved local portal content could not be loaded.");
+    }
+  }, []);
+
+  function persist(next: typeof SAMPLE_ARTICLES, message: string) {
+    setArticles(next);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setStatus(message);
+  }
 
   function saveArticle() {
     if (!form.name.trim()) {
@@ -36,9 +57,11 @@ export default function Page() {
       return;
     }
     if (editingId) {
-      setArticles(prev => prev.map(article => article.id === editingId ? { ...article, name: form.name.trim(), type: form.type } : article));
+      const next = articles.map(article => article.id === editingId ? { ...article, name: form.name.trim(), type: form.type } : article);
+      persist(next, `Portal article "${form.name.trim()}" saved locally.`);
     } else {
-      setArticles(prev => [...prev, { id: Date.now(), name: form.name.trim(), status: "Draft", type: form.type }]);
+      const nextArticle = { id: Date.now(), name: form.name.trim(), status: "Draft", type: form.type };
+      persist([...articles, nextArticle], `Portal article "${nextArticle.name}" created locally as Draft.`);
     }
     setForm({ name: "", type: "Educational" });
     setEditingId(null);
@@ -61,7 +84,15 @@ export default function Page() {
   }
 
   function toggleStatus(id: number) {
-    setArticles(prev => prev.map(a => a.id === id ? { ...a, status: a.status === "Published" ? "Draft" : "Published" } : a));
+    const next = articles.map(a => a.id === id ? { ...a, status: a.status === "Published" ? "Draft" : "Published" } : a);
+    const changed = next.find(a => a.id === id);
+    persist(next, `Portal article "${changed?.name}" marked ${changed?.status} locally.`);
+  }
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    persist(articles.filter(x => x.id !== deleteTarget.id), `Portal article "${deleteTarget.name}" deleted locally.`);
+    setDeleteTarget(null);
   }
 
   return (
@@ -104,7 +135,7 @@ export default function Page() {
                         style={{ fontSize: 12, padding: "4px 10px", border: `1px solid ${STATUS_C[a.status] || "#94a3b8"}44`, borderRadius: 5, cursor: "pointer", background: "#fff", color: STATUS_C[a.status] || "#64748b", fontWeight: 600 }}>
                         {a.status === "Published" ? "Unpublish" : "Publish"}
                       </button>
-                      <button onClick={() => setArticles(prev => prev.filter(x => x.id !== a.id))}
+                      <button onClick={() => setDeleteTarget(a)}
                         style={{ fontSize: 12, padding: "4px 10px", border: "1px solid #fca5a5", borderRadius: 5, cursor: "pointer", background: "#fff", color: "#ef4444", fontWeight: 600 }}>Delete</button>
                     </div>
                   </td>
@@ -114,6 +145,7 @@ export default function Page() {
           </table>
         </div>
         <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 10 }}>{articles.length} articles</p>
+        {status && <p role="status" style={{ fontSize: 13, color: "#2563eb", fontWeight: 700, marginTop: 8 }}>{status}</p>}
 
         {showForm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
@@ -135,6 +167,18 @@ export default function Page() {
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button onClick={() => { setShowForm(false); setEditingId(null); setValidation(""); }} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
                 <button onClick={saveArticle} style={{ padding: "9px 20px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>{editingId ? "Save" : "Create"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {deleteTarget && (
+          <div role="dialog" aria-modal="true" aria-label="Confirm portal article delete" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 440 }}>
+              <h2 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 800 }}>Delete Portal Article?</h2>
+              <p style={{ color: "#475569", fontSize: 14, lineHeight: 1.6 }}>Delete "{deleteTarget.name}" from local portal content?</p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+                <button onClick={() => setDeleteTarget(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 7, background: "#fff", cursor: "pointer" }}>Cancel</button>
+                <button onClick={confirmDelete} style={{ padding: "9px 20px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700 }}>Confirm Delete</button>
               </div>
             </div>
           </div>

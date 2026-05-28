@@ -200,7 +200,13 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
       setActivationStatus("Enter your registration password before opening registration.");
       return;
     }
-    setActivationStatus("Registration password accepted locally. Continue from billing activation.");
+    window.localStorage.setItem("dp_activation_registration_validation", JSON.stringify({ validatedAt: new Date().toISOString() }));
+    setActivationStatus("Registration password validated locally only. Opening billing activation; no hosted registration was submitted.");
+    router.push("/billing");
+  };
+  const handleReserveGifts = () => {
+    window.localStorage.setItem("dp_activation_free_gifts_reservation", JSON.stringify({ reservedAt: new Date().toISOString(), status: "reserved-locally" }));
+    setActivationStatus("Free gifts reserved locally for this browser. Real fulfillment happens only after billing activation is connected.");
   };
 
   return (
@@ -348,7 +354,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
               </label>
             </div>
             {activationStatus && <p style={{ margin:"0 0 12px", color:activationStatus.startsWith("Enter") ? "#b45309" : "#2563eb", fontSize:13, fontWeight:700 }}>{activationStatus}</p>}
-            <button onClick={() => setActivationStatus("Your free gifts are reserved during the 47 hour activation window.")} style={{ width:"100%", padding:"12px", background:"#f59e0b", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:12 }}>Your 2 Free Gifts expire in 47 hours!</button>
+            <button onClick={handleReserveGifts} style={{ width:"100%", padding:"12px", background:"#f59e0b", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:12 }}>Reserve 2 Free Gifts Locally</button>
             <button onClick={handleActivateClaim} style={{ width:"100%", padding:"12px", background:"#10b981", color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:700, cursor:"pointer", marginBottom:16 }}>ACTIVATE &amp; CLAIM MY GIFTS</button>
             <label style={{ display:"block", fontSize:12, color:"#64748b", marginBottom:8 }}>Credit Repair Mastery Class. Allow 12 hours for your activation email.</label>
             <label style={{ display:"block", fontSize:12, color:"#64748b", marginBottom:12 }}>Email will come from Mark Clayborne: Confirm Your Email  (Check your spam/promotional tab and Inbox)</label>
@@ -357,7 +363,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
               <label style={{ display:"none" }}>Enter Password</label>
             </div>
             <div style={{ marginTop:12, display:"flex", gap:8 }}>
-              <button onClick={handleOpenRegistration} style={{ flex:1, padding:"8px", background:"#3b82f6", color:"#fff", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer" }}>Open Registration</button>
+              <button onClick={handleOpenRegistration} style={{ flex:1, padding:"8px", background:"#3b82f6", color:"#fff", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer" }}>Validate Password Locally</button>
               <button onClick={() => setActivateOpen(false)} style={{ flex:1, padding:"8px", background:"#f1f5f9", color:"#475569", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer" }}>Close</button>
             </div>
           </div>

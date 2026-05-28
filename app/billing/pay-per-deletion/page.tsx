@@ -27,6 +27,7 @@ const fallbackClients: Client[] = [
   { id: "local-leslie", full_name: "Leslie Sabek", email: "leslie@example.com" },
   { id: "local-morgan", full_name: "Morgan Credit", email: "morgan@example.com" },
 ];
+const ESTIMATES_KEY = "dp_pay_per_deletion_estimates";
 
 const primaryButton = { padding: "9px 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontSize: 13, fontWeight: 700 };
 const secondaryButton = { padding: "9px 18px", background: "#fff", color: "#1e3a5f", border: "1px solid #cbd5e1", borderRadius: 7, cursor: "pointer", fontSize: 13, fontWeight: 700 };
@@ -48,6 +49,7 @@ export default function Page() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [modal, setModal] = useState<null | "fees" | "credentials" | "contract" | "Cover and Welcome" | "Good Faith Estimate" | "Final Preview">(null);
   const [contractEstimate, setContractEstimate] = useState<Estimate | null>(null);
+  const [removeEstimate, setRemoveEstimate] = useState<Estimate | null>(null);
   const [status, setStatus] = useState("");
 
   async function getAccountId() {
@@ -59,6 +61,12 @@ export default function Page() {
   }
 
   useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(ESTIMATES_KEY);
+      if (saved) setEstimates(JSON.parse(saved));
+    } catch {
+      setStatus("Saved local estimates could not be loaded.");
+    }
     async function loadClients() {
       try {
         const accountId = await getAccountId();
@@ -78,6 +86,12 @@ export default function Page() {
     }
     loadClients();
   }, []);
+
+  function persistEstimates(next: Estimate[], message: string) {
+    setEstimates(next);
+    window.localStorage.setItem(ESTIMATES_KEY, JSON.stringify(next));
+    setStatus(message);
+  }
 
   const filteredEstimates = useMemo(() => {
     return estimates
@@ -112,23 +126,20 @@ export default function Page() {
       status: "Draft",
       archived: false,
     };
-    setEstimates((current) => [estimate, ...current]);
+    persistEstimates([estimate, ...estimates], `Generated local estimate for ${client?.full_name} using ${fees.length} fee item(s). HTML files are attached by name only; parser automation is deferred.`);
     setBuilding(false);
     setActiveTab("Current");
-    setStatus(`Generated estimate for ${client?.full_name} using ${fees.length} fee item(s).`);
   }
 
   function archiveVisible() {
     const idsToArchive = selectedIds.length ? selectedIds : filteredEstimates.map((estimate) => estimate.id);
-    setEstimates((current) => current.map((estimate) => idsToArchive.includes(estimate.id) ? { ...estimate, archived: true, status: "Archived" } : estimate));
+    persistEstimates(estimates.map((estimate) => idsToArchive.includes(estimate.id) ? { ...estimate, archived: true, status: "Archived" } : estimate), `Archived ${idsToArchive.length} estimate record(s) locally.`);
     setSelectedIds([]);
     setActiveTab("Archive");
-    setStatus(`Archived ${idsToArchive.length} estimate record(s).`);
   }
 
   function sendEstimate(id: number) {
-    setEstimates((current) => current.map((estimate) => estimate.id === id ? { ...estimate, status: "Sent locally" } : estimate));
-    setStatus("Estimate send simulated locally. No email was sent.");
+    persistEstimates(estimates.map((estimate) => estimate.id === id ? { ...estimate, status: "Marked sent locally" } : estimate), "Estimate marked sent locally. No email was sent.");
   }
 
   function downloadEstimate(estimate: Estimate) {
@@ -140,6 +151,12 @@ export default function Page() {
     link.click();
     URL.revokeObjectURL(url);
     setStatus(`Downloaded estimate ${estimate.id}.`);
+  }
+
+  function confirmRemoveEstimate() {
+    if (!removeEstimate) return;
+    persistEstimates(estimates.filter((estimate) => estimate.id !== removeEstimate.id), `Estimate for ${removeEstimate.first_name} ${removeEstimate.last_name} removed locally.`);
+    setRemoveEstimate(null);
   }
 
   return (
@@ -178,6 +195,7 @@ export default function Page() {
               <button type="button" onClick={() => setModal("fees")} style={secondaryButton}>+ Pay Per Deletion Fees</button>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: "0 0 8px" }}>HTML Credit Report</p>
+                <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px", maxWidth: 220 }}>Local attachment only. HTML parser automation is deferred.</p>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 18px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 7, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#475569" }}>
                   {htmlFile ? htmlFile.name.slice(0, 22) : "Browse HTML File"}
                   <input type="file" accept=".html,.htm" onChange={e => setHtmlFile(e.target.files?.[0] || null)} style={{ display: "none" }} />
@@ -215,7 +233,7 @@ export default function Page() {
             onSend={sendEstimate}
             onDownload={downloadEstimate}
             onContract={(estimate) => { setContractEstimate(estimate); setModal("contract"); }}
-            onRemove={(id) => setEstimates((current) => current.filter((estimate) => estimate.id !== id))}
+            onRemove={(estimate) => setRemoveEstimate(estimate)}
           />
         )}
 
@@ -237,6 +255,15 @@ export default function Page() {
         {modal === "credentials" && <Modal title="Pay Per Deletion Credentials" onClose={() => setModal(null)}><Credentials /></Modal>}
         {modal === "contract" && contractEstimate && <Modal title="Estimate Contract" onClose={() => setModal(null)}><Contract estimate={contractEstimate} /></Modal>}
         {modal && ["Cover and Welcome", "Good Faith Estimate", "Final Preview"].includes(modal) && <Modal title={`${modal} Preview`} onClose={() => setModal(null)}><Preview section={modal} estimate={estimates[0]} /></Modal>}
+        {removeEstimate && (
+          <Modal title="Confirm Estimate Removal" onClose={() => setRemoveEstimate(null)}>
+            <p style={{ margin: "0 0 18px", color: "#475569", lineHeight: 1.6 }}>Remove the local estimate for {removeEstimate.first_name} {removeEstimate.last_name}? This only changes browser local storage.</p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button type="button" onClick={() => setRemoveEstimate(null)} style={secondaryButton}>Cancel</button>
+              <button type="button" onClick={confirmRemoveEstimate} style={{ ...primaryButton, background: "#ef4444" }}>Confirm Remove</button>
+            </div>
+          </Modal>
+        )}
       </main>
     </CDMLayout>
   );
@@ -249,13 +276,13 @@ function EstimateTable({ estimates, selectedIds, onToggleSelected, onSend, onDow
   onSend: (id: number) => void;
   onDownload: (estimate: Estimate) => void;
   onContract: (estimate: Estimate) => void;
-  onRemove: (id: number) => void;
+  onRemove: (estimate: Estimate) => void;
 }) {
   return (
     <section style={{ background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", overflow: "hidden", marginBottom: 28 }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead style={{ background: "#f8fafc" }}>
-          <tr>{["Select", "First Name", "Last Name", "Email", "Date", "Estimation Preview", "Report Type", "Status", "Send Email", "Downloads", "Send a Contract", "Action"].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+          <tr>{["Select", "First Name", "Last Name", "Email", "Date", "Estimation Preview", "Report Type", "Status", "Local Send", "Downloads", "Contract Context", "Action"].map(h => <th key={h} style={th}>{h}</th>)}</tr>
         </thead>
         <tbody>
           {estimates.length === 0 ? (
@@ -270,10 +297,10 @@ function EstimateTable({ estimates, selectedIds, onToggleSelected, onSend, onDow
               <td style={td}><span style={{ background: "#eff6ff", color: "#3b82f6", borderRadius: 5, padding: "3px 10px", fontSize: 12, fontWeight: 600 }}>{e.preview}</span></td>
               <td style={td}>{e.report_type}</td>
               <td style={td}>{e.status}</td>
-              <td style={td}><button onClick={() => onSend(e.id)} style={{ ...primaryButton, padding: "5px 12px", background: "#eff6ff", color: "#3b82f6" }}>Send</button></td>
+              <td style={td}><button onClick={() => onSend(e.id)} style={{ ...primaryButton, padding: "5px 12px", background: "#eff6ff", color: "#3b82f6" }}>Mark Sent Locally</button></td>
               <td style={td}><button onClick={() => onDownload(e)} style={{ ...secondaryButton, padding: "5px 12px", color: "#475569" }}>Download</button></td>
-              <td style={td}><button onClick={() => onContract(e)} style={{ ...primaryButton, padding: "5px 12px", background: "#f0fdf4", color: "#16a34a" }}>Contract</button></td>
-              <td style={td}><button onClick={() => onRemove(e.id)} style={{ ...secondaryButton, padding: "5px 10px", borderColor: "#fca5a5", color: "#ef4444" }}>Remove</button></td>
+              <td style={td}><button onClick={() => onContract(e)} style={{ ...primaryButton, padding: "5px 12px", background: "#f0fdf4", color: "#16a34a" }}>Preview Contract Context</button></td>
+              <td style={td}><button onClick={() => onRemove(e)} style={{ ...secondaryButton, padding: "5px 10px", borderColor: "#fca5a5", color: "#ef4444" }}>Remove</button></td>
             </tr>
           ))}
         </tbody>

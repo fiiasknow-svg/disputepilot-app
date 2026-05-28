@@ -15,10 +15,12 @@ test('zapier route supports copy connect test and save statuses', async ({ page 
 
   await page.getByLabel(/API Key or connection token/i).fill('zapier-local-token');
   await page.getByRole('button', { name: 'Connect' }).click();
-  await expect(page.getByRole('status')).toContainText('connected locally');
+  await expect(page.getByRole('status')).toContainText('connection saved locally');
+  await page.reload();
+  await expect(page.getByLabel(/API Key or connection token/i)).toHaveValue('zapier-local-token');
 
-  await page.getByRole('button', { name: 'Test Zap' }).click();
-  await expect(page.getByRole('status')).toContainText('Test Zap queued locally');
+  await page.getByRole('button', { name: 'Record Local Test' }).click();
+  await expect(page.getByRole('status')).toContainText('Local Zap test recorded');
 
   await page.getByRole('button', { name: 'Save Settings' }).click();
   await expect(page.getByRole('status')).toContainText('Zapier settings saved locally');

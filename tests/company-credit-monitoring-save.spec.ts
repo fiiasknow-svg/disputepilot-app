@@ -7,6 +7,9 @@ test('credit monitoring save persists provider settings locally', async ({ page 
   await page.goto(`${BASE_URL}/company/credit-monitoring`);
   await page.evaluate(() => window.localStorage.removeItem('dp_credit_monitoring_settings'));
   await expect(page.getByRole('heading', { name: 'Credit Monitoring' })).toBeVisible();
+  await page.getByRole('button', { name: 'Mark Tested Locally' }).first().click();
+  await expect(page.getByRole('status')).toContainText('marked tested locally');
+  await expect(page.getByRole('status')).toContainText('No provider URL validation');
   await page.getByPlaceholder('Affiliate URL').first().fill('https://smartcredit.example/local');
   await page.getByRole('button', { name: 'Save Settings' }).click();
   await expect(page.getByRole('status')).toContainText('Credit monitoring settings saved locally');

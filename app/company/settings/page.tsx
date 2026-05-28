@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import CDMLayout from "@/components/CDMLayout";
 
@@ -24,6 +24,7 @@ const defaultCompany = {
 };
 
 type CompanyForm = typeof defaultCompany;
+const STORAGE_KEY = "dp_company_settings";
 
 const fields: { key: keyof CompanyForm; label: string; type?: string }[] = [
   { key: "companyName", label: "Company Name" },
@@ -41,14 +42,28 @@ export default function CompanySettingsPage() {
   const [saved, setSaved] = useState(defaultCompany);
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (!stored) return;
+      const parsed = { ...defaultCompany, ...JSON.parse(stored) };
+      setForm(parsed);
+      setSaved(parsed);
+      setMessage("Company profile loaded from local storage.");
+    } catch {
+      setMessage("Saved local company profile could not be loaded.");
+    }
+  }, []);
+
   function update(key: keyof CompanyForm, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
     setMessage("");
   }
 
   function saveCompany() {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
     setSaved(form);
-    setMessage(`Company profile saved for ${form.companyName}. Saved preview refreshed.`);
+    setMessage(`Company profile saved locally for ${form.companyName}. Saved preview refreshed.`);
   }
 
   function cancelChanges() {

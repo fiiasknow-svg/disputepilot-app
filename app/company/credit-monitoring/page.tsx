@@ -40,6 +40,8 @@ export default function Page() {
     await new Promise(r => setTimeout(r, 1200));
     setTestResult(prev => ({ ...prev, [key]: "ok" }));
     setTesting(null);
+    const provider = PROVIDERS.find(p => p.key === key);
+    setMessage(`${provider?.name || "Provider"} marked tested locally. No provider URL validation or external connection was performed.`);
     setTimeout(() => setTestResult(prev => ({ ...prev, [key]: null })), 3000);
   }
 
@@ -66,7 +68,7 @@ export default function Page() {
                   style={{ flex: 1, minWidth: 180, padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 14 }} />
                 <button onClick={() => test(p.key)} disabled={testing === p.key}
                   style={{ padding: "8px 18px", background: testResult[p.key] === "ok" ? "#10b981" : "#f1f5f9", color: testResult[p.key] === "ok" ? "#fff" : "#475569", border: "1px solid #e2e8f0", borderRadius: 7, cursor: "pointer", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>
-                  {testing === p.key ? "Testing…" : testResult[p.key] === "ok" ? "Connected" : "Test"}
+                  {testing === p.key ? "Recording..." : testResult[p.key] === "ok" ? "Local Test OK" : "Mark Tested Locally"}
                 </button>
                 <button onClick={() => setEnabled(prev => ({ ...prev, [p.key]: !prev[p.key] }))}
                   style={{ position: "relative", width: 48, height: 26, borderRadius: 13, border: "none", cursor: "pointer", background: enabled[p.key] ? p.color : "#cbd5e1", padding: 0, flexShrink: 0 }}>

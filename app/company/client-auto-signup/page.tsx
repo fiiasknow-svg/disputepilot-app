@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CDMLayout from "@/components/CDMLayout";
 
 const MAIN_TABS = ["Client Auto Signup", "Signup Basic Settings", "Single Credit Card Authorization"];
@@ -19,13 +19,21 @@ export default function Page() {
   const [cardCvv, setCardCvv] = useState("");
   const [builderOpen, setBuilderOpen] = useState(false);
   const [status, setStatus] = useState("");
+  const [signupUrl, setSignupUrl] = useState("/public/forms/client-auto-signup");
 
-  const signupUrl = "https://portal.disputepilot.com/signup/auto";
+  useEffect(() => {
+    setSignupUrl(`${window.location.origin}/public/forms/client-auto-signup`);
+  }, []);
 
-  function copy() {
-    navigator.clipboard.writeText(signupUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  async function copy() {
+    try {
+      await navigator.clipboard?.writeText(signupUrl);
+      setStatus("Local client auto signup URL copied.");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setStatus("Local client auto signup URL is ready. Clipboard unavailable, so select the URL manually.");
+    }
   }
   function saveSettings() {
     window.localStorage.setItem("dp_client_auto_signup_settings", JSON.stringify({ contract, enabled, requirePhone, requireAddress, allowSelf }));
@@ -60,7 +68,7 @@ export default function Page() {
           {tab === "Client Auto Signup" && (
             <div>
               <p style={{ fontSize: 14, color: "#64748b", marginBottom: 24, lineHeight: 1.65 }}>
-                Enable client auto signup to let clients register and onboard themselves. Select a contract, copy the signup link, and toggle it live.
+                Enable client auto signup to let clients register and onboard themselves. This browser uses a local public intake route; select a contract, copy the local signup link, and toggle it live locally.
               </p>
 
               <div style={{ marginBottom: 20 }}>
@@ -74,8 +82,9 @@ export default function Page() {
 
               <div style={{ marginBottom: 24 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Signup URL</label>
+                <p style={{ margin: "0 0 8px", color: "#64748b", fontSize: 13 }}>This link opens the local public intake route. It is not a hosted portal.disputepilot.com signup.</p>
                 <div style={{ display: "flex", gap: 10, alignItems: "center", maxWidth: 500 }}>
-                  <input readOnly value={signupUrl}
+                  <input aria-label="Signup URL" readOnly value={signupUrl}
                     style={{ flex: 1, padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 13, background: "#f8fafc", color: "#64748b" }} />
                   <button onClick={copy}
                     style={{ padding: "10px 18px", background: copied ? "#10b981" : "#1e3a5f", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" }}>

@@ -55,8 +55,8 @@ export default function GoHighLevelAutomationPage() {
           <input id="ghl-stage" value={stage} onChange={(event) => setStage(event.target.value)} className="rounded border px-3 py-2 text-sm" />
 
           <div className="flex flex-wrap gap-2 pt-2">
-            <button onClick={() => setStatus(locationId.trim() && token.trim() ? "GoHighLevel connection marked connected locally." : "Enter Location ID and API Key/Token before connecting.")} className="rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white">Connect</button>
-            <button onClick={() => setStatus("GoHighLevel test completed locally. No external API request was sent.")} className="rounded bg-amber-500 px-4 py-2 text-sm font-bold text-white">Test Connection</button>
+            <button onClick={() => locationId.trim() && token.trim() ? saveSettings("GoHighLevel connection saved locally. No external GHL validation was performed.") : setStatus("Enter Location ID and API Key/Token before connecting.")} className="rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white">Connect</button>
+            <button onClick={() => setStatus("Local GoHighLevel connection test recorded. No external API request was sent.")} className="rounded bg-amber-500 px-4 py-2 text-sm font-bold text-white">Record Local Test</button>
             <button onClick={() => saveSettings()} className="rounded bg-green-600 px-4 py-2 text-sm font-bold text-white">Save Settings</button>
           </div>
         </section>

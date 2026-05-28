@@ -21,4 +21,16 @@ test('self service signup finish validates and saves locally', async ({ page }) 
   await page.getByRole('button', { name: /9\. Finish/ }).click();
   await page.getByRole('button', { name: 'Finish', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('wizard configuration saved locally');
+
+  await page.getByRole('button', { name: /10\. Embed Code/ }).click();
+  await expect(page.getByText('/public/forms/self-service-signup')).toBeVisible();
+  await page.getByRole('button', { name: 'Copy Embed Code' }).click();
+  await expect(page.getByRole('status')).toContainText('Local self-service signup embed code');
+
+  await page.goto(`${BASE_URL}/public/forms/self-service-signup`);
+  await expect(page.getByRole('heading', { name: 'Wizard Co' })).toBeVisible();
+  await page.getByLabel('Name').fill('Public Tester');
+  await page.getByLabel('Email').fill('public@example.com');
+  await page.getByRole('button', { name: 'Save Local Signup' }).click();
+  await expect(page.getByRole('status')).toContainText('Self-service signup saved locally');
 });

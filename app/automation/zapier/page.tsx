@@ -63,8 +63,8 @@ export default function ZapierAutomationPage() {
           </label>
 
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => setStatus(token.trim() ? "Zapier connection marked connected locally." : "Enter a Zapier token before connecting.")} className="rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white">Connect</button>
-            <button onClick={() => setStatus("Test Zap queued locally. No external Zapier request was sent.")} className="rounded bg-amber-500 px-4 py-2 text-sm font-bold text-white">Test Zap</button>
+            <button onClick={() => token.trim() ? saveSettings("Zapier connection saved locally. No external Zapier validation was performed.") : setStatus("Enter a Zapier token before connecting.")} className="rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white">Connect</button>
+            <button onClick={() => setStatus("Local Zap test recorded. No external Zapier request was sent.")} className="rounded bg-amber-500 px-4 py-2 text-sm font-bold text-white">Record Local Test</button>
             <button onClick={() => saveSettings()} className="rounded bg-green-600 px-4 py-2 text-sm font-bold text-white">Save Settings</button>
           </div>
         </section>

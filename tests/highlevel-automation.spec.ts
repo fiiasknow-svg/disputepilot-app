@@ -14,10 +14,12 @@ test('go-highlevel route supports connect test and save statuses', async ({ page
   await page.getByLabel('Stage').fill('Booked Consultation');
 
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('connected locally');
+  await expect(page.getByRole('status')).toContainText('connection saved locally');
+  await page.reload();
+  await expect(page.getByLabel('Location ID')).toHaveValue('loc_123');
 
-  await page.getByRole('button', { name: 'Test Connection' }).click();
-  await expect(page.getByRole('status')).toContainText('test completed locally');
+  await page.getByRole('button', { name: 'Record Local Test' }).click();
+  await expect(page.getByRole('status')).toContainText('Local GoHighLevel connection test recorded');
 
   await page.getByRole('button', { name: 'Save Settings' }).click();
   await expect(page.getByRole('status')).toContainText('GoHighLevel settings saved locally');
