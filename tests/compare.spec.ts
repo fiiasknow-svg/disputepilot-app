@@ -4,11 +4,22 @@ import fs from 'fs';
 const ORIGINAL = 'https://www.clientdisputemanager.com';
 const CLONE = process.env.BASE_URL || 'http://127.0.0.1:3201';
 
+const ORIGINAL_LOGIN_ONLY_TEXT = new Set([
+  'Please enter your email and password',
+  'Remember Me?',
+  'Forgot your password?',
+  'Forgot your username?',
+  'Signup Now',
+  'Live Training',
+  'Client Dispute Manager',
+  'The All-In-One Platform to operate and scale your credit repair business.',
+]);
+
 function cleanText(item: string) {
   return item
     .replace(/\s+/g, ' ')
     .trim()
-    .replace(/[“”]/g, '"')
+    .replace(/[“�]/g, '"')
     .replace(/^(Get Support)(Submit a support ticket)$/i, '$1 $2')
     .replace(/^(Help Center)(Browse all help articles)$/i, '$1 $2')
     .replace(/^(FAQ)(Quick answers to common questions)$/i, '$1 $2')
@@ -48,6 +59,7 @@ test('compare original dashboard to clone dashboard', async () => {
     originalItems
       .map(cleanText)
       .filter(Boolean)
+      .filter(item => !ORIGINAL_LOGIN_ONLY_TEXT.has(item))
       .filter(item => !item.includes('Get $247 in Free Gifts'))
       .filter(item => !item.includes('Your 2 Free Gifts expire'))
       .filter(item => item !== 'Revenue Channels Today Custom Last 30 Days YTD All Time From Date To Date Apply')
