@@ -110,6 +110,17 @@ export default function PortalsPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!video) return;
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setVideo(null);
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [video]);
+
   function update(key: keyof typeof defaults, value: string | boolean) {
     setForm((current) => ({ ...current, [key]: value }));
     setMessage("");
@@ -130,8 +141,7 @@ export default function PortalsPage() {
   }
 
   function goBack() {
-    if (typeof window !== "undefined" && window.history.length > 1 && document.referrer.startsWith(window.location.origin)) router.back();
-    else router.push("/company/settings");
+    router.push("/company/settings");
   }
 
   async function copyLink(url: string) {
@@ -353,12 +363,18 @@ export default function PortalsPage() {
           </div>
         </section>
         {video && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
-              <h2 className="text-xl font-bold">{video.title} Training</h2>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="portal-video-title"
+            onClick={() => setVideo(null)}
+          >
+            <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
+              <h2 id="portal-video-title" className="text-xl font-bold">{video.title} Video</h2>
               <p className="mt-2 text-sm leading-6 text-gray-700">{video.video}</p>
               <div className="mt-4 flex min-h-56 items-center justify-center rounded-lg border bg-gray-100 p-6 text-center text-sm font-semibold text-gray-600">
-                Local training video placeholder. No hosted training video is connected.
+                Local training video placeholder - connect the final video URL to play it here. No hosted training video is connected yet.
               </div>
               <div className="mt-5 flex justify-end">
                 <button className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={() => setVideo(null)}>Close</button>
