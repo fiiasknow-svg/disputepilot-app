@@ -17,6 +17,7 @@ const STATUSES = Object.keys(STATUS_COLORS);
 const LOCAL_LEADS_KEY = "disputepilot.leads";
 const LOCAL_ARCHIVED_LEAD_IDS_KEY = "disputepilot.leads.archivedIds";
 const LOCAL_AUTO_ARCHIVE_KEY = "disputepilot.leads.autoArchiveWebsite";
+const REMOTE_TIMEOUT_MS = 2500;
 
 const EMPTY_FORM = {
   first_name: "", last_name: "", email: "", phone: "",
@@ -44,6 +45,36 @@ function readLocalLeads() {
     return JSON.parse(window.localStorage.getItem(LOCAL_LEADS_KEY) || "[]");
   } catch {
     return [];
+  }
+}
+
+function mergeLeads(localLeads: any[], remoteLeads: any[]) {
+  const seen = new Set<string>();
+  const merged: any[] = [];
+
+  for (const lead of [...localLeads, ...remoteLeads]) {
+    const key = lead.id
+      ? `id:${lead.id}`
+      : `lead:${lead.email || lead.full_name || `${lead.first_name || ""} ${lead.last_name || ""}` || lead.created_at}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(lead);
+  }
+
+  return merged;
+}
+
+async function withRemoteTimeout<T>(operation: PromiseLike<T>, label: string, timeoutMs = REMOTE_TIMEOUT_MS): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
@@ -249,17 +280,20 @@ export default function Page() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function getAccountId() {
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData } = await withRemoteTimeout(supabase.auth.getUser(), "Supabase auth lookup");
     const userId = userData.user?.id;
 
     if (!userId) return null;
 
-    const { data } = await supabase
-      .from("account_memberships")
-      .select("account_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
+    const { data } = await withRemoteTimeout(
+      supabase
+        .from("account_memberships")
+        .select("account_id")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle(),
+      "Supabase account lookup",
+    );
 
     return data?.account_id || null;
   }
@@ -268,32 +302,34 @@ export default function Page() {
     setLoading(true);
     setError("");
     const localLeads = readLocalLeads();
+    setLeads(localLeads);
     try {
       const accountId = await getAccountId();
 
       if (accountId) {
-        const { data, error } = await supabase.from("leads").select("*").eq("account_id", accountId).order("created_at", { ascending: false });
+        const { data, error } = await withRemoteTimeout(
+          supabase.from("leads").select("*").eq("account_id", accountId).order("created_at", { ascending: false }),
+          "Supabase scoped leads load",
+        );
         if (error) throw error;
         const scopedLeads = data || [];
-
-        if (scopedLeads.length) {
-          const scopedIds = new Set(scopedLeads.map((lead: any) => lead.id));
-          setLeads([...localLeads.filter((lead: any) => !scopedIds.has(lead.id)), ...scopedLeads]);
-          setLoading(false);
-          return;
-        }
+        setLeads(current => mergeLeads(readLocalLeads().length ? readLocalLeads() : current, scopedLeads));
+        return;
       }
 
-      const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+      const { data, error } = await withRemoteTimeout(
+        supabase.from("leads").select("*").order("created_at", { ascending: false }),
+        "Supabase leads load",
+      );
       if (error) throw error;
       const remoteLeads = data || [];
-      const remoteIds = new Set(remoteLeads.map((lead: any) => lead.id));
-      setLeads([...localLeads.filter((lead: any) => !remoteIds.has(lead.id)), ...remoteLeads]);
+      setLeads(current => mergeLeads(readLocalLeads().length ? readLocalLeads() : current, remoteLeads));
     } catch (err: any) {
-      setLeads(localLeads);
+      setLeads(current => mergeLeads(readLocalLeads(), current));
       setError(`Could not load leads from Supabase. Showing local leads only. ${actionErrorMessage(err)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -387,7 +423,10 @@ export default function Page() {
       });
       try {
         const updateQuery = supabase.from("leads").update(remotePayload).eq("id", editing.id);
-        const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+        const { error } = await withRemoteTimeout(
+          accountId ? updateQuery.eq("account_id", accountId) : updateQuery,
+          "Supabase lead update",
+        );
         if (error) throw error;
       } catch (err: any) {
         remoteError = actionErrorMessage(err);
@@ -399,7 +438,10 @@ export default function Page() {
         return next;
       });
       try {
-        const { error } = await supabase.from("leads").insert([remotePayload]);
+        const { error } = await withRemoteTimeout(
+          supabase.from("leads").insert([remotePayload]),
+          "Supabase lead insert",
+        );
         if (error) throw error;
       } catch (err: any) {
         remoteError = actionErrorMessage(err);
@@ -448,7 +490,10 @@ export default function Page() {
     try {
       const accountId = await getAccountId();
       const deleteQuery = supabase.from("leads").delete().eq("id", id);
-      const { error } = accountId ? await deleteQuery.eq("account_id", accountId) : await deleteQuery;
+      const { error } = await withRemoteTimeout(
+        accountId ? deleteQuery.eq("account_id", accountId) : deleteQuery,
+        "Supabase lead delete",
+      );
       if (error) throw error;
     } catch (err: any) {
       remoteError = actionErrorMessage(err);
@@ -471,7 +516,10 @@ export default function Page() {
     try {
       const accountId = await getAccountId();
       const deleteQuery = supabase.from("leads").delete().in("id", ids);
-      const { error } = accountId ? await deleteQuery.eq("account_id", accountId) : await deleteQuery;
+      const { error } = await withRemoteTimeout(
+        accountId ? deleteQuery.eq("account_id", accountId) : deleteQuery,
+        "Supabase bulk lead delete",
+      );
       if (error) throw error;
     } catch (err: any) {
       remoteError = actionErrorMessage(err);
@@ -494,7 +542,10 @@ export default function Page() {
     try {
       const accountId = await getAccountId();
       const updateQuery = supabase.from("leads").update({ status }).in("id", ids);
-      const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+      const { error } = await withRemoteTimeout(
+        accountId ? updateQuery.eq("account_id", accountId) : updateQuery,
+        "Supabase bulk lead status update",
+      );
       if (error) throw error;
     } catch (err: any) {
       remoteError = actionErrorMessage(err);
@@ -557,7 +608,10 @@ export default function Page() {
     try {
       const accountId = await getAccountId();
       const updateQuery = supabase.from("leads").update({ status }).eq("id", id);
-      const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+      const { error } = await withRemoteTimeout(
+        accountId ? updateQuery.eq("account_id", accountId) : updateQuery,
+        "Supabase lead status update",
+      );
       if (error) throw error;
     } catch (err: any) {
       remoteError = actionErrorMessage(err);
@@ -589,14 +643,20 @@ export default function Page() {
         address: lead.address, city: lead.city, state: lead.state, zip: lead.zip,
         credit_score: lead.credit_score, assigned_agent: lead.assigned_agent,
       };
-      const { error } = await supabase.from("clients").insert([accountId ? { ...clientPayload, account_id: accountId } : clientPayload]);
+      const { error } = await withRemoteTimeout(
+        supabase.from("clients").insert([accountId ? { ...clientPayload, account_id: accountId } : clientPayload]),
+        "Supabase converted client insert",
+      );
       if (error) throw error;
     } catch (err: any) {
       setError(`Client record was not created in Supabase: ${actionErrorMessage(err)}`);
     }
     try {
       const updateQuery = supabase.from("leads").update({ status: "converted" }).eq("id", lead.id);
-      const { error } = accountId ? await updateQuery.eq("account_id", accountId) : await updateQuery;
+      const { error } = await withRemoteTimeout(
+        accountId ? updateQuery.eq("account_id", accountId) : updateQuery,
+        "Supabase converted lead update",
+      );
       if (error) throw error;
     } catch (err: any) {
       setError(`Lead was marked converted locally, but Supabase update failed: ${actionErrorMessage(err)}`);
@@ -685,7 +745,10 @@ export default function Page() {
     try {
       const accountId = await getAccountId();
       const remoteRows = rows.map(({ id, created_at, updated_at, ...row }) => accountId ? { ...row, account_id: accountId } : row);
-      const { error } = await supabase.from("leads").insert(remoteRows);
+      const { error } = await withRemoteTimeout(
+        supabase.from("leads").insert(remoteRows),
+        "Supabase leads import",
+      );
       if (error) throw error;
     } catch (err: any) {
       remoteError = actionErrorMessage(err);

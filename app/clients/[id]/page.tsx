@@ -16,6 +16,7 @@ const STATUS_COLORS: Record<string, string> = { active:"#10b981", pending:"#f59e
 const DISPUTE_COLORS: Record<string, string> = { pending:"#f59e0b", sent:"#8b5cf6", responded:"#3b82f6", resolved:"#10b981" };
 const INV_COLORS: Record<string, string> = { paid:"#10b981", pending:"#f59e0b", overdue:"#ef4444", draft:"#94a3b8" };
 const LOCAL_CLIENTS_KEY = "disputepilot.clients";
+const REMOTE_TIMEOUT_MS = 2500;
 
 function scoreColor(s: number) { return s>=740?"#10b981":s>=670?"#3b82f6":s>=580?"#f59e0b":"#ef4444"; }
 function scoreLabel(s: number) { return s>=800?"Exceptional":s>=740?"Very Good":s>=670?"Good":s>=580?"Fair":"Poor"; }
@@ -43,6 +44,15 @@ function writeLocalClient(client: any) {
     ? clients.map((c: any) => c.id === client.id ? client : c)
     : [client, ...clients];
   window.localStorage.setItem(LOCAL_CLIENTS_KEY, JSON.stringify(next));
+}
+
+function withRemoteTimeout<T>(operation: PromiseLike<T>, label: string, timeoutMs = REMOTE_TIMEOUT_MS): Promise<T> {
+  return Promise.race([
+    Promise.resolve(operation),
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]);
 }
 
 function clientRecordToForm(d: any) {
@@ -147,74 +157,118 @@ export default function Page() {
   }, []);
 
   async function getAccountId() {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
+    try {
+      const { data: userData } = await withRemoteTimeout(supabase.auth.getUser(), "Supabase user lookup");
+      const userId = userData.user?.id;
 
-    if (!userId) return null;
+      if (!userId) return null;
 
-    const { data } = await supabase
-      .from("account_memberships")
-      .select("account_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
+      const { data } = await withRemoteTimeout(
+        supabase
+          .from("account_memberships")
+          .select("account_id")
+          .eq("user_id", userId)
+          .limit(1)
+          .maybeSingle(),
+        "Supabase account lookup",
+      );
 
-    return data?.account_id || null;
+      return data?.account_id || null;
+    } catch {
+      return null;
+    }
   }
 
   useEffect(() => {
     async function load() {
+      const localClient = readLocalClients().find((c: any) => c.id === id);
+      if (localClient) {
+        setForm(f => ({...f, ...clientRecordToForm(localClient)}));
+        setActivity([{icon:"Profile",label:"Client profile loaded from saved data",date:localClient.updated_at||localClient.created_at||new Date().toISOString()}]);
+        setLoading(false);
+      }
+
       let accountId = null;
       try {
         accountId = await getAccountId();
       } catch {}
       let cr: any = null;
 
-      if (accountId) {
-        cr = await supabase.from("clients").select("*").eq("id", id).eq("account_id", accountId).single();
-      }
+      try {
+        if (accountId) {
+          cr = await withRemoteTimeout(
+            supabase.from("clients").select("*").eq("id", id).eq("account_id", accountId).single(),
+            "Supabase account client profile query",
+          );
+        }
 
-      if (!cr?.data) {
-        cr = await supabase.from("clients").select("*").eq("id", id).single();
+        if (!cr?.data) {
+          cr = await withRemoteTimeout(
+            supabase.from("clients").select("*").eq("id", id).single(),
+            "Supabase client profile query",
+          );
+        }
+      } catch {
+        cr = null;
       }
 
       let disputeRows: any[] = [];
-      if (accountId) {
-        const { data } = await supabase
-          .from("disputes")
-          .select("id,account_name,bureau,status,round,created_at")
-          .eq("client_id", id)
-          .eq("account_id", accountId)
-          .order("created_at",{ascending:false});
-        disputeRows = data || [];
-      }
-      if (!disputeRows.length) {
-        const { data } = await supabase
-          .from("disputes")
-          .select("id,account_name,bureau,status,round,created_at")
-          .eq("client_id", id)
-          .order("created_at",{ascending:false});
-        disputeRows = data || [];
+      try {
+        if (accountId) {
+          const { data } = await withRemoteTimeout(
+            supabase
+              .from("disputes")
+              .select("id,account_name,bureau,status,round,created_at")
+              .eq("client_id", id)
+              .eq("account_id", accountId)
+              .order("created_at",{ascending:false}),
+            "Supabase account client disputes query",
+          );
+          disputeRows = data || [];
+        }
+        if (!disputeRows.length) {
+          const { data } = await withRemoteTimeout(
+            supabase
+              .from("disputes")
+              .select("id,account_name,bureau,status,round,created_at")
+              .eq("client_id", id)
+              .order("created_at",{ascending:false}),
+            "Supabase client disputes query",
+          );
+          disputeRows = data || [];
+        }
+      } catch {
+        disputeRows = [];
       }
       let invoiceRows: any[] = [];
-      if (accountId) {
-        const { data } = await supabase
-          .from("invoices")
-          .select("id,invoice_number,amount,status,created_at,due_date")
-          .eq("client_id", id)
-          .eq("account_id", accountId)
-          .order("created_at",{ascending:false});
-        invoiceRows = data || [];
+      try {
+        if (accountId) {
+          const { data } = await withRemoteTimeout(
+            supabase
+              .from("invoices")
+              .select("id,invoice_number,amount,status,created_at,due_date")
+              .eq("client_id", id)
+              .eq("account_id", accountId)
+              .order("created_at",{ascending:false}),
+            "Supabase account client invoices query",
+          );
+          invoiceRows = data || [];
+        }
+        if (!invoiceRows.length) {
+          const { data } = await withRemoteTimeout(
+            supabase
+              .from("invoices")
+              .select("id,invoice_number,amount,status,created_at,due_date")
+              .eq("client_id", id)
+              .order("created_at",{ascending:false}),
+            "Supabase client invoices query",
+          );
+          invoiceRows = data || [];
+        }
+      } catch {
+        invoiceRows = [];
       }
-      if (!invoiceRows.length) {
-        const { data } = await supabase
-          .from("invoices")
-          .select("id,invoice_number,amount,status,created_at,due_date")
-          .eq("client_id", id)
-          .order("created_at",{ascending:false});
-        invoiceRows = data || [];
-      }
-      if (cr.data) {
+      if (cr?.data) {
         const d = cr.data;
         setForm(f => ({...f, ...clientRecordToForm(d)}));
         setActivity([
@@ -222,8 +276,8 @@ export default function Page() {
           ...((d.portal_access ?? d.client_portal_access) ? [{icon:"🔑",label:"Portal access enabled",date:d.updated_at||d.created_at||new Date().toISOString()}] : []),
         ]);
       }
-      if (!cr.data) {
-        const d = readLocalClients().find((c: any) => c.id === id);
+      if (!cr?.data) {
+        const d = localClient || readLocalClients().find((c: any) => c.id === id);
         if (d) {
           setForm(f => ({...f, ...clientRecordToForm(d)}));
           setActivity([{icon:"Profile",label:"Client profile loaded from saved data",date:d.updated_at||d.created_at||new Date().toISOString()}]);
@@ -246,8 +300,10 @@ export default function Page() {
       const accountId = await getAccountId();
       const payload = clientProfileSupabasePayload(form, full, accountId);
       const updateQuery = supabase.from("clients").update(payload).eq("id",id);
-      if (accountId) await updateQuery.eq("account_id", accountId);
-      else await updateQuery;
+      await withRemoteTimeout(
+        accountId ? updateQuery.eq("account_id", accountId) : updateQuery,
+        "Supabase client profile update",
+      );
     } catch {}
     setSaving(false); setSaved(true); setTimeout(()=>setSaved(false),3000);
     setActivity(a=>[{icon:"✏️",label:"Profile updated",date:new Date().toISOString()},...a]);

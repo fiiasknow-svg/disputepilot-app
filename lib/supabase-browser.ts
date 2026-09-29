@@ -4,6 +4,7 @@ import { createBrowserClient } from "@supabase/ssr";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const BROWSER_FETCH_TIMEOUT_MS = 2000;
 
 const missingConfigError = { message: "Supabase is not configured for this environment." };
 
@@ -55,6 +56,18 @@ function createNoopQuery(): NoopQuery {
 
 type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>;
 
+function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), BROWSER_FETCH_TIMEOUT_MS);
+
+  return fetch(input, {
+    ...init,
+    signal: init?.signal || controller.signal,
+  }).finally(() => {
+    window.clearTimeout(timeout);
+  });
+}
+
 export function createSupabaseBrowserClient(): BrowserSupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
     return {
@@ -81,7 +94,11 @@ export function createSupabaseBrowserClient(): BrowserSupabaseClient {
     } as unknown as BrowserSupabaseClient;
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      fetch: fetchWithTimeout,
+    },
+  });
 }
 
 export const supabaseBrowser = createSupabaseBrowserClient();

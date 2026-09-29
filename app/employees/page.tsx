@@ -11,6 +11,7 @@ const PAGE_SIZES = [25,50,100];
 const EMPLOYEE_STORAGE_KEY = "disputepilot.employees.local";
 const INVITE_STORAGE_KEY = "disputepilot.employees.pendingInvites";
 const TASK_STORAGE_KEY = "disputepilot.employees.tasks";
+const REMOTE_TIMEOUT_MS = 2500;
 
 // Role permissions matrix
 const PERMISSIONS: Record<string, Record<string,boolean>> = {
@@ -54,6 +55,20 @@ function readStorage<T>(key: string, fallback: T): T {
 function writeStorage(key: string, value: unknown) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+async function withRemoteTimeout<T>(operation: PromiseLike<T>, label: string, timeoutMs = REMOTE_TIMEOUT_MS): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 function employeeName(emp: any) {
@@ -220,7 +235,10 @@ export default function Page() {
   });
 
   async function getAccountContext() {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const { data: userData, error: userError } = await withRemoteTimeout(
+      supabase.auth.getUser(),
+      "Supabase auth lookup",
+    );
     if (userError) {
       if (userError.message === "Auth session missing!") return { accountId: null, userId: null };
       throw userError;
@@ -230,12 +248,15 @@ export default function Page() {
 
     if (!userId) return { accountId: null, userId: null };
 
-    const { data, error } = await supabase
-      .from("account_memberships")
-      .select("account_id, role")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
+    const { data, error } = await withRemoteTimeout(
+      supabase
+        .from("account_memberships")
+        .select("account_id, role")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle(),
+      "Supabase account lookup",
+    );
 
     if (error) throw error;
     if (!data?.account_id) throw new Error("No account membership was found for the signed-in user.");
@@ -252,28 +273,35 @@ export default function Page() {
     setLoading(true);
     setErrorMessage("");
     const localEmployees = readStorage<any[]>(EMPLOYEE_STORAGE_KEY, []);
+    setEmployees(localEmployees);
     try {
       const accountId = await getAccountId();
 
       if(accountId){
-        const { data, error } = await supabase.from("employees").select("*").eq("account_id",accountId).order("created_at",{ascending:false});
+        const { data, error } = await withRemoteTimeout(
+          supabase.from("employees").select("*").eq("account_id",accountId).order("created_at",{ascending:false}),
+          "Supabase scoped employees load",
+        );
         if(error) throw error;
 
         if(data?.length){
-          setEmployees(mergeEmployees(data, localEmployees));
-          setLoading(false);
+          setEmployees(mergeEmployees(data, readStorage<any[]>(EMPLOYEE_STORAGE_KEY, localEmployees)));
           return;
         }
       }
 
-      const { data, error } = await supabase.from("employees").select("*").order("created_at",{ascending:false});
+      const { data, error } = await withRemoteTimeout(
+        supabase.from("employees").select("*").order("created_at",{ascending:false}),
+        "Supabase employees load",
+      );
       if(error) throw error;
-      setEmployees(mergeEmployees(data||[], localEmployees));
+      setEmployees(mergeEmployees(data||[], readStorage<any[]>(EMPLOYEE_STORAGE_KEY, localEmployees)));
     } catch (error) {
-      setEmployees(localEmployees);
+      setEmployees(current => mergeEmployees(current, readStorage<any[]>(EMPLOYEE_STORAGE_KEY, localEmployees)));
       setErrorMessage(`Could not load employees from Supabase. ${formatSaveError(error)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
   useEffect(()=>{ load(); },[]);
 

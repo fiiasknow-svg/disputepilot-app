@@ -13,6 +13,7 @@ const DEFAULT_DISPUTE_STATUSES = [
 const COLOR_OPTIONS = ["#10b981","#3b82f6","#8b5cf6","#f59e0b","#ef4444","#94a3b8","#1e3a5f","#ec4899","#14b8a6","#f97316","#dc2626","#7c3aed"];
 const TABS = ["General","Client Statuses","Dispute Statuses","Round Settings","Notifications","Portal","Service Plans","Tags","Integrations"];
 const TIMEZONES = ["America/New_York","America/Chicago","America/Denver","America/Los_Angeles","America/Phoenix","America/Anchorage","Pacific/Honolulu"];
+const REMOTE_TIMEOUT_MS = 2500;
 
 type Status = {id?:string;name:string;color:string;type?:string;account_id?:string|null};
 type GeneralSettings = {
@@ -44,6 +45,15 @@ const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
 
 function actionErrorMessage(error: any) {
   return error?.message || error?.code || "Unknown Supabase error";
+}
+
+function withRemoteTimeout<T>(operation: PromiseLike<T>, label: string, timeoutMs = REMOTE_TIMEOUT_MS): Promise<T> {
+  return Promise.race([
+    Promise.resolve(operation),
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]);
 }
 function isSuppressedVisibleError(message: string) {
   return /invalid api key/i.test(message);
@@ -143,19 +153,26 @@ export default function Page() {
   const [localCollectionsLoaded, setLocalCollectionsLoaded] = useState(false);
 
   async function getAccountId() {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
+    try {
+      const { data: userData } = await withRemoteTimeout(supabase.auth.getUser(), "Supabase user lookup");
+      const userId = userData.user?.id;
 
-    if (!userId) return null;
+      if (!userId) return null;
 
-    const { data } = await supabase
-      .from("account_memberships")
-      .select("account_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
+      const { data } = await withRemoteTimeout(
+        supabase
+          .from("account_memberships")
+          .select("account_id")
+          .eq("user_id", userId)
+          .limit(1)
+          .maybeSingle(),
+        "Supabase account lookup",
+      );
 
-    return data?.account_id || null;
+      return data?.account_id || null;
+    } catch {
+      return null;
+    }
   }
 
   async function loadStatuses() {
@@ -166,17 +183,22 @@ export default function Page() {
       const accountId = await getAccountId();
 
       if (accountId) {
-        const { data, error } = await supabase.from("statuses").select("*").eq("account_id", accountId).order("name");
+        const { data, error } = await withRemoteTimeout(
+          supabase.from("statuses").select("*").eq("account_id", accountId).order("name"),
+          "Supabase account statuses query",
+        );
         if (error) throw error;
 
         if (data?.length) {
           setStatuses(data);
-          setLoadingSt(false);
           return;
         }
       }
 
-      const { data, error } = await supabase.from("statuses").select("*").order("name");
+      const { data, error } = await withRemoteTimeout(
+        supabase.from("statuses").select("*").order("name"),
+        "Supabase statuses query",
+      );
       if (error) throw error;
       setStatuses(data || []);
     } catch (err: any) {
@@ -186,9 +208,9 @@ export default function Page() {
       } else {
         setError(`Could not load custom statuses from Supabase. ${actionErrorMessage(err)}`);
       }
+    } finally {
+      setLoadingSt(false);
     }
-
-    setLoadingSt(false);
   }
 
   useEffect(()=>{

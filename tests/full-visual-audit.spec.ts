@@ -18,38 +18,160 @@ const ORIGINAL_STORAGE_STATE = path.resolve(process.cwd(), 'auth-original.json')
 const ORIGINAL_E2E_EMAIL = process.env.ORIGINAL_E2E_EMAIL;
 const ORIGINAL_E2E_PASSWORD = process.env.ORIGINAL_E2E_PASSWORD;
 
-const ROUTES = [
-  '/dashboard',
-  '/clients',
-  '/leads',
-  '/billing',
-  '/disputes',
-  '/disputes/status',
-  '/dispute-manager/furnisher-addresses',
-  '/letters',
-  '/letters/ai-rewriter',
-  '/calendar',
-  '/company/settings',
-  '/company/images-documents',
-  '/company/team-messages',
-  '/automation',
-  '/documents',
-  '/help',
-  '/portals',
-] as const;
+type RouteMappingConfidence = 'exact' | 'guessed' | 'clone-only' | 'needs-review';
+
+type AuditRoute = {
+  label: string;
+  clonePath: string;
+  originalPath: string | null;
+  routeMappingConfidence: RouteMappingConfidence;
+  notes?: string;
+};
+
+const ROUTES: AuditRoute[] = [
+  {
+    label: 'Dashboard',
+    clonePath: '/dashboard',
+    originalPath: '/',
+    routeMappingConfidence: 'exact',
+    notes: 'Known from tests/compare.spec.ts; original navigation also links Dashboard to the site root.',
+  },
+  {
+    label: 'Clients',
+    clonePath: '/clients',
+    originalPath: '/User/ClientIndex',
+    routeMappingConfidence: 'exact',
+    notes: 'Confirmed from authenticated original navigation capture.',
+  },
+  {
+    label: 'Leads',
+    clonePath: '/leads',
+    originalPath: '/WebLeads/MyWebLeads',
+    routeMappingConfidence: 'exact',
+    notes: 'Confirmed from authenticated original navigation capture and agents/reports/agent-4-report.md.',
+  },
+  {
+    label: 'Billing',
+    clonePath: '/billing',
+    originalPath: '/PaymentProcessor',
+    routeMappingConfidence: 'exact',
+    notes: 'Confirmed original billing child route; the Billing parent is menu-only in the captured original navigation.',
+  },
+  {
+    label: 'Disputes',
+    clonePath: '/disputes',
+    originalPath: '/User/DisputeCenter',
+    routeMappingConfidence: 'exact',
+    notes: 'Known from tests/disputes-compare.spec.ts.',
+  },
+  {
+    label: 'Dispute Status',
+    clonePath: '/disputes/status',
+    originalPath: '/home/quickview',
+    routeMappingConfidence: 'exact',
+    notes: 'Confirmed from authenticated original navigation capture.',
+  },
+  {
+    label: 'Furnisher Addresses',
+    clonePath: '/dispute-manager/furnisher-addresses',
+    originalPath: '/CreditorsCollectors/CreditorsCollectorsList',
+    routeMappingConfidence: 'exact',
+    notes: 'Confirmed from authenticated original navigation capture.',
+  },
+  {
+    label: 'Letter Vault',
+    clonePath: '/letter-vault',
+    originalPath: '/LetterVault',
+    routeMappingConfidence: 'exact',
+    notes: 'Known from tests/letters-compare.spec.ts and tests/sidebar-compare.spec.ts.',
+  },
+  {
+    label: 'AI Letter Rewriter',
+    clonePath: '/letters/ai-rewriter',
+    originalPath: null,
+    routeMappingConfidence: 'clone-only',
+    notes: 'No original equivalent is encoded in the existing compare tests.',
+  },
+  {
+    label: 'Calendar',
+    clonePath: '/calendar',
+    originalPath: '/Reminder',
+    routeMappingConfidence: 'exact',
+    notes: 'Confirmed from authenticated original navigation capture and agents/reports/round-2-calendar-report.md.',
+  },
+  {
+    label: 'Company Settings',
+    clonePath: '/company/settings',
+    originalPath: '/Settings',
+    routeMappingConfidence: 'exact',
+    notes: 'Confirmed from authenticated original navigation capture and parity-results/agent-5-audit/desktop-text.json.',
+  },
+  {
+    label: 'Images/Documents',
+    clonePath: '/company/images-documents',
+    originalPath: null,
+    routeMappingConfidence: 'clone-only',
+    notes: 'Original navigation labels this item but exposes no direct href in the captured account.',
+  },
+  {
+    label: 'Team Messages',
+    clonePath: '/company/team-messages',
+    originalPath: '/Messages',
+    routeMappingConfidence: 'exact',
+    notes: 'Confirmed from authenticated original navigation capture.',
+  },
+  {
+    label: 'Automation',
+    clonePath: '/automation',
+    originalPath: null,
+    routeMappingConfidence: 'clone-only',
+    notes: 'Original navigation exposes Automation as a menu group without a direct captured route.',
+  },
+  {
+    label: 'Documents',
+    clonePath: '/company/images-documents',
+    originalPath: null,
+    routeMappingConfidence: 'clone-only',
+    notes: 'Audit clone path changed from /documents because the clone has no /documents route; original Images/Documents has no direct captured href.',
+  },
+  {
+    label: 'Help',
+    clonePath: '/help',
+    originalPath: null,
+    routeMappingConfidence: 'clone-only',
+    notes: 'Existing help comparison exercises the clone dashboard help menu; no original route is encoded.',
+  },
+  {
+    label: 'Portals / Mobile App',
+    clonePath: '/company/portals',
+    originalPath: '/Settings/PortalsMobileApp',
+    routeMappingConfidence: 'exact',
+    notes: 'Confirmed from authenticated original navigation capture and agents/reports/round-2-portals-report.md; audit clone path changed from /portals because the clone has no /portals route.',
+  },
+];
 
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 1000 },
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
 
-type OriginalStatus = 'captured' | 'blocked-original-session' | 'original-error';
+type OriginalStatus =
+  | 'captured'
+  | 'blocked-original-session'
+  | 'original-route-fallback'
+  | 'original-unexpected-redirect'
+  | 'clone-only'
+  | 'original-error';
 type CloneStatus = 'captured' | 'clone-error';
 type DiffStatus = 'matched' | 'different' | 'not-compared' | 'compare-error';
 type OriginalLoginStatus = 'skipped' | 'passed' | 'failed';
 
 type AuditEntry = {
+  label: string;
   route: string;
+  clonePath: string;
+  originalPath: string | null;
+  routeMappingConfidence: RouteMappingConfidence;
   viewport: string;
   viewportSize: { width: number; height: number };
   originalRequestedUrl: string;
@@ -94,7 +216,22 @@ function errorMessage(error: unknown) {
 }
 
 function routeSlug(route: string) {
-  return route === '/' ? 'root' : route.slice(1).replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+  return route === '/' ? 'root' : route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+}
+
+function isOriginalFallbackUrl(url: string | null) {
+  return Boolean(url && /\/Home\/Index\?aspxerrorpath=/i.test(url));
+}
+
+function normalizeRouteUrl(url: string) {
+  const parsed = new URL(url);
+  const pathname = parsed.pathname.replace(/\/+$/g, '').toLowerCase() || '/';
+  return `${parsed.origin.toLowerCase()}${pathname}${parsed.search.toLowerCase()}`;
+}
+
+function isExpectedReachedUrl(requestedUrl: string, reachedUrl: string | null) {
+  if (!reachedUrl) return false;
+  return normalizeRouteUrl(requestedUrl) === normalizeRouteUrl(reachedUrl);
 }
 
 function relativeOutputPath(filePath: string) {
@@ -239,14 +376,23 @@ async function attemptOriginalLogin(
 
 async function captureOriginal(
   context: BrowserContext,
-  route: string,
+  auditRoute: AuditRoute,
   viewportName: string,
 ): Promise<CaptureResult<OriginalStatus>> {
+  if (!auditRoute.originalPath) {
+    return {
+      reachedUrl: null,
+      status: 'clone-only',
+      screenshotPath: null,
+      notes: ['Original capture skipped because this audit route is clone-only.'],
+    };
+  }
+
   const page = await context.newPage();
-  const requestedUrl = new URL(route, ORIGINAL_BASE_URL).toString();
+  const requestedUrl = new URL(auditRoute.originalPath, ORIGINAL_BASE_URL).toString();
   const screenshotFile = path.join(
     SCREENSHOT_DIRECTORY,
-    `${viewportName}-${routeSlug(route)}-original.png`,
+    `${viewportName}-${routeSlug(auditRoute.label)}-original.png`,
   );
 
   try {
@@ -262,10 +408,22 @@ async function captureOriginal(
     const notes: string[] = [];
     if (response) notes.push(`Original HTTP status: ${response.status()}.`);
     if (blocked) notes.push('Original route reached a login page; no authenticated comparison was available.');
+    if (isOriginalFallbackUrl(page.url())) {
+      notes.push('Original route mapping needs review.');
+    }
+    if (!blocked && !isOriginalFallbackUrl(page.url()) && !isExpectedReachedUrl(requestedUrl, page.url())) {
+      notes.push(`Original route redirected unexpectedly from ${requestedUrl} to ${page.url()}; mapping needs review.`);
+    }
 
     return {
       reachedUrl: page.url(),
-      status: blocked ? 'blocked-original-session' : 'captured',
+      status: blocked
+        ? 'blocked-original-session'
+        : isOriginalFallbackUrl(page.url())
+          ? 'original-route-fallback'
+          : isExpectedReachedUrl(requestedUrl, page.url())
+            ? 'captured'
+            : 'original-unexpected-redirect',
       screenshotPath: relativeOutputPath(screenshotFile),
       notes,
     };
@@ -283,14 +441,14 @@ async function captureOriginal(
 
 async function captureClone(
   context: BrowserContext,
-  route: string,
+  auditRoute: AuditRoute,
   viewportName: string,
 ): Promise<CaptureResult<CloneStatus>> {
   const page = await context.newPage();
-  const requestedUrl = new URL(route, CLONE_BASE_URL).toString();
+  const requestedUrl = new URL(auditRoute.clonePath, CLONE_BASE_URL).toString();
   const screenshotFile = path.join(
     SCREENSHOT_DIRECTORY,
-    `${viewportName}-${routeSlug(route)}-clone.png`,
+    `${viewportName}-${routeSlug(auditRoute.label)}-clone.png`,
   );
 
   try {
@@ -303,10 +461,13 @@ async function captureClone(
 
     const notes: string[] = [];
     if (response) notes.push(`Clone HTTP status: ${response.status()}.`);
+    if (response?.status() === 404) {
+      notes.push('Clone route missing or audit clonePath is wrong.');
+    }
 
     return {
       reachedUrl: page.url(),
-      status: 'captured',
+      status: response?.status() === 404 ? 'clone-error' : 'captured',
       screenshotPath: relativeOutputPath(screenshotFile),
       notes,
     };
@@ -325,7 +486,7 @@ async function captureClone(
 async function compareScreenshots(
   originalScreenshotPath: string | null,
   cloneScreenshotPath: string | null,
-  route: string,
+  label: string,
   viewportName: string,
 ): Promise<DiffResult> {
   if (!originalScreenshotPath || !cloneScreenshotPath) {
@@ -340,7 +501,7 @@ async function compareScreenshots(
 
   const originalFile = path.resolve(process.cwd(), originalScreenshotPath);
   const cloneFile = path.resolve(process.cwd(), cloneScreenshotPath);
-  const diffFile = path.join(SCREENSHOT_DIRECTORY, `${viewportName}-${routeSlug(route)}-diff.png`);
+  const diffFile = path.join(SCREENSHOT_DIRECTORY, `${viewportName}-${routeSlug(label)}-diff.png`);
 
   try {
     const [originalMetadata, cloneMetadata] = await Promise.all([
@@ -438,6 +599,13 @@ function buildMarkdownReport(report: {
   cloneErrorCount: number;
   comparedCount: number;
   differentCount: number;
+  exactMappingCount: number;
+  guessedMappingCount: number;
+  needsReviewMappingCount: number;
+  cloneOnlyCount: number;
+  originalFallbackCount: number;
+  originalUnexpectedRedirectCount: number;
+  clone404Count: number;
   entries: AuditEntry[];
 }) {
   const originalErrors = report.entries.filter((entry) => entry.originalStatus === 'original-error').length;
@@ -469,18 +637,137 @@ function buildMarkdownReport(report: {
     `- Clone errors: ${report.cloneErrorCount}`,
     `- Compared: ${report.comparedCount}`,
     `- Different: ${report.differentCount}`,
+    `- Exact route mappings: ${report.exactMappingCount}`,
+    `- Guessed route mappings: ${report.guessedMappingCount}`,
+    `- Needs-review route mappings: ${report.needsReviewMappingCount}`,
+    `- Clone-only route mappings: ${report.cloneOnlyCount}`,
+    `- Original route fallbacks: ${report.originalFallbackCount}`,
+    `- Original unexpected redirects: ${report.originalUnexpectedRedirectCount}`,
+    `- Clone 404s: ${report.clone404Count}`,
+    '',
+    '## Valid Compared Mappings',
+    '',
+    '| Route | Viewport | Mapping confidence | Diff status | Diff percent | Original reached URL | Clone reached URL |',
+    '| --- | --- | --- | --- | ---: | --- | --- |',
+  ];
+
+  for (const entry of report.entries.filter(
+    (entry) => entry.diffStatus === 'matched' || entry.diffStatus === 'different',
+  )) {
+    lines.push(
+      `| ${[
+        entry.label,
+        entry.viewport,
+        entry.routeMappingConfidence,
+        entry.diffStatus,
+        entry.diffPercent,
+        entry.originalReachedUrl,
+        entry.cloneReachedUrl,
+      ].map(markdownCell).join(' | ')} |`,
+    );
+  }
+
+  lines.push(
+    '',
+    '## Original Fallback Mappings Needing Review',
+    '',
+    '| Route | Viewport | Original path | Original reached URL | Notes |',
+    '| --- | --- | --- | --- | --- |',
+  );
+
+  for (const entry of report.entries.filter((entry) => entry.originalStatus === 'original-route-fallback')) {
+    lines.push(
+      `| ${[
+        entry.label,
+        entry.viewport,
+        entry.originalPath,
+        entry.originalReachedUrl,
+        entry.notes.join(' '),
+      ].map(markdownCell).join(' | ')} |`,
+    );
+  }
+
+  lines.push(
+    '',
+    '## Original Unexpected Redirect Mappings Needing Review',
+    '',
+    '| Route | Viewport | Original path | Original reached URL | Notes |',
+    '| --- | --- | --- | --- | --- |',
+  );
+
+  for (const entry of report.entries.filter((entry) => entry.originalStatus === 'original-unexpected-redirect')) {
+    lines.push(
+      `| ${[
+        entry.label,
+        entry.viewport,
+        entry.originalPath,
+        entry.originalReachedUrl,
+        entry.notes.join(' '),
+      ].map(markdownCell).join(' | ')} |`,
+    );
+  }
+
+  lines.push(
+    '',
+    '## Clone 404 Mappings',
+    '',
+    '| Route | Viewport | Clone path | Clone reached URL | Notes |',
+    '| --- | --- | --- | --- | --- |',
+  );
+
+  for (const entry of report.entries.filter((entry) =>
+    entry.cloneStatus === 'clone-error' && entry.notes.some((note) => note.includes('Clone HTTP status: 404')),
+  )) {
+    lines.push(
+      `| ${[
+        entry.label,
+        entry.viewport,
+        entry.clonePath,
+        entry.cloneReachedUrl,
+        entry.notes.join(' '),
+      ].map(markdownCell).join(' | ')} |`,
+    );
+  }
+
+  lines.push(
+    '',
+    '## Top Visual Diffs',
+    '',
+    '| Route | Viewport | Diff percent | Diff pixels | Diff screenshot |',
+    '| --- | --- | ---: | ---: | --- |',
+  );
+
+  for (const entry of report.entries
+    .filter((entry) => entry.diffStatus === 'different')
+    .sort((a, b) => (b.diffPercent ?? 0) - (a.diffPercent ?? 0))
+    .slice(0, 10)) {
+    lines.push(
+      `| ${[
+        entry.label,
+        entry.viewport,
+        entry.diffPercent,
+        entry.diffPixels,
+        entry.diffScreenshotPath,
+      ].map(markdownCell).join(' | ')} |`,
+    );
+  }
+
+  lines.push(
     '',
     '## Entries',
     '',
-    '| Route | Viewport | Original status | Clone status | Original reached URL | Clone reached URL | Original screenshot | Clone screenshot | Diff screenshot | Diff status | Diff percent | Diff pixels | Notes |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | --- |',
-  ];
+    '| Route | Viewport | Mapping confidence | Original path | Clone path | Original status | Clone status | Original reached URL | Clone reached URL | Original screenshot | Clone screenshot | Diff screenshot | Diff status | Diff percent | Diff pixels | Notes |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | --- |',
+  );
 
   for (const entry of report.entries) {
     lines.push(
       `| ${[
-        entry.route,
+        entry.label,
         entry.viewport,
+        entry.routeMappingConfidence,
+        entry.originalPath,
+        entry.clonePath,
         entry.originalStatus,
         entry.cloneStatus,
         entry.originalReachedUrl,
@@ -538,10 +825,10 @@ test('full report-only visual audit', async ({ browser }) => {
     );
 
     try {
-      for (const route of ROUTES) {
+      for (const auditRoute of ROUTES) {
         const [original, clone] = await Promise.all([
-          captureOriginal(originalContext, route, viewport.name),
-          captureClone(cloneContext, route, viewport.name),
+          captureOriginal(originalContext, auditRoute, viewport.name),
+          captureClone(cloneContext, auditRoute, viewport.name),
         ]);
 
         const comparable = original.status === 'captured' && clone.status === 'captured';
@@ -549,7 +836,7 @@ test('full report-only visual audit', async ({ browser }) => {
           ? await compareScreenshots(
               original.screenshotPath,
               clone.screenshotPath,
-              route,
+              auditRoute.label,
               viewport.name,
             )
           : {
@@ -561,19 +848,29 @@ test('full report-only visual audit', async ({ browser }) => {
             };
 
         const notes = [...original.notes, ...clone.notes, ...diff.notes];
+        if (auditRoute.notes) notes.unshift(auditRoute.notes);
         if (!originalLogin.storageState) {
           notes.push('auth-original.json was unavailable; original capture used a fresh session.');
         }
 
         entries.push({
-          route,
+          label: auditRoute.label,
+          route: auditRoute.clonePath,
+          clonePath: auditRoute.clonePath,
+          originalPath: auditRoute.originalPath,
+          routeMappingConfidence: original.status === 'original-route-fallback'
+            || original.status === 'original-unexpected-redirect'
+            ? 'needs-review'
+            : auditRoute.routeMappingConfidence,
           viewport: viewport.name,
           viewportSize: { width: viewport.width, height: viewport.height },
-          originalRequestedUrl: new URL(route, ORIGINAL_BASE_URL).toString(),
+          originalRequestedUrl: auditRoute.originalPath
+            ? new URL(auditRoute.originalPath, ORIGINAL_BASE_URL).toString()
+            : '',
           originalReachedUrl: original.reachedUrl,
           originalStatus: original.status,
           originalScreenshotPath: original.screenshotPath,
-          cloneRequestedUrl: new URL(route, CLONE_BASE_URL).toString(),
+          cloneRequestedUrl: new URL(auditRoute.clonePath, CLONE_BASE_URL).toString(),
           cloneReachedUrl: clone.reachedUrl,
           cloneStatus: clone.status,
           cloneScreenshotPath: clone.screenshotPath,
@@ -602,6 +899,31 @@ test('full report-only visual audit', async ({ browser }) => {
     (entry) => entry.diffStatus === 'matched' || entry.diffStatus === 'different',
   ).length;
   const differentCount = entries.filter((entry) => entry.diffStatus === 'different').length;
+  const routeConfidenceByLabel = new Map<string, RouteMappingConfidence>();
+  for (const route of ROUTES) {
+    routeConfidenceByLabel.set(route.label, route.routeMappingConfidence);
+  }
+  for (const entry of entries) {
+    if (entry.routeMappingConfidence === 'needs-review') {
+      routeConfidenceByLabel.set(entry.label, 'needs-review');
+    }
+  }
+  const routeConfidenceCounts = [...routeConfidenceByLabel.values()].reduce<Record<RouteMappingConfidence, number>>(
+    (counts, confidence) => {
+      counts[confidence] += 1;
+      return counts;
+    },
+    { exact: 0, guessed: 0, 'needs-review': 0, 'clone-only': 0 },
+  );
+  const originalFallbackCount = entries.filter(
+    (entry) => entry.originalStatus === 'original-route-fallback',
+  ).length;
+  const originalUnexpectedRedirectCount = entries.filter(
+    (entry) => entry.originalStatus === 'original-unexpected-redirect',
+  ).length;
+  const clone404Count = entries.filter((entry) =>
+    entry.cloneStatus === 'clone-error' && entry.notes.some((note) => note.includes('Clone HTTP status: 404')),
+  ).length;
 
   const report = {
     generatedAt: new Date().toISOString(),
@@ -618,7 +940,14 @@ test('full report-only visual audit', async ({ browser }) => {
     cloneErrorCount,
     comparedCount,
     differentCount,
-    routes: [...ROUTES],
+    exactMappingCount: routeConfidenceCounts.exact,
+    guessedMappingCount: routeConfidenceCounts.guessed,
+    needsReviewMappingCount: routeConfidenceCounts['needs-review'],
+    cloneOnlyCount: routeConfidenceCounts['clone-only'],
+    originalFallbackCount,
+    originalUnexpectedRedirectCount,
+    clone404Count,
+    routes: ROUTES.map((route) => ({ ...route })),
     viewports: VIEWPORTS.map((viewport) => ({ ...viewport })),
     entries,
   };

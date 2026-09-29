@@ -10,6 +10,7 @@ const BUREAU_COLORS: Record<string,string> = {equifax:"#ef4444",experian:"#3b82f
 const TABS = ["Overview","Letters Sent","Bureau Response","Round History","Timeline"];
 const OUTCOMES = ["Not Yet Received","Verified","Deleted","Updated","No Change","In Dispute"];
 const OUTCOME_COLORS: Record<string,string> = {Verified:"#ef4444",Deleted:"#10b981",Updated:"#3b82f6","No Change":"#94a3b8","Not Yet Received":"#f59e0b","In Dispute":"#8b5cf6"};
+const REMOTE_TIMEOUT_MS = 2500;
 const LETTER_TEMPLATES = [
   "Standard FCRA Dispute Letter","Method of Verification Letter","Debt Validation Letter","Cease & Desist Letter","Pay for Delete Letter","Goodwill Adjustment Letter","Identity Theft Dispute Letter","Section 609 Challenge Letter","Second Round Escalation Letter","Metro 2 Compliance Letter",
 ];
@@ -41,6 +42,20 @@ const DEMO_DISPUTE = {
   created_at: "2026-04-29T12:00:00.000Z",
   clients: { first_name: "John", last_name: "Smith", email: "john.smith@example.com", mobile_phone: "555-555-1212" },
 };
+
+async function withRemoteTimeout<T>(operation: PromiseLike<T>, label: string, timeoutMs = REMOTE_TIMEOUT_MS): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 export default function Page() {
   const { id }  = useParams<{ id: string }>();
@@ -75,17 +90,20 @@ export default function Page() {
   const [roundMessage, setRoundMessage] = useState("");
 
   async function getAccountId() {
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData } = await withRemoteTimeout(supabase.auth.getUser(), "Supabase auth lookup");
     const userId = userData.user?.id;
 
     if (!userId) return null;
 
-    const { data } = await supabase
-      .from("account_memberships")
-      .select("account_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
+    const { data } = await withRemoteTimeout(
+      supabase
+        .from("account_memberships")
+        .select("account_id")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle(),
+      "Supabase account lookup",
+    );
 
     return data?.account_id || null;
   }
@@ -99,31 +117,66 @@ export default function Page() {
 
   useEffect(() => {
     async function load() {
+      if (String(id).startsWith("demo")) {
+        const loadedDispute = { ...DEMO_DISPUTE, id };
+        setDispute(loadedDispute);
+        setEditFields({
+          account_name: loadedDispute.account_name,
+          account_number: loadedDispute.account_number,
+          account_type: loadedDispute.account_type,
+          bureau: loadedDispute.bureau,
+          reason: loadedDispute.reason,
+          balance: String(loadedDispute.balance || ""),
+          furnisher_name: "",
+          furnisher_address: "",
+        });
+        setRounds([{
+          round: 1,
+          status: "active",
+          letterSent: new Date(loadedDispute.created_at).toLocaleDateString(),
+          bureauResponse: "Not Yet Received",
+          outcome: "Pending",
+          date: loadedDispute.created_at,
+        }]);
+        setLoading(false);
+      }
       const accountId = await getAccountId().catch(() => null);
       let d: any = null;
       if (accountId) {
-        d = await supabase
-          .from("disputes")
-          .select("*, clients(first_name,last_name,email,mobile_phone)")
-          .eq("id",id)
-          .eq("account_id", accountId)
-          .single();
+        d = await withRemoteTimeout(
+          supabase
+            .from("disputes")
+            .select("*, clients(first_name,last_name,email,mobile_phone)")
+            .eq("id",id)
+            .eq("account_id", accountId)
+            .single(),
+          "Supabase scoped dispute load",
+        );
       }
       if (!d?.data) {
-        d = await supabase.from("disputes").select("*, clients(first_name,last_name,email,mobile_phone)").eq("id",id).single();
+        d = await withRemoteTimeout(
+          supabase.from("disputes").select("*, clients(first_name,last_name,email,mobile_phone)").eq("id",id).single(),
+          "Supabase dispute load",
+        );
       }
       let letterRows: DisputeLetter[] = [];
       if (accountId) {
-        const { data } = await supabase
-          .from("dispute_letters")
-          .select("*")
-          .eq("dispute_id",id)
-          .eq("account_id", accountId)
-          .order("created_at",{ascending:false});
+        const { data } = await withRemoteTimeout(
+          supabase
+            .from("dispute_letters")
+            .select("*")
+            .eq("dispute_id",id)
+            .eq("account_id", accountId)
+            .order("created_at",{ascending:false}),
+          "Supabase scoped dispute letters load",
+        );
         letterRows = data || [];
       }
       if (!letterRows.length) {
-        const { data } = await supabase.from("dispute_letters").select("*").eq("dispute_id",id).order("created_at",{ascending:false});
+        const { data } = await withRemoteTimeout(
+          supabase.from("dispute_letters").select("*").eq("dispute_id",id).order("created_at",{ascending:false}),
+          "Supabase dispute letters load",
+        );
         letterRows = data || [];
       }
       const loadedDispute = d.data || (String(id).startsWith("demo") ? { ...DEMO_DISPUTE, id } : null);
@@ -164,7 +217,7 @@ export default function Page() {
       })));
       setLoading(false);
     }
-    load();
+    load().catch(() => setLoading(false));
   }, [id]);
 
   async function updateStatus(status: string) {

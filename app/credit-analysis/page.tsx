@@ -251,7 +251,7 @@ function buildImportedSnapshot(clientName: string, text: string, fileName?: stri
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function Page() {
-  const [clients, setClients] = useState<{ id: string; full_name: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; full_name: string }[]>([DEMO_CLIENT]);
   const [clientId, setClientId] = useState("");
   const [bureau, setBureau] = useState("Equifax");
   const [loaded, setLoaded] = useState(false);

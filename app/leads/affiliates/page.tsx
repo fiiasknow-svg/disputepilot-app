@@ -16,6 +16,7 @@ const STATUS_C: Record<string, string> = {
 const LOCAL_AFFILIATES_KEY = "disputepilot.affiliates";
 const LOCAL_AFFILIATE_COMMISSIONS_KEY = "disputepilot.affiliates.commissions";
 const LOCAL_AFFILIATE_DOCUMENTS_KEY = "disputepilot.affiliates.documents";
+const REMOTE_TIMEOUT_MS = 2500;
 
 const EMPTY_FORM = {
   full_name: "",
@@ -53,6 +54,20 @@ function readLocalRows(key: string) {
 function writeLocalRows(key: string, rows: any[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(key, JSON.stringify(rows));
+}
+
+async function withRemoteTimeout<T>(operation: PromiseLike<T>, label: string, timeoutMs = REMOTE_TIMEOUT_MS): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 function affiliateName(affiliate: any) {
@@ -108,17 +123,20 @@ export default function Page() {
   }, []);
 
   async function getAccountId() {
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData } = await withRemoteTimeout(supabase.auth.getUser(), "Supabase auth lookup");
     const userId = userData.user?.id;
 
     if (!userId) return null;
 
-    const { data } = await supabase
-      .from("account_memberships")
-      .select("account_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
+    const { data } = await withRemoteTimeout(
+      supabase
+        .from("account_memberships")
+        .select("account_id")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle(),
+      "Supabase account lookup",
+    );
 
     return data?.account_id || null;
   }
@@ -127,45 +145,43 @@ export default function Page() {
     setLoading(true);
     setError("");
     const localAffiliates = readLocalAffiliates();
+    setAffiliates(mergeAffiliates(preservedAffiliates, localAffiliates));
 
     try {
       const accountId = await getAccountId();
 
       if (accountId) {
-        const { data, error } = await supabase
-          .from("affiliates")
-          .select("*")
-          .eq("account_id", accountId)
-          .order("created_at", { ascending: false });
+        const { data, error } = await withRemoteTimeout(
+          supabase
+            .from("affiliates")
+            .select("*")
+            .eq("account_id", accountId)
+            .order("created_at", { ascending: false }),
+          "Supabase scoped affiliates load",
+        );
         if (error) throw error;
 
         const scopedAffiliates = data || [];
-        const scopedIds = new Set(scopedAffiliates.map((affiliate: any) => affiliate.id));
-        const visibleAffiliates = [
-          ...localAffiliates.filter((affiliate: any) => !scopedIds.has(affiliate.id)),
-          ...scopedAffiliates,
-        ];
+        const visibleAffiliates = mergeAffiliates(readLocalAffiliates(), scopedAffiliates);
         setAffiliates(mergeAffiliates(preservedAffiliates, visibleAffiliates));
-        setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase.from("affiliates").select("*").order("created_at", { ascending: false });
+      const { data, error } = await withRemoteTimeout(
+        supabase.from("affiliates").select("*").order("created_at", { ascending: false }),
+        "Supabase affiliates load",
+      );
       if (error) throw error;
 
       const remoteAffiliates = data || [];
-      const remoteIds = new Set(remoteAffiliates.map((affiliate: any) => affiliate.id));
-      const visibleAffiliates = [
-        ...localAffiliates.filter((affiliate: any) => !remoteIds.has(affiliate.id)),
-        ...remoteAffiliates,
-      ];
+      const visibleAffiliates = mergeAffiliates(readLocalAffiliates(), remoteAffiliates);
       setAffiliates(mergeAffiliates(preservedAffiliates, visibleAffiliates));
     } catch (err: any) {
-      setAffiliates(mergeAffiliates(preservedAffiliates, localAffiliates));
+      setAffiliates(current => mergeAffiliates(preservedAffiliates, mergeAffiliates(readLocalAffiliates(), current)));
       setError(err?.message ? `Could not load affiliates: ${err.message}` : "Could not load affiliates.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   async function save() {
@@ -187,7 +203,10 @@ export default function Page() {
     try {
       const accountId = await getAccountId();
       const payload = accountId ? { ...basePayload, account_id: accountId } : basePayload;
-      const { data, error } = await supabase.from("affiliates").insert([payload]).select("*").single();
+      const { data, error } = await withRemoteTimeout(
+        supabase.from("affiliates").insert([payload]).select("*").single(),
+        "Supabase affiliate insert",
+      );
       if (error) throw error;
 
       const savedAffiliate = data || { ...payload, id: `local-${Date.now()}`, created_at: new Date().toISOString() };
@@ -230,7 +249,10 @@ export default function Page() {
       const accountId = await getAccountId();
       if (!accountId) throw new Error("No account context is available for this delete.");
 
-      const { error } = await supabase.from("affiliates").delete().eq("id", id).eq("account_id", accountId);
+      const { error } = await withRemoteTimeout(
+        supabase.from("affiliates").delete().eq("id", id).eq("account_id", accountId),
+        "Supabase affiliate delete",
+      );
       if (error) throw error;
 
       setAffiliates(current => current.filter(affiliate => affiliate.id !== id));
