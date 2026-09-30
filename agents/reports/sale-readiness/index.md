@@ -15,6 +15,7 @@ Latest verified test status: local Chromium Playwright suite passed, `358 passed
 - [Known Issues and Limitations](known-issues-and-limitations.md)
 - [IP and Branding Review](ip-branding-review.md)
 - [Branding/IP Cleanup Audit](branding-ip-cleanup-audit.md)
+- [Buyer Demo Walkthrough](buyer-demo-walkthrough.md)
 - [Sale Package](sale-package.md)
 
 ## Project Pointers
