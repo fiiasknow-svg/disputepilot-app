@@ -17,6 +17,7 @@ Latest verified test status: local Chromium Playwright suite passed, `358 passed
 - [Branding/IP Cleanup Audit](branding-ip-cleanup-audit.md)
 - [Buyer Demo Walkthrough](buyer-demo-walkthrough.md)
 - [Demo Data Cleanup Plan](demo-data-cleanup-plan.md)
+- [Deployment and Environment Handoff](deployment-env-handoff.md)
 - [Sale Package](sale-package.md)
 
 ## Project Pointers
