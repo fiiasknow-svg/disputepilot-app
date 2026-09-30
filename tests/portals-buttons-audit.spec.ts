@@ -5,17 +5,17 @@ const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3201';
 test('portals back videos and logo summary work visibly', async ({ page }) => {
   await page.goto(`${BASE_URL}/company/portals`);
 
-  const clientPortal = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Client Tracking Portal' }) });
+  const clientPortal = page.locator('article').filter({ has: page.getByRole('heading', { name: 'DisputePilot Portal' }) });
   await clientPortal.getByRole('button', { name: 'WATCH VIDEO' }).click();
-  const clientVideo = page.getByRole('dialog', { name: 'Client Tracking Portal Video' });
+  const clientVideo = page.getByRole('dialog', { name: 'DisputePilot Portal Video' });
   await expect(clientVideo).toBeVisible();
   await expect(clientVideo.getByText(/Training video placeholder - connect the final video URL/i)).toBeVisible();
   await clientVideo.getByRole('button', { name: 'Close' }).click();
   await expect(clientVideo).toHaveCount(0);
 
-  const affiliatePortal = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Affiliate Portal' }) });
+  const affiliatePortal = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Referral Partner Portal' }) });
   await affiliatePortal.getByRole('button', { name: 'WATCH VIDEO' }).click();
-  const affiliateVideo = page.getByRole('dialog', { name: 'Affiliate Portal Video' });
+  const affiliateVideo = page.getByRole('dialog', { name: 'Referral Partner Portal Video' });
   await expect(affiliateVideo).toBeVisible();
   await expect(affiliateVideo.getByText(/No hosted training video is connected yet/i)).toBeVisible();
   await affiliateVideo.getByRole('button', { name: 'Close' }).click();

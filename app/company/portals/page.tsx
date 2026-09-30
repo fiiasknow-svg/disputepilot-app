@@ -19,50 +19,50 @@ const defaults = {
 
 const portalSections = [
   {
-    title: "Client Tracking Portal",
+    title: "DisputePilot Portal",
     description:
       "Give your clients an easy way to track their dispute progress, upload documents, and send you messages securely.",
     video:
-      "Watch the video below to see what your clients experience inside the Client Tracking Portal.",
+      "Open the training placeholder below to review the planned DisputePilot Portal experience.",
     preview:
-      "Preview what your clients see inside the Client Tracking Portal - no login required.",
-    qaTitle: "Client Tracking Portal Q&A",
+      "Preview what your clients will see inside the DisputePilot Portal once final portal hosting is configured.",
+    qaTitle: "DisputePilot Portal Q&A",
     questions: [
-      "What is the Client Tracking Portal?",
+      "What is the DisputePilot Portal?",
       "How can my clients access it?",
       "Can my clients upload images and documents?",
       "Will clients see their credit reports inside the portal?",
       "Can I customize the portal with my company details?",
     ],
-    linkTitle: "Client Tracking Portal Link",
+    linkTitle: "DisputePilot Portal Link",
     linkHelp:
-      "Use this link to connect your Client Portal to your website or share it directly with your customers.",
-    link: "https://www.creditrestorationportal.com/Account/Login",
+      "Use this configurable demo link until the buyer-owned client portal URL is connected.",
+    link: "https://portal.disputepilot.com/demo/client",
   },
   {
-    title: "Affiliate Portal",
+    title: "Referral Partner Portal",
     description:
       "Empower your referral partners to track their leads, view commissions, and manage their performance in real time.",
     video:
-      "Watch the video below to see what affiliates experience after signing up.",
-    preview: "Preview the Affiliate Portal view - see exactly what your partners will see.",
-    qaTitle: "Affiliate Portal Q&A",
+      "Open the training placeholder below to review the planned referral partner portal experience.",
+    preview: "Preview the referral partner portal flow once final portal hosting is configured.",
+    qaTitle: "Referral Partner Portal Q&A",
     questions: [
-      "What is the Affiliate Portal used for?",
+      "What is the referral partner portal used for?",
       "How do affiliates sign up?",
       "What information can affiliates see?",
       "Can I adjust affiliate commission amounts?",
-      "Can I preview the Affiliate Portal myself?",
+      "Can I preview the referral partner portal myself?",
     ],
-    linkTitle: "Affiliate Portal Link",
+    linkTitle: "Referral Partner Portal Link",
     linkHelp:
-      "Use this link to add the Affiliate Portal to your website or share it with partners who refer new clients.",
-    link: "https://www.affiliatecreditrepairportal.com/Account/Login",
+      "Use this configurable demo link until the buyer-owned referral partner portal URL is connected.",
+    link: "https://portal.disputepilot.com/demo/referrals",
   },
 ];
 
 const mobileQuestions = [
-  "What is the Client Tracking Mobile App?",
+  "What is DisputePilot mobile access?",
   "Which app stores are available?",
   "How do I find the app in the stores?",
   "Is the mobile app included in my plan?",
@@ -70,17 +70,17 @@ const mobileQuestions = [
   "Are there templates to let the customer know?",
   "How can I let the customers know right now about the app?",
   "Can my customers upload images and documents?",
-  "Client Tracking Portal Login: What if I don't want the customer to get the app?",
+  "DisputePilot Portal Login: What if I don't want the customer to get the app?",
 ];
 
 const appLinks = [
   {
-    label: "Android Application",
-    url: "https://play.google.com/store/apps/details?id=com.incode.portal_client",
+    label: "Android Demo Link",
+    url: "https://portal.disputepilot.com/demo/mobile-android",
   },
   {
-    label: "IOS Application",
-    url: "https://apps.apple.com/us/app/client-tracking-portal/id1549632923",
+    label: "iOS Demo Link",
+    url: "https://portal.disputepilot.com/demo/mobile-ios",
   },
 ];
 const PORTALS_STORAGE_KEY = "dp_company_portals_settings";
@@ -161,10 +161,9 @@ export default function PortalsPage() {
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">Dashboard Portals / Mobile App</p>
           <button className="rounded border px-4 py-2 text-sm font-semibold text-gray-700" onClick={goBack}>BACK</button>
           <p className="max-w-5xl text-sm leading-6 text-gray-700">
-            In this area, you can access and share all your company's portals - the Client Tracking Portal,
-            Affiliate Portal, and Mobile App. These tools allow your clients to track their credit repair
-            progress, your affiliates to monitor referrals, and your business to stay connected and organized in
-            one place.
+            In this area, you can access and share configurable demo portal links for clients,
+            referral partners, and mobile access. Replace these placeholders with buyer-owned portal URLs before
+            sharing them with customers or referral partners.
           </p>
         </div>
 
@@ -207,13 +206,12 @@ export default function PortalsPage() {
         </section>
 
         <section className="space-y-4 rounded-lg border bg-white p-5 shadow-sm">
-          <h2 className="text-xl font-semibold">Client Tracking Portal Mobile Application</h2>
+          <h2 className="text-xl font-semibold">DisputePilot Portal Mobile Access</h2>
           <p className="text-sm leading-6 text-gray-700">
-            In this area, you can give your customers access to the mobile Client Tracking Portal, allowing them
-            to log in and view their status in real time.
+            In this area, you can prepare customer-facing mobile access guidance for the DisputePilot Portal.
           </p>
           <p className="text-sm leading-6 text-gray-700">
-            Share these links with your customers so they can download the Client Tracking Portal mobile app.
+            Replace these demo app-store links with buyer-owned mobile app links before sharing them with customers.
           </p>
 
           <div className="grid gap-4 md:grid-cols-2">

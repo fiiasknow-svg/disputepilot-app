@@ -90,7 +90,7 @@ Do not place real credentials in these docs.
 
 ## Known Limitations
 
-- [ ] Original visual comparison requires valid original Client Dispute Manager login/session.
+- [ ] Original visual comparison requires valid legacy reference-site login/session.
 - [ ] Some pages intentionally fall back to local/demo state when Supabase is unavailable or slow.
 - [ ] Portal videos currently use placeholder dialogs until final assets/URLs exist.
 - [ ] Billing/subscription production readiness requires verification.
@@ -109,8 +109,8 @@ Do not place real credentials in these docs.
 
 ## IP/Branding Review
 
-- [ ] Review clone-style screens and workflows against Client Dispute Manager.
-- [ ] Replace any Client Dispute Manager references or original-style wording.
+- [ ] Review legacy-reference screens and workflows for IP, trademark, and trade dress risk.
+- [ ] Replace any remaining legacy platform references or original-style wording.
 - [ ] Review portal/external links that point to third-party/original services.
 - [ ] Review third-party library licenses.
 - [ ] Have counsel review IP, branding, terms, privacy, and data-processing obligations.

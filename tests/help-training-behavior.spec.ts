@@ -11,11 +11,11 @@ test('help and training links are usable without app error', async ({ page }) =>
   await expect(helpButton).toBeVisible();
   await helpButton.click();
 
-  await expect(page.getByText(/Get Support|Help Center|FAQ|Success Path|1-on-1 Coaching|AI Credit Coach/i).first()).toBeVisible();
+  await expect(page.getByText(/Get Support|Help Center|FAQ|Getting Started|1-on-1 Onboarding|AI Credit Coach/i).first()).toBeVisible();
 
   const helpLink = page
     .getByRole('link')
-    .filter({ hasText: /Help Center|FAQ|Success Path|1-on-1 Coaching|AI Credit Coach|Get Support/i })
+    .filter({ hasText: /Help Center|FAQ|Getting Started|1-on-1 Onboarding|AI Credit Coach|Get Support/i })
     .first();
 
   if (await helpLink.count()) {

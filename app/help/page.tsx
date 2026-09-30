@@ -6,31 +6,31 @@ import CDMLayout from "@/components/CDMLayout";
 const supportOptions = [
   {
     title: "Get Support",
-    desc: "Email support to start a ticket with the Client Dispute Manager team.",
-    href: "mailto:support@clientdisputemanager.com",
+    desc: "Email support to start a ticket with the DisputePilot team.",
+    href: "mailto:support@disputepilot.com",
   },
   {
     title: "Help Center",
     desc: "Browse product help articles and setup guidance.",
-    href: "https://help.clientdisputemanager.com",
+    href: "/help",
     external: true,
   },
   {
     title: "FAQ",
     desc: "Review answers to common billing, setup, and workflow questions.",
-    href: "https://clientdisputemanager.com/faq",
+    href: "/help",
     external: true,
   },
   {
-    title: "Success Path",
+    title: "Getting Started",
     desc: "Follow the recommended walkthrough for getting your account operational.",
-    href: "https://clientdisputemanager.com/success-path",
+    href: "/academy",
     external: true,
   },
   {
-    title: "1-on-1 Coaching",
-    desc: "Open the coaching scheduler page for implementation help.",
-    href: "https://clientdisputemanager.com/coaching",
+    title: "1-on-1 Onboarding",
+    desc: "Review implementation and setup support options.",
+    href: "/partner-resources/attorney-review",
     external: true,
   },
   {

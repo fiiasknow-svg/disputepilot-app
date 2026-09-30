@@ -6,7 +6,7 @@ Severity is ranked for sale readiness, not necessarily for local demo usability.
 
 ### Original visual comparison requires valid original-site login
 
-The full visual audit can capture clone routes, but original-page comparison depends on valid access to `https://www.clientdisputemanager.com`. Current project status says original comparison is blocked by original login failure. Without this, visual parity evidence is incomplete.
+The full visual audit can capture DisputePilot routes, but original-page comparison depends on valid access to the legacy reference site. Current project status says original comparison is blocked by original login failure. Without this, visual parity evidence is incomplete.
 
 ### Security, multi-tenant, database, and storage readiness must be reviewed before real customer data
 
@@ -28,7 +28,7 @@ Portal/mobile-app video controls are tested as visible placeholder dialogs. Fina
 
 ### Clone/IP exposure requires legal review
 
-The app was built as a clone-style project with original Client Dispute Manager comparison tooling. Buyer should review copy, navigation, screen layout, feature naming, and external links for IP/trademark/trade dress risk.
+The app has historical original-reference comparison tooling. Buyer should review copy, navigation, screen layout, feature naming, and external links for IP/trademark/trade dress risk.
 
 ## Medium
 
@@ -60,7 +60,7 @@ The current confirmed full-suite result is Chromium: `358 passed`. Firefox/WebKi
 
 ### Original-route mapping still contains review-dependent areas
 
-The visual audit now records mapping confidence and fallbacks. Some routes are clone-only or depend on original app navigation availability.
+The visual audit now records mapping confidence and fallbacks. Some routes are product-only or depend on original app navigation availability.
 
 ## Unknowns/TODOs
 

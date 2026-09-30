@@ -6,13 +6,13 @@ test('dashboard training and resource cards have meaningful destinations or acti
   await page.goto(`${BASE_URL}/dashboard`);
 
   await expect(page.getByRole('link', { name: 'Claim Your Free Gifts' })).toHaveAttribute('href', '/billing');
-  await expect(page.getByRole('link', { name: 'CDM Credit Boss Skool NEW' })).toHaveAttribute('href', '/academy');
+  await expect(page.getByRole('link', { name: 'DisputePilot Training Hub' })).toHaveAttribute('href', '/academy');
   await expect(page.getByRole('link', { name: 'Your First Dispute' })).toHaveAttribute('href', '/disputes');
   await expect(page.getByRole('link', { name: 'Full Walkthrough' })).toHaveAttribute('href', '/academy');
-  await expect(page.getByRole('link', { name: '1 to 1' })).toHaveAttribute('href', 'https://clientdisputemanager.com/coaching');
+  await expect(page.getByRole('link', { name: '1-on-1 Onboarding' })).toHaveAttribute('href', '/partner-resources/attorney-review');
   await expect(page.getByRole('link', { name: 'Group Training' })).toHaveAttribute('href', '/academy');
   await expect(page.getByRole('link', { name: 'Free Mastermind' })).toHaveAttribute('href', '/partner-resources/community');
-  await expect(page.getByRole('link', { name: 'Help Center' })).toHaveAttribute('href', 'https://help.clientdisputemanager.com');
+  await expect(page.getByRole('link', { name: 'Help Center' })).toHaveAttribute('href', '/help');
   await expect(page.getByRole('link', { name: 'Start-Run-Grow Training' })).toHaveAttribute('href', '/get-customers/start-run-grow');
 
   await page.getByRole('button', { name: 'Task' }).click();

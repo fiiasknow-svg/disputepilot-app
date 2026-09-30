@@ -4,7 +4,7 @@
 
 DisputePilot is a credit-repair and dispute-management web application built with Next.js, React, Supabase, and Playwright. It includes business/admin workflows for clients, disputes, billing, letters, leads, affiliates, calendars, company settings, automations, employees, training resources, public intake forms, and partner resources.
 
-The current repository is in a strong private-demo state. The latest verified local Chromium Playwright suite passed with `358 passed`, and the clone visual audit captures all 34 clone screenshots with zero clone errors and zero clone 404s. Original-site visual comparison is currently limited by original login access.
+The current repository is in a strong private-demo state. The latest verified local Chromium Playwright suite passed with `358 passed`, and the route screenshot audit captures all 34 route screenshots with zero route capture errors and zero route 404s. Original-site visual comparison is currently limited by original login access.
 
 The sale should be positioned as a functional SaaS codebase and demo-ready product foundation, not as a fully verified production business with completed payment, email/SMS, legal/IP, and security due diligence.
 

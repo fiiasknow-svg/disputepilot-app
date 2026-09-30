@@ -2,18 +2,18 @@
 
 This is not legal advice. Attorney review is recommended before marketing, sale, or transfer.
 
-## Clone/IP Risk Items to Review
+## Legacy-Reference/IP Risk Items to Review
 
-- Screen structure and navigation copied from or modeled after Client Dispute Manager.
+- Screen structure and navigation modeled after legacy reference workflows.
 - Feature naming that may match original product terminology too closely.
 - Dashboard, client, dispute, billing, letter vault, calendar, portals, and settings workflows that were compared against the original.
-- Visual audit route mappings to `https://www.clientdisputemanager.com`.
+- Visual audit route mappings to the legacy reference site.
 - Any screenshots, parity artifacts, or reports that include original-site captures.
 - Any use of original product names in code, tests, docs, links, or generated artifacts.
 
 ## Branding/Copy References to Review
 
-Repo search found references to Client Dispute Manager / original URLs in docs, prompts, reports, tests, and visual audit tooling. Examples include:
+Repo search found legacy platform references and original URLs in docs, prompts, reports, tests, and visual audit tooling. Examples include:
 
 - `docs/phase-5-original-clone-parity-audit-plan.md`
 - `docs/phase-5-final-audit-report.md`
@@ -52,7 +52,7 @@ Also review transitive dependencies in `package-lock.json`.
 
 ## Suggested Cleanup Before External Buyer Sharing
 
-- Replace or qualify clone/original-app language in outward-facing materials.
+- Replace or qualify legacy-reference/original-app language in outward-facing materials.
 - Keep original comparison tooling internal unless buyer specifically wants it.
 - Remove or segregate original screenshots/artifacts if they are not needed for diligence.
 - Prepare a neutral DisputePilot product demo flow using only DisputePilot branding.

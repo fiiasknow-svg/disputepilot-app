@@ -15,7 +15,7 @@ test.describe('authenticated live smoke', () => {
       await expect(page.locator('.cdm-dashboard-page')).toBeVisible();
 
       await page.locator('.cdm-topbar').getByRole('button', { name: 'ACTIVATE MEMBERSHIP' }).click();
-      await expect(page.getByRole('heading', { name: /Activate\s+Your\s+Client Dispute Manager\s+Account Today/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Activate\s+Your\s+DisputePilot\s+Account/i })).toBeVisible();
       await expect(page.getByRole('button', { name: /ACTIVATE .* CLAIM MY GIFTS/i })).toBeVisible();
       await page.getByRole('button', { name: /^Close$/i }).click();
     });

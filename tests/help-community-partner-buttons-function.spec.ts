@@ -36,14 +36,14 @@ async function expectNoAppError(page: Page) {
 test("help route renders support options and Need Help opens the help menu", async ({ page }) => {
   await page.goto(`${BASE_URL}/help`);
   await expect(page.getByRole("heading", { name: "Help", exact: true })).toBeVisible();
-  for (const option of ["Get Support", "Help Center", "FAQ", "Success Path", "1-on-1 Coaching", "AI Credit Coach"]) {
+  for (const option of ["Get Support", "Help Center", "FAQ", "Getting Started", "1-on-1 Onboarding", "AI Credit Coach"]) {
     await expect(page.getByRole("link", { name: new RegExp(option) }).first()).toBeVisible();
   }
   await expectNoAppError(page);
 
   await page.goto(`${BASE_URL}/dashboard`);
   await page.getByRole("button", { name: "Need Help?", exact: true }).click();
-  for (const option of ["Get Support", "Help Center", "FAQ", "Success Path", "1-on-1 Coaching", "AI Credit Coach"]) {
+  for (const option of ["Get Support", "Help Center", "FAQ", "Getting Started", "1-on-1 Onboarding", "AI Credit Coach"]) {
     await expect(page.getByRole("link", { name: new RegExp(option) }).first()).toBeVisible();
   }
 });

@@ -328,13 +328,13 @@ export default function Page() {
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {[
                 {label:"Claim Your Free Gifts",href:"/billing"},
-                {label:"CDM Credit Boss Skool NEW",href:"/academy"},
+                {label:"DisputePilot Training Hub",href:"/academy"},
                 {label:"Your First Dispute",href:"/disputes"},
                 {label:"Full Walkthrough",href:"/academy"},
-                {label:"1 to 1",href:"https://clientdisputemanager.com/coaching", external:true},
+                {label:"1-on-1 Onboarding",href:"/partner-resources/attorney-review"},
                 {label:"Group Training",href:"/academy"},
                 {label:"Free Mastermind",href:"/partner-resources/community"},
-                {label:"Help Center",href:"https://help.clientdisputemanager.com", external:true},
+                {label:"Help Center",href:"/help"},
                 {label:"Task",action:openTaskSection},
                 {label:"Start-Run-Grow Training",href:"/get-customers/start-run-grow"},
               ].map(l=> "action" in l ? (

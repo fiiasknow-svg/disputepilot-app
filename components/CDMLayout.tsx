@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -226,8 +226,8 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
           <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:8 }}>
             <div style={{ width:"36px", height:"36px", backgroundColor:"#3b82f6", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:"bold", color:"#fff", fontSize:"16px" }}>DP</div>
             <div>
-              <div style={{ color:"#fff", fontWeight:"600", fontSize:"15px" }}>Client Dispute Manager</div>
-              <h3 style={{ color:"#64748b", fontSize:"10px", margin:0, fontWeight:400 }}>Client Dispute Manager Software.</h3>
+              <div style={{ color:"#fff", fontWeight:"600", fontSize:"15px" }}>DisputePilot</div>
+              <h3 style={{ color:"#64748b", fontSize:"10px", margin:0, fontWeight:400 }}>DisputePilot Software.</h3>
             </div>
           </div>
           {/* Trial notice */}
@@ -302,11 +302,11 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
             Help
           </button>
           <div style={{ backgroundColor:"#0f172a", display: helpOpen ? "block" : "none" }}>
-            <a href="mailto:support@clientdisputemanager.com" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Get Support<br /><span style={{ color:"#64748b" }}>Submit a support ticket</span></a>
-            <a href="https://help.clientdisputemanager.com" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Help Center<br /><span style={{ color:"#64748b" }}>Browse all help articles</span></a>
-            <a href="https://clientdisputemanager.com/faq" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>FAQ<br /><span style={{ color:"#64748b" }}>Quick answers to common questions</span></a>
-            <a href="https://clientdisputemanager.com/success-path" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Success Path<br /><span style={{ color:"#64748b" }}>Step-by-step system walkthrough</span></a>
-            <a href="https://clientdisputemanager.com/coaching" target="_blank" rel="noreferrer" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>1-on-1 Coaching<br /><span style={{ color:"#64748b" }}>Schedule a session</span></a>
+            <a href="mailto:support@disputepilot.com" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Get Support<br /><span style={{ color:"#64748b" }}>Submit a support ticket</span></a>
+            <a href="/help" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Help Center<br /><span style={{ color:"#64748b" }}>Browse setup guidance</span></a>
+            <a href="/help" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>FAQ<br /><span style={{ color:"#64748b" }}>Quick answers to common questions</span></a>
+            <a href="/academy" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>Getting Started<br /><span style={{ color:"#64748b" }}>Training and setup resources</span></a>
+            <a href="/partner-resources/attorney-review" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px", borderBottom:"1px solid #1e293b" }}>1-on-1 Onboarding<br /><span style={{ color:"#64748b" }}>Review support options</span></a>
             <a href="/automation/ai-credit-coach" style={{ display:"block", padding:"10px 16px", color:"#94a3b8", textDecoration:"none", fontSize:"12px" }}>AI Credit Coach<br /><span style={{ color:"#64748b" }}>Get instant guidance</span></a>
           </div>
         </div>
@@ -341,7 +341,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
         <div onClick={() => setActivateOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div onClick={e => e.stopPropagation()} style={{ background:"#fff", borderRadius:12, padding:32, width:480, maxWidth:"95vw", position:"relative" }}>
             <button onClick={() => setActivateOpen(false)} style={{ position:"absolute", top:12, right:16, background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#94a3b8" }}>x</button>
-            <h2 style={{ margin:"0 0 8px", fontSize:20, fontWeight:800, color:"#1e293b" }}>Activate  Your  Client Dispute Manager  Account Today</h2>
+            <h2 style={{ margin:"0 0 8px", fontSize:20, fontWeight:800, color:"#1e293b" }}>Activate Your DisputePilot Account</h2>
             <h3 style={{ margin:"0 0 16px", fontSize:14, color:"#f59e0b", fontWeight:600 }}>Get $247 in Free Gifts instantly when you activate within 47 hours.</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
               <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
