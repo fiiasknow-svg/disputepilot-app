@@ -18,6 +18,7 @@ Latest verified test status: local Chromium Playwright suite passed, `358 passed
 - [Buyer Demo Walkthrough](buyer-demo-walkthrough.md)
 - [Demo Data Cleanup Plan](demo-data-cleanup-plan.md)
 - [Deployment and Environment Handoff](deployment-env-handoff.md)
+- [Security, Secrets, and Privacy Scan](security-secrets-scan.md)
 - [Sale Package](sale-package.md)
 
 ## Project Pointers
