@@ -240,7 +240,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
         {/* User section */}
         <div style={{ padding:"10px 16px", borderBottom:"1px solid #334155", display:"flex", flexDirection:"column", gap:6 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <button onClick={() => setAccountOpen(o => !o)} aria-expanded={accountOpen} style={{ background:"none", border:"none", color:"#e2e8f0", fontSize:"13px", fontWeight:600, cursor:"pointer", padding:0, textAlign:"left" as const }}>Leslie Sabek</button>
+            <button onClick={() => setAccountOpen(o => !o)} aria-expanded={accountOpen} style={{ background:"none", border:"none", color:"#e2e8f0", fontSize:"13px", fontWeight:600, cursor:"pointer", padding:0, textAlign:"left" as const }}>Demo User</button>
             <label style={{ background:"#ef4444", color:"#fff", borderRadius:"50%", width:18, height:18, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"10px", fontWeight:700 }}>0</label>
           </div>
           {accountOpen && (
@@ -248,7 +248,7 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
               <div style={{ color:"#e2e8f0", fontSize:12, fontWeight:700 }}>Account menu</div>
               <Link href="/company/settings" style={{ color:"#94a3b8", textDecoration:"none", fontSize:12 }}>Profile and company settings</Link>
               <Link href="/billing" style={{ color:"#94a3b8", textDecoration:"none", fontSize:12 }}>Billing and membership</Link>
-              <span style={{ color:"#64748b", fontSize:11 }}>Signed in as Leslie Sabek</span>
+              <span style={{ color:"#64748b", fontSize:11 }}>Signed in as Demo User</span>
             </div>
           )}
           <div style={{ display:"flex", gap:6 }}>
@@ -328,8 +328,8 @@ export default function CDMLayout({ children }: { children: React.ReactNode }) {
             <button onClick={() => setHelpOpen(o => !o)} style={{ background:"none", border:"none", color:"#2563eb", fontWeight:700, cursor:"pointer", padding:0 }}>Need Help?</button>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
-            <span>Leslie Sabek</span>
-            <span style={{ fontWeight:800, color:"#1e293b" }}>NO COMPANY</span>
+            <span>Demo User</span>
+            <span style={{ fontWeight:800, color:"#1e293b" }}>Demo Company</span>
             <button onClick={() => setActivateOpen(true)} style={{ background:"#22c55e", color:"#fff", border:"none", borderRadius:20, padding:"7px 14px", fontSize:12, fontWeight:800, cursor:"pointer" }}>ACTIVATE MEMBERSHIP</button>
           </div>
         </div>

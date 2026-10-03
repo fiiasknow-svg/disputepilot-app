@@ -692,7 +692,7 @@ export default function Page() {
               </div>
               <div style={{background:"#0f172a",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",textAlign:"center",padding:24}}>
                 <div>
-                  <div style={{fontSize:40,marginBottom:10}}>â–¶</div>
+                  <div style={{fontSize:40,marginBottom:10}}>Play</div>
                   <div style={{fontSize:15,fontWeight:800}}>Employee training video placeholder</div>
                   <p style={{margin:"8px auto 0",fontSize:13,color:"rgba(255,255,255,0.72)",maxWidth:440}}>
                     No hosted employee training video source is connected yet. This local placeholder gives the Training Videos button a visible training panel until real video content is added.

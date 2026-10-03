@@ -68,7 +68,7 @@ export default function AcademyPage({ course }: { course: CourseData }) {
       "Certificate of Completion",
       course.certTitle,
       "",
-      "Awarded to: Leslie Sabek",
+      "Awarded to: Demo User",
       `Course: ${course.title}`,
       `Lessons completed: ${totalLessons}`,
       `Issued: ${issued}`,
@@ -274,7 +274,7 @@ export default function AcademyPage({ course }: { course: CourseData }) {
             </div>
             <div style={{ background: "#0f172a", aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", textAlign: "center", padding: 24 }}>
               <div>
-                <div style={{ fontSize: 42, marginBottom: 10 }}>â–¶</div>
+                <div style={{ fontSize: 42, marginBottom: 10 }}>Play</div>
                 <div style={{ fontSize: 15, fontWeight: 800 }}>Video placeholder</div>
                 <p style={{ margin: "8px 0 0", fontSize: 13, color: "rgba(255,255,255,0.72)", maxWidth: 460 }}>
                   No hosted video source is connected for this lesson yet. This local placeholder confirms the training player flow and keeps the lesson available until real video content is added.

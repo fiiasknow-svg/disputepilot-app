@@ -24,7 +24,7 @@ type Estimate = {
 const REPORT_TYPES = ["Standard Report", "3-Bureau Report", "Single Bureau"];
 const CHECKS = ["Credit Analysis", "Personal Information", "Return Item"];
 const fallbackClients: Client[] = [
-  { id: "local-leslie", full_name: "Leslie Sabek", email: "leslie@example.com" },
+  { id: "local-demo-user", full_name: "Demo User", email: "demo-user@example.test" },
   { id: "local-morgan", full_name: "Morgan Credit", email: "morgan@example.com" },
 ];
 const ESTIMATES_KEY = "dp_pay_per_deletion_estimates";

@@ -127,9 +127,9 @@ test('pay per deletion fees, tabs, filters, archive, row actions, and previews w
   await expect(page.getByRole('dialog', { name: 'Pay Per Deletion Credentials' })).toContainText('No live credentials');
   await page.getByRole('button', { name: 'Close' }).click();
 
-  await page.getByLabel('Select Client').selectOption('local-leslie');
+  await page.getByLabel('Select Client').selectOption('local-demo-user');
   await page.getByRole('button', { name: 'Build Estimate' }).click();
-  await expect(page.getByRole('status')).toContainText('Generated local estimate for Leslie Sabek');
+  await expect(page.getByRole('status')).toContainText('Generated local estimate for Demo User');
   await expect(page.getByText('Fees $175.00')).toBeVisible();
 
   await page.getByRole('button', { name: 'Mark Sent Locally' }).click();
@@ -141,13 +141,13 @@ test('pay per deletion fees, tabs, filters, archive, row actions, and previews w
   await expect(await download).toBeTruthy();
 
   await page.getByRole('button', { name: 'Preview Contract Context' }).click();
-  await expect(page.getByRole('dialog', { name: 'Estimate Contract' })).toContainText('Contract draft opened for Leslie Sabek');
+  await expect(page.getByRole('dialog', { name: 'Estimate Contract' })).toContainText('Contract draft opened for Demo User');
   await page.getByRole('button', { name: 'Close' }).click();
 
   await page.getByLabel('From').fill('2027-01-01');
   await expect(page.getByText('No estimates match this view')).toBeVisible();
   await page.getByLabel('From').fill('');
-  await expect(page.getByRole('cell', { name: 'Leslie', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Demo', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Archive' }).nth(1).click();
   await expect(page.getByRole('button', { name: 'Archive' }).first()).toHaveAttribute('aria-pressed', 'true');
@@ -168,14 +168,14 @@ test('pay per deletion remove requires confirmation', async ({ page }) => {
   await page.goto(`${BASE_URL}/billing/pay-per-deletion`);
   await page.evaluate(() => window.localStorage.removeItem('dp_pay_per_deletion_estimates'));
   await page.reload();
-  await page.getByLabel('Select Client').selectOption('local-leslie');
+  await page.getByLabel('Select Client').selectOption('local-demo-user');
   await page.getByRole('button', { name: 'Build Estimate' }).click();
-  await expect(page.getByRole('cell', { name: 'Leslie', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Demo', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByRole('dialog', { name: 'Confirm Estimate Removal' })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByRole('cell', { name: 'Leslie', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Demo', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Remove' }).click();
   await page.getByRole('button', { name: 'Confirm Remove' }).click();

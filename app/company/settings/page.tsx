@@ -152,7 +152,7 @@ export default function CompanySettingsPage() {
                   Login Username
                   <input
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-400/10"
-                    value="Leslie Sabek"
+                    value="Demo User"
                     readOnly
                   />
                 </label>

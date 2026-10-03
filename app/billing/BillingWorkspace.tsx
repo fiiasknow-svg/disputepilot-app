@@ -43,7 +43,7 @@ type Detail =
   | { kind: "Payment"; item: Payment }
   | { kind: "Service/Product"; item: Service };
 
-const demoClients = ["Leslie Sabek", "Morgan Credit", "Taylor Johnson", "Avery Brooks"];
+const demoClients = ["Demo User", "Morgan Credit", "Taylor Johnson", "Avery Brooks"];
 const invoiceStatuses = ["Draft", "Sent", "Paid", "Overdue"];
 const paymentStatuses = ["Paid", "Pending", "Failed", "Refunded"];
 const serviceStatuses = ["Active", "Inactive"];
@@ -52,14 +52,14 @@ const LOCAL_BILLING_KEY = "disputepilot.billing";
 const LOCAL_CLIENTS_KEY = "disputepilot.clients";
 
 const initialInvoices: Invoice[] = [
-  { id: 1, client: "Leslie Sabek", invoiceNumber: "INV-1042", service: "Credit Repair Monthly Plan", amount: 149, status: "Sent", dueDate: "2026-05-15", notes: "May service retainer." },
+  { id: 1, client: "Demo User", invoiceNumber: "INV-1042", service: "Credit Repair Monthly Plan", amount: 149, status: "Sent", dueDate: "2026-05-15", notes: "May service retainer." },
   { id: 2, client: "Morgan Credit", invoiceNumber: "INV-1041", service: "Pay Per Deletion", amount: 240, status: "Overdue", dueDate: "2026-04-30", notes: "Two verified deletions." },
   { id: 3, client: "Taylor Johnson", invoiceNumber: "INV-1040", service: "Credit Report Audit", amount: 99, status: "Paid", dueDate: "2026-04-26", notes: "One-time analysis package." },
 ];
 
 const initialPayments: Payment[] = [
   { id: 1, client: "Taylor Johnson", reference: "PAY-8831", service: "Credit Report Audit", amount: 99, status: "Paid", paymentDate: "2026-04-26", method: "Credit Card", notes: "Paid invoice INV-1040." },
-  { id: 2, client: "Leslie Sabek", reference: "PAY-8830", service: "Credit Repair Monthly Plan", amount: 149, status: "Paid", paymentDate: "2026-04-15", method: "ACH", notes: "Recurring subscription payment." },
+  { id: 2, client: "Demo User", reference: "PAY-8830", service: "Credit Repair Monthly Plan", amount: 149, status: "Paid", paymentDate: "2026-04-15", method: "ACH", notes: "Recurring subscription payment." },
   { id: 3, client: "Avery Brooks", reference: "PAY-8829", service: "Document Preparation", amount: 75, status: "Pending", paymentDate: "2026-05-01", method: "Check", notes: "Awaiting check clearance." },
 ];
 
