@@ -1,14 +1,15 @@
 # DisputePilot Sale Readiness Index
 
-Current date: 2026-09-30
+Current date: 2026-10-03
 
-Latest commit: `4b8c549`
+Latest commit: `54a65d1`
 
 Latest verified test status: local Chromium Playwright suite passed, `358 passed`.
 
 ## Documents
 
 - [README](README.md)
+- [Buyer One-Page Overview](buyer-one-page-overview.md)
 - [Buyer Handoff Checklist](buyer-handoff-checklist.md)
 - [Technical Setup](technical-setup.md)
 - [Testing Summary](testing-summary.md)
