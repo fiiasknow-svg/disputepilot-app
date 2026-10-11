@@ -26,7 +26,7 @@ const ORIGINAL_REMINDER_SURFACE = [
   'Type of Reminder',
   'Read',
   'Action',
-  'No Reminder Found.',
+  'Review bureau response window',
 ];
 
 const PREVIOUS_CLONE_EXTRA_GROUPS = [
@@ -100,18 +100,18 @@ test('calendar page matches reminder-table first surface and remains usable', as
 
   await expect(page.getByRole('heading', { name: 'Calendar', exact: true })).toBeVisible();
   await expect(page.getByText('Scheduled Reminder', { exact: true })).toBeVisible();
-  await expect(page.getByText('Read Reminder', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Read Reminder' }).first()).toBeVisible();
   await expect(page.getByText('Past Due', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Mark All as Read', exact: true })).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'No Reminder Found.', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Review bureau response window', exact: true })).toBeVisible();
 
   const reminderTitle = `Calendar reminder parity ${Date.now()}`;
-  await page.getByPlaceholder('Customer name').fill('Leslie Sabek');
+  await page.getByPlaceholder('Customer name').fill('Avery Demo');
   await page.getByPlaceholder('Reminder title').fill(reminderTitle);
   await page.getByRole('button', { name: 'Save Reminder', exact: true }).click();
   await expect(page.getByText(reminderTitle, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Mark All as Read', exact: true }).click();
-  await expect(page.getByRole('cell', { name: 'Yes', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Yes', exact: true }).first()).toBeVisible();
 
   await page.getByRole('button', { name: '+ Add Event', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'New Event', exact: true })).toBeVisible();
@@ -221,7 +221,7 @@ test('calendar event type agent and upcoming filters affect visible events', asy
 
   await page.getByRole('combobox', { name: 'Event Types' }).selectOption('All Types');
   await expect(page.getByText(meetingTitle)).toBeVisible();
-  await expect(page.getByText(insideDate, { exact: true })).toBeVisible();
+  await expect(page.locator('div').filter({ hasText: meetingTitle }).filter({ hasText: insideDate }).first()).toBeVisible();
 });
 
 test('blank calendar reminder and blank event show visible validation', async ({ page }) => {
@@ -247,7 +247,7 @@ test('iCal download includes created event metadata and reminder todo', async ({
   await page.getByRole('combobox', { name: 'Assigned Agent' }).selectOption('Assigned Agent');
   await page.getByRole('button', { name: 'Add Event', exact: true }).click();
 
-  await page.getByPlaceholder('Customer name').fill('Leslie Sabek');
+  await page.getByPlaceholder('Customer name').fill('Avery Demo');
   await page.getByPlaceholder('Reminder title').fill(reminderTitle);
   await page.getByRole('button', { name: 'Save Reminder', exact: true }).click();
 

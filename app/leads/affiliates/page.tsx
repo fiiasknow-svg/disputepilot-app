@@ -28,6 +28,67 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+const SAMPLE_AFFILIATES = [
+  {
+    id: "sample-affiliate-1",
+    full_name: "Jordan Partner",
+    company_name: "Demo Mortgage Partners",
+    office_phone: "555-0131",
+    cell_phone: "555-0132",
+    phone: "555-0132",
+    email: "jordan.partner@example.test",
+    referral_code: "DEMO-PARTNER",
+    status: "Active",
+    start_date: "2026-04-01",
+    end_date: "-",
+    commission: "15%",
+    notes: "Active demo affiliate with referral portal access pending buyer-owned configuration.",
+    created_at: "2026-04-01T10:00:00.000Z",
+  },
+  {
+    id: "sample-affiliate-2",
+    full_name: "Riley Referral",
+    company_name: "Sample Realty Group",
+    office_phone: "555-0133",
+    cell_phone: "555-0134",
+    phone: "555-0134",
+    email: "riley.referral@example.test",
+    referral_code: "REALTY-DEMO",
+    status: "Lead",
+    start_date: "2026-05-02",
+    end_date: "-",
+    commission: "Pending",
+    notes: "Needs affiliate agreement before commissions are enabled.",
+    created_at: "2026-05-02T12:00:00.000Z",
+  },
+  {
+    id: "sample-affiliate-3",
+    full_name: "Morgan Broker",
+    company_name: "Example Auto Finance",
+    office_phone: "555-0135",
+    cell_phone: "555-0136",
+    phone: "555-0136",
+    email: "morgan.broker@example.test",
+    referral_code: "AUTO-DEMO",
+    status: "Pending Referrals",
+    start_date: "2026-04-18",
+    end_date: "-",
+    commission: "$125 / converted client",
+    notes: "Two local referral records waiting for review.",
+    created_at: "2026-04-18T14:30:00.000Z",
+  },
+];
+
+const SAMPLE_COMMISSIONS = [
+  { id: "sample-commission-1", affiliate: "Jordan Partner", amount: "375", status: "Approved", period: "May 2026", notes: "Three qualified demo referrals.", created_at: "2026-05-03T09:00:00.000Z" },
+  { id: "sample-commission-2", affiliate: "Morgan Broker", amount: "125", status: "Pending", period: "May 2026", notes: "Pending conversion confirmation.", created_at: "2026-05-02T09:00:00.000Z" },
+];
+
+const SAMPLE_DOCUMENTS = [
+  { id: "sample-document-1", affiliate: "Jordan Partner", name: "Demo affiliate agreement.pdf", type: "Agreement", status: "Approved", notes: "Sample metadata only; no file attached.", created_at: "2026-05-01T09:00:00.000Z" },
+  { id: "sample-document-2", affiliate: "Riley Referral", name: "Referral onboarding checklist.pdf", type: "Referral Proof", status: "Needs Review", notes: "Sample metadata only; no file attached.", created_at: "2026-05-02T09:00:00.000Z" },
+];
+
 function readLocalAffiliates() {
   if (typeof window === "undefined") return [];
   try {
@@ -118,8 +179,10 @@ export default function Page() {
 
   useEffect(() => {
     load();
-    setCommissions(readLocalRows(LOCAL_AFFILIATE_COMMISSIONS_KEY));
-    setDocuments(readLocalRows(LOCAL_AFFILIATE_DOCUMENTS_KEY));
+    const localCommissions = readLocalRows(LOCAL_AFFILIATE_COMMISSIONS_KEY);
+    const localDocuments = readLocalRows(LOCAL_AFFILIATE_DOCUMENTS_KEY);
+    setCommissions(localCommissions.length ? localCommissions : SAMPLE_COMMISSIONS);
+    setDocuments(localDocuments.length ? localDocuments : SAMPLE_DOCUMENTS);
   }, []);
 
   async function getAccountId() {
@@ -163,7 +226,8 @@ export default function Page() {
 
         const scopedAffiliates = data || [];
         const visibleAffiliates = mergeAffiliates(readLocalAffiliates(), scopedAffiliates);
-        setAffiliates(mergeAffiliates(preservedAffiliates, visibleAffiliates));
+        const mergedAffiliates = mergeAffiliates(preservedAffiliates, visibleAffiliates);
+        setAffiliates(mergedAffiliates.length ? mergedAffiliates : SAMPLE_AFFILIATES);
         return;
       }
 
@@ -175,9 +239,13 @@ export default function Page() {
 
       const remoteAffiliates = data || [];
       const visibleAffiliates = mergeAffiliates(readLocalAffiliates(), remoteAffiliates);
-      setAffiliates(mergeAffiliates(preservedAffiliates, visibleAffiliates));
+      const mergedAffiliates = mergeAffiliates(preservedAffiliates, visibleAffiliates);
+      setAffiliates(mergedAffiliates.length ? mergedAffiliates : SAMPLE_AFFILIATES);
     } catch (err: any) {
-      setAffiliates(current => mergeAffiliates(preservedAffiliates, mergeAffiliates(readLocalAffiliates(), current)));
+      setAffiliates(current => {
+        const visibleAffiliates = mergeAffiliates(preservedAffiliates, mergeAffiliates(readLocalAffiliates(), current));
+        return visibleAffiliates.length ? visibleAffiliates : SAMPLE_AFFILIATES;
+      });
       setError(err?.message ? `Could not load affiliates: ${err.message}` : "Could not load affiliates.");
     } finally {
       setLoading(false);

@@ -10,7 +10,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 const AVATAR_COLORS = ["#1e3a5f","#3b82f6","#8b5cf6","#10b981","#f59e0b","#ef4444","#06b6d4","#ec4899"];
 const SOURCES = ["Website","Referral","Social Media","Cold Call","Email Campaign","Walk-in","Other"];
-const AGENTS = ["Alice Johnson","Bob Smith","Carol Davis","David Lee","Eve Martinez"];
+const AGENTS = ["Demo Specialist","Intake Coordinator","Referral Manager","Billing Coordinator","Support Specialist"];
 const SERVICE_PLANS = ["Basic ($99/mo)","Standard ($149/mo)","Premium ($199/mo)","Elite ($299/mo)"];
 const PAGE_SIZES = [25, 50, 100];
 const STATUSES = Object.keys(STATUS_COLORS);
@@ -26,6 +26,102 @@ const EMPTY_FORM = {
   credit_score: "", service_plan_interest: "", monthly_budget: "",
   assigned_agent: "", tags: "", follow_up_date: "", lead_score: "",
 };
+
+const SAMPLE_LEADS = [
+  {
+    id: "sample-lead-1",
+    first_name: "Casey",
+    last_name: "Prospect",
+    full_name: "Casey Prospect",
+    email: "casey.prospect@example.test",
+    phone: "555-0121",
+    address: "210 Intake Way",
+    city: "Atlanta",
+    state: "GA",
+    zip: "30308",
+    source: "Website",
+    status: "new",
+    notes: "Submitted demo website form and asked for a credit report review.",
+    credit_score: "612",
+    service_plan_interest: "Standard ($149/mo)",
+    monthly_budget: "150",
+    assigned_agent: "Demo Specialist",
+    tags: "portal intake, hot lead",
+    follow_up_date: "2026-05-08",
+    lead_score: "82",
+    created_at: "2026-05-03T13:20:00.000Z",
+  },
+  {
+    id: "sample-lead-2",
+    first_name: "Taylor",
+    last_name: "Referral",
+    full_name: "Taylor Referral",
+    email: "taylor.referral@example.test",
+    phone: "555-0122",
+    address: "55 Partner Lane",
+    city: "Savannah",
+    state: "GA",
+    zip: "31401",
+    source: "Referral",
+    status: "qualified",
+    notes: "Affiliate referral. Interested in monthly monitoring and dispute package.",
+    credit_score: "588",
+    service_plan_interest: "Premium ($199/mo)",
+    monthly_budget: "200",
+    assigned_agent: "Referral Manager",
+    tags: "referral, qualified",
+    follow_up_date: "2026-05-06",
+    lead_score: "74",
+    created_at: "2026-05-02T15:45:00.000Z",
+  },
+  {
+    id: "sample-lead-3",
+    first_name: "Quinn",
+    last_name: "Example",
+    full_name: "Quinn Example",
+    email: "quinn.example@example.test",
+    phone: "555-0123",
+    address: "400 Demo Street",
+    city: "Charlotte",
+    state: "NC",
+    zip: "28202",
+    source: "Email Campaign",
+    status: "contacted",
+    notes: "Needs a callback after reviewing onboarding materials.",
+    credit_score: "641",
+    service_plan_interest: "Basic ($99/mo)",
+    monthly_budget: "125",
+    assigned_agent: "Intake Coordinator",
+    tags: "callback, nurture",
+    follow_up_date: "2026-05-10",
+    lead_score: "58",
+    created_at: "2026-04-29T10:00:00.000Z",
+  },
+  {
+    id: "sample-lead-4",
+    first_name: "Parker",
+    last_name: "Archive",
+    full_name: "Parker Archive",
+    email: "parker.archive@example.test",
+    phone: "555-0124",
+    address: "18 Local Demo Ave",
+    city: "Orlando",
+    state: "FL",
+    zip: "32801",
+    source: "Social Media",
+    status: "lost",
+    notes: "Demo archived lead for showing filters and clean inactive handling.",
+    credit_score: "700",
+    service_plan_interest: "Elite ($299/mo)",
+    monthly_budget: "300",
+    assigned_agent: "Support Specialist",
+    tags: "archive",
+    follow_up_date: "2026-04-24",
+    lead_score: "22",
+    archived: true,
+    created_at: "2026-04-20T09:30:00.000Z",
+  },
+];
 
 function initials(name: string) {
   const p = name.trim().split(" ");
@@ -313,7 +409,10 @@ export default function Page() {
         );
         if (error) throw error;
         const scopedLeads = data || [];
-        setLeads(current => mergeLeads(readLocalLeads().length ? readLocalLeads() : current, scopedLeads));
+        setLeads(current => {
+          const merged = mergeLeads(readLocalLeads().length ? readLocalLeads() : current, scopedLeads);
+          return merged.length ? merged : SAMPLE_LEADS;
+        });
         return;
       }
 
@@ -323,9 +422,15 @@ export default function Page() {
       );
       if (error) throw error;
       const remoteLeads = data || [];
-      setLeads(current => mergeLeads(readLocalLeads().length ? readLocalLeads() : current, remoteLeads));
+      setLeads(current => {
+        const merged = mergeLeads(readLocalLeads().length ? readLocalLeads() : current, remoteLeads);
+        return merged.length ? merged : SAMPLE_LEADS;
+      });
     } catch (err: any) {
-      setLeads(current => mergeLeads(readLocalLeads(), current));
+      setLeads(current => {
+        const visibleLeads = mergeLeads(readLocalLeads(), current);
+        return visibleLeads.length ? visibleLeads : SAMPLE_LEADS;
+      });
       setError(`Could not load leads from Supabase. Showing local leads only. ${actionErrorMessage(err)}`);
     } finally {
       setLoading(false);

@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import CDMLayout from "@/components/CDMLayout";
 
 const defaults = {
-  portalUrl: "https://portal.disputepilot.com/client",
+  portalUrl: "https://demo.disputepilot.example.test/client-portal",
   branding: "DisputePilot",
-  welcomeMessage: "Welcome to your secure client portal.",
+  welcomeMessage: "Welcome to the DisputePilot demo client portal. This private demo configuration uses local/sample data only.",
   portalEnabled: true,
   documentUploads: true,
   secureMessages: true,
@@ -37,7 +37,7 @@ const portalSections = [
     linkTitle: "DisputePilot Portal Link",
     linkHelp:
       "Use this configurable demo link until the buyer-owned client portal URL is connected.",
-    link: "https://portal.disputepilot.com/demo/client",
+    link: "https://demo.disputepilot.example.test/client-portal",
   },
   {
     title: "Referral Partner Portal",
@@ -57,7 +57,7 @@ const portalSections = [
     linkTitle: "Referral Partner Portal Link",
     linkHelp:
       "Use this configurable demo link until the buyer-owned referral partner portal URL is connected.",
-    link: "https://portal.disputepilot.com/demo/referrals",
+    link: "https://demo.disputepilot.example.test/referral-portal",
   },
 ];
 
@@ -76,11 +76,11 @@ const mobileQuestions = [
 const appLinks = [
   {
     label: "Android Demo Link",
-    url: "https://portal.disputepilot.com/demo/mobile-android",
+    url: "https://demo.disputepilot.example.test/mobile/android",
   },
   {
     label: "iOS Demo Link",
-    url: "https://portal.disputepilot.com/demo/mobile-ios",
+    url: "https://demo.disputepilot.example.test/mobile/ios",
   },
 ];
 const PORTALS_STORAGE_KEY = "dp_company_portals_settings";

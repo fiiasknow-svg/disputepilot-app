@@ -13,8 +13,8 @@ type Contract = {
 };
 
 const initialContracts: Contract[] = [
-  { id: "CON-001", name: "Credit Repair Service Agreement", type: "Template", recipient: "Maria Johnson", status: "Ready to Sign", body: "Standard credit repair service agreement terms are ready for review." },
-  { id: "CON-002", name: "Monthly Billing Authorization", type: "Document", recipient: "James Williams", status: "Sent", body: "Monthly billing authorization was sent for local signature tracking." },
+  { id: "CON-001", name: "Credit Repair Service Agreement", type: "Template", recipient: "Avery Demo", status: "Ready to Sign", body: "Standard credit repair service agreement terms are ready for review." },
+  { id: "CON-002", name: "Monthly Billing Authorization", type: "Document", recipient: "Morgan Example", status: "Sent", body: "Monthly billing authorization was sent for local signature tracking." },
 ];
 const STORAGE_KEY = "dp_digital_contracts";
 

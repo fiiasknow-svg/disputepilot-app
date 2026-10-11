@@ -43,7 +43,7 @@ type Detail =
   | { kind: "Payment"; item: Payment }
   | { kind: "Service/Product"; item: Service };
 
-const demoClients = ["Demo User", "Morgan Credit", "Taylor Johnson", "Avery Brooks"];
+const demoClients = ["Demo User", "Morgan Credit", "Taylor Johnson", "Avery Brooks", "Avery Demo", "Morgan Example", "Jordan Sample"];
 const invoiceStatuses = ["Draft", "Sent", "Paid", "Overdue"];
 const paymentStatuses = ["Paid", "Pending", "Failed", "Refunded"];
 const serviceStatuses = ["Active", "Inactive"];
@@ -55,18 +55,24 @@ const initialInvoices: Invoice[] = [
   { id: 1, client: "Demo User", invoiceNumber: "INV-1042", service: "Credit Repair Monthly Plan", amount: 149, status: "Sent", dueDate: "2026-05-15", notes: "May service retainer." },
   { id: 2, client: "Morgan Credit", invoiceNumber: "INV-1041", service: "Pay Per Deletion", amount: 240, status: "Overdue", dueDate: "2026-04-30", notes: "Two verified deletions." },
   { id: 3, client: "Taylor Johnson", invoiceNumber: "INV-1040", service: "Credit Report Audit", amount: 99, status: "Paid", dueDate: "2026-04-26", notes: "One-time analysis package." },
+  { id: 4, client: "Avery Demo", invoiceNumber: "INV-1043", service: "Document Preparation", amount: 75, status: "Draft", dueDate: "2026-05-22", notes: "Draft invoice for buyer-demo document workflow." },
+  { id: 5, client: "Morgan Example", invoiceNumber: "INV-1044", service: "Premium Monthly Plan", amount: 199, status: "Sent", dueDate: "2026-05-20", notes: "Sample monthly plan invoice." },
 ];
 
 const initialPayments: Payment[] = [
   { id: 1, client: "Taylor Johnson", reference: "PAY-8831", service: "Credit Report Audit", amount: 99, status: "Paid", paymentDate: "2026-04-26", method: "Credit Card", notes: "Paid invoice INV-1040." },
   { id: 2, client: "Demo User", reference: "PAY-8830", service: "Credit Repair Monthly Plan", amount: 149, status: "Paid", paymentDate: "2026-04-15", method: "ACH", notes: "Recurring subscription payment." },
   { id: 3, client: "Avery Brooks", reference: "PAY-8829", service: "Document Preparation", amount: 75, status: "Pending", paymentDate: "2026-05-01", method: "Check", notes: "Awaiting check clearance." },
+  { id: 4, client: "Avery Demo", reference: "PAY-8832", service: "Premium Monthly Plan", amount: 199, status: "Paid", paymentDate: "2026-05-03", method: "Credit Card", notes: "Demo payment record; no live processor charge." },
+  { id: 5, client: "Jordan Sample", reference: "PAY-8833", service: "Setup Fee", amount: 49, status: "Refunded", paymentDate: "2026-04-21", method: "ACH", notes: "Sample refunded payment for status filtering." },
 ];
 
 const initialServices: Service[] = [
   { id: 1, name: "Credit Repair Monthly Plan", type: "Service", amount: 149, status: "Active", notes: "Monthly dispute processing and client support." },
   { id: 2, name: "Credit Report Audit", type: "Product", amount: 99, status: "Active", notes: "One-time tri-bureau analysis." },
   { id: 3, name: "Pay Per Deletion", type: "Service", amount: 120, status: "Active", notes: "Billed after verified deletion." },
+  { id: 4, name: "Document Preparation", type: "Service", amount: 75, status: "Active", notes: "Local demo document preparation service." },
+  { id: 5, name: "Premium Monthly Plan", type: "Service", amount: 199, status: "Active", notes: "Higher-touch monthly plan for demo billing depth." },
 ];
 
 const pageTitles = {

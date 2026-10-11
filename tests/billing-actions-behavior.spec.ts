@@ -141,9 +141,9 @@ test('payment history is visible and useful', async ({ page }) => {
 
   const main = page.getByRole('main');
   await expect(main.getByRole('heading', { name: 'Payment History' }).first()).toBeVisible();
-  await expect(main.getByText('Showing 3 of 3 payment records')).toBeVisible();
-  await expect(main.getByText('$248.00 collected')).toBeVisible();
+  await expect(main.getByText('Showing 4 of 5 payment records')).toBeVisible();
+  await expect(main.getByText('$447.00 collected')).toBeVisible();
   await expect(main.getByText('PAY-8831')).toBeVisible();
-  await expect(main.getByText('Credit Card')).toBeVisible();
+  await expect(main.getByRole('cell', { name: 'Credit Card' }).first()).toBeVisible();
   await expectNoBillingRuntimeErrors(page);
 });

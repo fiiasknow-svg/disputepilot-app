@@ -325,7 +325,7 @@ export default function Page() {
                 </div>
                 <div>
                   <label style={lbl}>From Name</label>
-                  <input style={inp} value={smtp.from_name} onChange={e => setSmtp(s => ({ ...s, from_name: e.target.value }))} placeholder="My Credit Repair Co." />
+                  <input style={inp} value={smtp.from_name} onChange={e => setSmtp(s => ({ ...s, from_name: e.target.value }))} placeholder="Demo Company" />
                 </div>
                 <div>
                   <label style={lbl}>From Email</label>

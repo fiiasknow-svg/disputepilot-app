@@ -19,7 +19,7 @@ type Dispute = {
 const INITIAL_DISPUTES: Dispute[] = [
   {
     id: 1,
-    client: "John Smith",
+    client: "Avery Demo",
     status: "In Progress",
     round: "Round 1",
     bureau: "Equifax",
@@ -27,11 +27,11 @@ const INITIAL_DISPUTES: Dispute[] = [
     account: "Capital One Platinum",
     letter: "609 Dispute Letter",
     date: "2026-04-29",
-    notes: "Client says the balance was paid before the statement date.",
+    notes: "Demo client says the balance was paid before the statement date.",
   },
   {
     id: 2,
-    client: "Maria Johnson",
+    client: "Morgan Example",
     status: "Ready",
     round: "Round 2",
     bureau: "Experian",
@@ -43,7 +43,7 @@ const INITIAL_DISPUTES: Dispute[] = [
   },
   {
     id: 3,
-    client: "David Lee",
+    client: "Riley Practice",
     status: "Completed",
     round: "Round 3",
     bureau: "TransUnion",
@@ -52,6 +52,30 @@ const INITIAL_DISPUTES: Dispute[] = [
     letter: "Debt Validation Letter",
     date: "2026-04-27",
     notes: "Collection deleted after furnisher failed to validate.",
+  },
+  {
+    id: 4,
+    client: "Jordan Sample",
+    status: "Sent",
+    round: "Round 1",
+    bureau: "Experian",
+    reason: "Inquiry Not Authorized",
+    account: "Regional Auto Finance",
+    letter: "Metro 2 Compliance Letter",
+    date: "2026-05-01",
+    notes: "Demo dispute sent locally; waiting on response window.",
+  },
+  {
+    id: 5,
+    client: "Avery Demo",
+    status: "Responded",
+    round: "Round 2",
+    bureau: "TransUnion",
+    reason: "Incorrect Late Payment",
+    account: "Sample Credit Union",
+    letter: "Method of Verification",
+    date: "2026-05-03",
+    notes: "Bureau response received in demo workflow; review before next round.",
   },
 ];
 
@@ -154,13 +178,13 @@ export default function DisputesPage() {
       try {
         const raw = window.localStorage.getItem(LOCAL_CLIENTS_KEY);
         if (!raw) {
-          setClientSuggestions(["John Smith", "Maria Johnson", "David Lee"]);
+          setClientSuggestions(["Avery Demo", "Morgan Example", "Riley Practice", "Jordan Sample"]);
           return;
         }
 
         const parsed = JSON.parse(raw);
         if (!Array.isArray(parsed)) {
-          setClientSuggestions(["John Smith", "Maria Johnson", "David Lee"]);
+          setClientSuggestions(["Avery Demo", "Morgan Example", "Riley Practice", "Jordan Sample"]);
           return;
         }
 
@@ -168,9 +192,9 @@ export default function DisputesPage() {
           .map((item: any) => (item.full_name || `${item.first_name || ""} ${item.last_name || ""}`.trim() || item.email || "").trim())
           .filter(Boolean);
 
-        setClientSuggestions(Array.from(new Set([...suggestions, "John Smith", "Maria Johnson", "David Lee"])));
+        setClientSuggestions(Array.from(new Set([...suggestions, "Avery Demo", "Morgan Example", "Riley Practice", "Jordan Sample"])));
       } catch {
-        setClientSuggestions(["John Smith", "Maria Johnson", "David Lee"]);
+        setClientSuggestions(["Avery Demo", "Morgan Example", "Riley Practice", "Jordan Sample"]);
       }
     }
 

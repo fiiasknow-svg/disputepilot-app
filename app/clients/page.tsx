@@ -27,43 +27,83 @@ const EMPTY_FORM = {
 const SAMPLE_CLIENTS = [
   {
     id: "sample-client-1",
-    first_name: "Alex",
-    last_name: "Morgan",
-    full_name: "Alex Morgan",
-    email: "alex.morgan@example.com",
+    first_name: "Avery",
+    last_name: "Demo",
+    full_name: "Avery Demo",
+    email: "avery.demo@example.test",
     phone: "555-0101",
     status: "active",
     client_type: "Client",
-    notes: "Wants monthly updates by email.",
+    notes: "Demo client with signed agreement, active disputes, and email update preference.",
     service_plan: "Premium",
     monthly_charge: "149",
     contract_status: "signed",
     payment_status: "current",
     referral_source: "Referral",
-    assigned_agent: "Jordan Lee",
-    tags: "VIP",
+    assigned_agent: "Demo Specialist",
+    tags: "VIP, Active Disputes",
     created_at: "2026-05-01T14:00:00.000Z",
     updated_at: "2026-05-01T14:00:00.000Z",
   },
   {
     id: "sample-client-2",
-    first_name: "Taylor",
-    last_name: "Reed",
-    full_name: "Taylor Reed",
-    email: "taylor.reed@example.com",
+    first_name: "Jordan",
+    last_name: "Sample",
+    full_name: "Jordan Sample",
+    email: "jordan.sample@example.test",
     phone: "555-0102",
     status: "pending",
     client_type: "Lead",
-    notes: "Asked for onboarding call.",
+    notes: "Pending onboarding call. Needs contract review and payment method setup.",
     service_plan: "Standard",
     monthly_charge: "99",
     contract_status: "pending",
     payment_status: "no_card",
     referral_source: "Website",
-    assigned_agent: "Casey Smith",
-    tags: "New",
+    assigned_agent: "Intake Coordinator",
+    tags: "New, Contract Pending",
     created_at: "2026-04-30T12:00:00.000Z",
     updated_at: "2026-04-30T12:00:00.000Z",
+  },
+  {
+    id: "sample-client-3",
+    first_name: "Morgan",
+    last_name: "Example",
+    full_name: "Morgan Example",
+    email: "morgan.example@example.test",
+    phone: "555-0103",
+    status: "active",
+    client_type: "Client",
+    notes: "Round 2 follow-up due after bureau response window closes.",
+    service_plan: "Premium",
+    monthly_charge: "199",
+    contract_status: "signed",
+    payment_status: "current",
+    referral_source: "Partner",
+    assigned_agent: "Demo Specialist",
+    tags: "Round 2, Partner Referral",
+    created_at: "2026-04-22T16:30:00.000Z",
+    updated_at: "2026-05-02T09:15:00.000Z",
+  },
+  {
+    id: "sample-client-4",
+    first_name: "Riley",
+    last_name: "Practice",
+    full_name: "Riley Practice",
+    email: "riley.practice@example.test",
+    phone: "555-0104",
+    status: "inactive",
+    client_type: "Past Client",
+    notes: "Completed demo workflow with final results archived for reference.",
+    service_plan: "Basic",
+    monthly_charge: "79",
+    contract_status: "signed",
+    payment_status: "current",
+    referral_source: "Google",
+    assigned_agent: "Retention Queue",
+    tags: "Completed, Archive",
+    created_at: "2026-03-15T11:15:00.000Z",
+    updated_at: "2026-04-25T13:10:00.000Z",
   },
 ];
 
@@ -344,10 +384,11 @@ export default function Page() {
         disputeRows = data || [];
       }
       const latestLocalClients = readLocalClients();
-      setClients(current => mergeClients(
-        latestLocalClients.length ? latestLocalClients : current.filter((c: any) => String(c.id).startsWith("local-")),
-        remoteClients,
-      ));
+      setClients(current => {
+        const localDemoClients = latestLocalClients.length ? latestLocalClients : current.filter((c: any) => String(c.id).startsWith("local-"));
+        const merged = mergeClients(localDemoClients, remoteClients);
+        return merged.length ? merged : SAMPLE_CLIENTS;
+      });
       const counts: Record<string, number> = {};
       for (const d of disputeRows) counts[d.client_id] = (counts[d.client_id] || 0) + 1;
       setDisputeCounts(counts);

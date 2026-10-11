@@ -17,5 +17,5 @@ test('calendar blank reminder save shows visible validation and keeps form avail
   await expect(page.getByText('Enter customer and reminder title before saving.')).toBeVisible();
   await expect(page.getByPlaceholder('Customer name')).toBeVisible();
   await expect(page.getByPlaceholder('Reminder title')).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'No Reminder Found.' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Review bureau response window' })).toBeVisible();
 });

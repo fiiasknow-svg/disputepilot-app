@@ -47,6 +47,61 @@ function dateValue(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+const DEFAULT_REMINDERS: Reminder[] = [
+  {
+    id: "sample-reminder-1",
+    customer: "Avery Demo",
+    title: "Review bureau response window",
+    scheduleDate: dateValue(today),
+    scheduleTime: "09:30",
+    endDate: dateValue(today),
+    endTime: "10:00",
+    type: "Dispute Review",
+    status: "scheduled",
+  },
+  {
+    id: "sample-reminder-2",
+    customer: "Jordan Sample",
+    title: "Send onboarding document request",
+    scheduleDate: dateValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2)),
+    scheduleTime: "13:00",
+    endDate: dateValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2)),
+    endTime: "13:30",
+    type: "Document Request",
+    status: "scheduled",
+  },
+  {
+    id: "sample-reminder-3",
+    customer: "Morgan Example",
+    title: "Past due payment follow-up",
+    scheduleDate: dateValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 3)),
+    scheduleTime: "11:00",
+    endDate: dateValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 3)),
+    endTime: "11:30",
+    type: "Payment Reminder",
+    status: "past-due",
+  },
+];
+
+const DEFAULT_EVENTS: EventItem[] = [
+  {
+    id: "sample-event-1",
+    title: "Buyer demo workflow review",
+    date: dateValue(today),
+    allDay: false,
+    type: "Meeting",
+    agent: "Assigned Agent",
+  },
+  {
+    id: "sample-event-2",
+    title: "Round 2 letters due",
+    date: dateValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5)),
+    allDay: true,
+    type: "Deadline",
+    agent: "Assigned Agent",
+  },
+];
+
 function monthName(date: Date) {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
@@ -68,8 +123,8 @@ function writeStored<T>(key: string, value: T) {
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["id"]>("all");
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [events, setEvents] = useState<EventItem[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>(DEFAULT_REMINDERS);
+  const [events, setEvents] = useState<EventItem[]>(DEFAULT_EVENTS);
   const [storageReady, setStorageReady] = useState(false);
   const [notice, setNotice] = useState("");
   const [eventFormError, setEventFormError] = useState("");
@@ -93,9 +148,9 @@ export default function Page() {
   const [eventForm, setEventForm] = useState({ title: "", date: dateValue(today), allDay: false, type: "Meeting", agent: "Assigned Agent" });
 
   useEffect(() => {
-    setReminders(readStored<Reminder[]>(REMINDER_KEY, []));
+    setReminders(readStored<Reminder[]>(REMINDER_KEY, DEFAULT_REMINDERS));
     setEvents(
-      readStored<EventItem[]>(EVENT_KEY, []).map((event) => ({
+      readStored<EventItem[]>(EVENT_KEY, DEFAULT_EVENTS).map((event) => ({
         ...event,
         type: event.type || "Meeting",
         agent: event.agent || "Unassigned",

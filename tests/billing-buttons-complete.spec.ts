@@ -46,7 +46,7 @@ test('payment history tabs, filters, entries selector, and reset work', async ({
 
   await expect(page.getByRole('cell', { name: 'PAY-8831' })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'PAY-8830' })).toHaveCount(0);
-  await expect(page.getByText('Showing 1 of 3 payment records')).toBeVisible();
+  await expect(page.getByText('Showing 1 of 5 payment records')).toBeVisible();
 
   await page.getByRole('button', { name: 'Archived' }).click();
   await expect(page.getByRole('heading', { name: 'Archived Payment History' })).toBeVisible();

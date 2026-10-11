@@ -25,7 +25,7 @@ const REPORT_TYPES = ["Standard Report", "3-Bureau Report", "Single Bureau"];
 const CHECKS = ["Credit Analysis", "Personal Information", "Return Item"];
 const fallbackClients: Client[] = [
   { id: "local-demo-user", full_name: "Demo User", email: "demo-user@example.test" },
-  { id: "local-morgan", full_name: "Morgan Credit", email: "morgan@example.com" },
+  { id: "local-morgan", full_name: "Morgan Credit", email: "morgan.credit@example.test" },
 ];
 const ESTIMATES_KEY = "dp_pay_per_deletion_estimates";
 
@@ -117,7 +117,7 @@ export default function Page() {
       id: Date.now(),
       first_name: parts[0] || "",
       last_name: parts.slice(1).join(" ") || "",
-      email: client?.email || "local@example.com",
+      email: client?.email || "local@example.test",
       date: today,
       displayDate: new Date(`${today}T00:00:00`).toLocaleDateString(),
       preview: `${selectedSections.join(", ") || "No sections"} | Fees ${money(feeTotal)}${htmlFile ? ` | ${htmlFile.name}` : ""}`,

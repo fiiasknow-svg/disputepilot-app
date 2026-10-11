@@ -20,6 +20,10 @@ const DEFAULT_TASKS: TaskItem[] = [
   {id:3,text:"Follow up on overdue invoices",done:true},
   {id:4,text:"Archive completed onboarding checklist",done:true,archived:true},
 ];
+const DEFAULT_DASHBOARD_REMINDERS: DashboardReminder[] = [
+  {id:1,title:"Review Avery Demo bureau response",date:"2026-05-06",time:"09:30",recurring:false,endDate:"2026-05-06"},
+  {id:2,title:"Send Jordan Sample onboarding request",date:"2026-05-08",time:"13:00",recurring:false,endDate:"2026-05-08"},
+];
 
 function readStored<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -84,7 +88,7 @@ export default function Page() {
   const [tasks, setTasks] = useState<TaskItem[]>(DEFAULT_TASKS);
 
   useEffect(() => {
-    setReminders(readStored<DashboardReminder[]>(DASHBOARD_REMINDERS_KEY, []));
+    setReminders(readStored<DashboardReminder[]>(DASHBOARD_REMINDERS_KEY, DEFAULT_DASHBOARD_REMINDERS));
     setTasks(readStored<TaskItem[]>(DASHBOARD_TASKS_KEY, DEFAULT_TASKS));
     setStorageReady(true);
   }, []);

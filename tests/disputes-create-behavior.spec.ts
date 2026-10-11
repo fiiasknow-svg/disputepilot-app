@@ -65,16 +65,16 @@ test('save shows the created dispute in the visible table and confirmation', asy
 test('view opens useful dispute details', async ({ page }) => {
   await page.goto(`${BASE_URL}/disputes`);
 
-  await page.getByRole('row').filter({ hasText: 'John Smith' }).getByRole('button', { name: 'View' }).click();
+  await page.getByRole('row').filter({ hasText: 'Avery Demo' }).first().getByRole('button', { name: 'View' }).click();
 
   const details = page.getByRole('dialog', { name: 'Dispute Details' });
   await expect(details).toBeVisible();
-  await expect(details).toContainText('John Smith');
+  await expect(details).toContainText('Avery Demo');
   await expect(details).toContainText('In Progress');
   await expect(details).toContainText('Round 1');
   await expect(details).toContainText('Equifax');
   await expect(details).toContainText('Capital One Platinum');
   await expect(details).toContainText('609 Dispute Letter');
   await expect(details).toContainText('04/29/2026');
-  await expect(details).toContainText('Client says the balance was paid before the statement date.');
+  await expect(details).toContainText('Demo client says the balance was paid before the statement date.');
 });

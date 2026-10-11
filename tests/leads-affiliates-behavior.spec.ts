@@ -106,7 +106,7 @@ test('affiliate documents and commissions can be added and removed locally', asy
   await page.getByLabel('Commission Period').fill('May 2026');
   await page.getByRole('button', { name: 'Add Commission' }).nth(1).click();
   await expect(page.getByText('Commission Affiliate', { exact: true })).toBeVisible();
-  await expect(page.getByText('$125', { exact: true })).toBeVisible();
+  await expect(page.locator('tr').filter({ hasText: 'Commission Affiliate' }).getByText('$125', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Add Document' }).click();
   await page.getByLabel('Document Affiliate').fill('Document Affiliate');
