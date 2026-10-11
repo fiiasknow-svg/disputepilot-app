@@ -13,6 +13,7 @@ Latest verified test status: local Chromium Playwright suite passed, `358 passed
 - [Final Sale-Readiness Scorecard](final-sale-readiness-scorecard.md)
 - [Final Live Demo Polish Audit](final-live-demo-polish-audit.md)
 - [Monetization Roadmap](monetization-roadmap.md)
+- [Buyer Outreach Package](buyer-outreach-package.md)
 - [Buyer Handoff Checklist](buyer-handoff-checklist.md)
 - [Technical Setup](technical-setup.md)
 - [Testing Summary](testing-summary.md)
